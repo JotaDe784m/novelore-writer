@@ -1,0 +1,427 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-serif: 'Merriweather', 'Georgia', serif;
+    --font-serif-display: 'Playfair Display', 'Cinzel', serif;
+    --font-garamond: 'EB Garamond', 'Garamond', serif;
+    --font-lora: 'Lora', serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
+    /* Default Clean Minimalism Theme */
+    --bg-main: #FDFDFB;
+    --bg-surface: #F5F5F3;
+    --bg-card: #FFFFFF;
+    --bg-input: #F0F0EE;
+    --text-main: #2D2D2D;
+    --text-body: #4A4A48;
+    --text-muted: #8A8A88;
+    --border-color: #EBEBE9;
+    --accent: #2A2A2A;
+    --accent-hover: #141414;
+    --accent-contrast: #FFFFFF;
+    --accent-subtle: #F0F0EE;
+    --highlight: #2A2A2A;
+  }
+
+  /* Theme: Clean Minimalism (Claro Neutro) - Acento personalizable */
+  .theme-minimal,
+  .theme-clean,
+  [data-theme="minimal"],
+  [data-theme="clean"] {
+    --bg-main: #FCFCFA;
+    --bg-surface: #F4F4F1;
+    --bg-card: #FFFFFF;
+    --bg-input: #ECECE8;
+    --bg-canvas: #F8F8F5;
+    --text-main: #1A1A1A;
+    --text-body: #374151;
+    --text-muted: #6B7280;
+    --border-color: #E5E5DF;
+    --accent: var(--custom-accent, #18181B);
+    --accent-hover: var(--custom-accent-hover, #09090B);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-subtle: var(--custom-accent-subtle, #F4F4F5);
+    --highlight: var(--custom-highlight, #18181B);
+  }
+
+  /* Theme: Nordic Daylight (Luz Nórdica - Claridad Ártica) */
+  .theme-light,
+  [data-theme="light"] {
+    --bg-main: #F8FAFC;
+    --bg-surface: #F1F5F9;
+    --bg-card: #FFFFFF;
+    --bg-input: #E2E8F0;
+    --bg-canvas: #F1F5F9;
+    --text-main: #0F172A;
+    --text-body: #334155;
+    --text-muted: #64748B;
+    --border-color: #CBD5E1;
+    --accent: var(--custom-accent, #2563EB);
+    --accent-hover: var(--custom-accent-hover, #1D4ED8);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-subtle: var(--custom-accent-subtle, #EFF6FF);
+    --highlight: var(--custom-highlight, #2563EB);
+  }
+
+  /* Theme: Sepia / Fantasy (Fantasía Épica - Pergamino Dorado) */
+  .theme-sepia,
+  .theme-fantasy,
+  [data-theme="sepia"],
+  [data-theme="fantasy"] {
+    --bg-main: #FAF5E8;
+    --bg-surface: #F2E9D4;
+    --bg-card: #FFFDF8;
+    --bg-input: #E8DDC3;
+    --bg-canvas: #F5ECD8;
+    --text-main: #2D1E14;
+    --text-body: #4A3423;
+    --text-muted: #7D6752;
+    --border-color: #DCCBB0;
+    --accent: var(--custom-accent, #92400E);
+    --accent-hover: var(--custom-accent-hover, #78350F);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-subtle: var(--custom-accent-subtle, #F6EBCE);
+    --highlight: var(--custom-highlight, #B45309);
+  }
+
+  /* Theme: Dark (Oscuro Neutro) - Carbón mate de descanso ocular, acento personalizable */
+  .theme-dark,
+  [data-theme="dark"] {
+    --bg-main: #121214;
+    --bg-surface: #1A1A1E;
+    --bg-card: #222228;
+    --bg-input: #17171B;
+    --bg-canvas: #0E0E10;
+    --text-main: #F4F4F6;
+    --text-body: #D1D1DB;
+    --text-muted: #9494A3;
+    --border-color: #2D2D38;
+    --accent: var(--custom-accent, #E5A93C);
+    --accent-hover: var(--custom-accent-hover, #D99B26);
+    --accent-contrast: var(--custom-accent-contrast, #121214);
+    --accent-subtle: var(--custom-accent-subtle, #2A2216);
+    --highlight: var(--custom-highlight, #F59E0B);
+  }
+
+  /* Theme: Sci-Fi & Cyberpunk (Ciberespacio) */
+  .theme-scifi,
+  [data-theme="scifi"] {
+    --bg-main: #0B0E14;
+    --bg-surface: #111722;
+    --bg-card: #162030;
+    --bg-input: #0E141E;
+    --bg-canvas: #080B10;
+    --text-main: #E0F2FE;
+    --text-body: #BAE6FD;
+    --text-muted: #38BDF8;
+    --border-color: #1E293B;
+    --accent: var(--custom-accent, #00D8F6);
+    --accent-hover: var(--custom-accent-hover, #06B6D4);
+    --accent-contrast: var(--custom-accent-contrast, #082F49);
+    --accent-subtle: var(--custom-accent-subtle, #083344);
+    --highlight: var(--custom-highlight, #00D8F6);
+  }
+
+  /* Theme: Noir & Mystery (Novela Negra / Noir Clásico) */
+  .theme-noir,
+  [data-theme="noir"] {
+    --bg-main: #141416;
+    --bg-surface: #1B1B1E;
+    --bg-card: #232328;
+    --bg-input: #18181C;
+    --bg-canvas: #0F0F11;
+    --text-main: #F4F4F5;
+    --text-body: #D4D4D8;
+    --text-muted: #A1A1AA;
+    --border-color: #2E2E36;
+    --accent: var(--custom-accent, #E11D48);
+    --accent-hover: var(--custom-accent-hover, #BE123C);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-subtle: var(--custom-accent-subtle, #30111A);
+    --highlight: var(--custom-highlight, #F43F5E);
+  }
+
+  /* Theme: Gothic & Horror (Cripta Gótica) */
+  .theme-gothic,
+  [data-theme="gothic"] {
+    --bg-main: #12090D;
+    --bg-surface: #1A0F15;
+    --bg-card: #24141D;
+    --bg-input: #160D12;
+    --bg-canvas: #0D070A;
+    --text-main: #FDE8EF;
+    --text-body: #E7B8C8;
+    --text-muted: #9D6379;
+    --border-color: #381928;
+    --accent: var(--custom-accent, #BE185D);
+    --accent-hover: var(--custom-accent-hover, #9D174D);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-subtle: var(--custom-accent-subtle, #2D0B1B);
+    --highlight: var(--custom-highlight, #DB2777);
+  }
+
+  /* Theme: Romance & Drama (Atardecer Rosa) */
+  .theme-romance,
+  [data-theme="romance"] {
+    --bg-main: #FFF8F6;
+    --bg-surface: #FDF0EB;
+    --bg-card: #FFFFFF;
+    --bg-input: #F7E4DC;
+    --bg-canvas: #FCF1EC;
+    --text-main: #331A1D;
+    --text-body: #5A353A;
+    --text-muted: #96676E;
+    --border-color: #ECD2C8;
+    --accent: var(--custom-accent, #E11D48);
+    --accent-hover: var(--custom-accent-hover, #BE123C);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-subtle: var(--custom-accent-subtle, #FFE4E6);
+    --highlight: var(--custom-highlight, #FB7185);
+  }
+
+  /* Theme: Forest & Adventure (Biblioteca Silvestre) */
+  .theme-forest,
+  [data-theme="forest"] {
+    --bg-main: #0A1510;
+    --bg-surface: #112019;
+    --bg-card: #162820;
+    --bg-input: #0E1A14;
+    --bg-canvas: #08120D;
+    --text-main: #F0FDF4;
+    --text-body: #DCFCE7;
+    --text-muted: #86EFAC;
+    --border-color: #1E382D;
+    --accent: var(--custom-accent, #10B981);
+    --accent-hover: var(--custom-accent-hover, #059669);
+    --accent-contrast: var(--custom-accent-contrast, #041A12);
+    --accent-subtle: var(--custom-accent-subtle, #0D2E22);
+    --highlight: var(--custom-highlight, #34D399);
+  }
+
+  /* Theme: Midnight & Thriller (Medianoche Táctico) */
+  .theme-midnight,
+  [data-theme="midnight"] {
+    --bg-main: #090D1A;
+    --bg-surface: #10162A;
+    --bg-card: #17203A;
+    --bg-input: #0D1322;
+    --bg-canvas: #070A15;
+    --text-main: #F0F4FF;
+    --text-body: #C7D2FE;
+    --text-muted: #818CF8;
+    --border-color: #1E2B4E;
+    --accent: var(--custom-accent, #38BDF8);
+    --accent-hover: var(--custom-accent-hover, #0284C7);
+    --accent-contrast: var(--custom-accent-contrast, #050B16);
+    --accent-subtle: var(--custom-accent-subtle, #132040);
+    --highlight: var(--custom-highlight, #38BDF8);
+  }
+
+  /* Theme: Magical Realism & Poetry (Lavanda Onírica) */
+  .theme-dream,
+  [data-theme="dream"] {
+    --bg-main: #12101C;
+    --bg-surface: #1A1728;
+    --bg-card: #231F36;
+    --bg-input: #161323;
+    --bg-canvas: #0E0C17;
+    --text-main: #F5F0FF;
+    --text-body: #D8CEF6;
+    --text-muted: #9588BA;
+    --border-color: #2F2948;
+    --accent: var(--custom-accent, #A855F7);
+    --accent-hover: var(--custom-accent-hover, #9333EA);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-subtle: var(--custom-accent-subtle, #24133A);
+    --highlight: var(--custom-highlight, #C084FC);
+  }
+}
+
+/* Global root styling */
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+}
+
+/* Manuscript Writing Canvas - Guaranteed crystal clear readability across ALL themes */
+#novel-manuscript-textarea,
+.manuscript-editor-textarea {
+  color: var(--text-main) !important;
+  caret-color: var(--text-main) !important;
+  background-color: transparent !important;
+}
+
+#novel-manuscript-textarea::placeholder,
+.manuscript-editor-textarea::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.6 !important;
+}
+
+#novel-manuscript-textarea::selection,
+.manuscript-editor-textarea::selection {
+  background-color: var(--accent-subtle) !important;
+  color: var(--text-main) !important;
+}
+
+/* Ensure solid accent buttons and badges have proper high-contrast text and icons */
+button.bg-\[var\(--accent\)\],
+a.bg-\[var\(--accent\)\],
+.accent-btn,
+.accent-badge {
+  color: var(--accent-contrast) !important;
+}
+
+button.bg-\[var\(--accent\)\] svg,
+a.bg-\[var\(--accent\)\] svg,
+.accent-btn svg,
+.accent-badge svg {
+  color: var(--accent-contrast) !important;
+  stroke: currentColor !important;
+}
+
+button.bg-\[var\(--accent\)\] span,
+a.bg-\[var\(--accent\)\] span {
+  color: inherit !important;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Custom writer scrollbars - High visibility & permanent scrollbar rendering */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 rgba(0, 0, 0, 0.08);
+}
+
+.theme-dark *,
+[data-theme="dark"] *,
+.dark * {
+  scrollbar-color: #64748b rgba(255, 255, 255, 0.08);
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+}
+.theme-dark ::-webkit-scrollbar-track,
+[data-theme="dark"] ::-webkit-scrollbar-track,
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+.theme-dark ::-webkit-scrollbar-thumb,
+[data-theme="dark"] ::-webkit-scrollbar-thumb,
+.dark ::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.theme-dark ::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover,
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.custom-scroll,
+.always-scroll {
+  overflow-y: scroll !important;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 rgba(0, 0, 0, 0.05);
+}
+
+.theme-dark .custom-scroll,
+.theme-dark .always-scroll,
+[data-theme="dark"] .custom-scroll,
+.dark .custom-scroll {
+  scrollbar-color: #71717a rgba(255, 255, 255, 0.05);
+}
+
+.custom-scroll::-webkit-scrollbar,
+.always-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.custom-scroll::-webkit-scrollbar-track,
+.always-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+  border-left: 1px solid rgba(0, 0, 0, 0.06);
+}
+.theme-dark .custom-scroll::-webkit-scrollbar-track,
+.theme-dark .always-scroll::-webkit-scrollbar-track,
+[data-theme="dark"] .custom-scroll::-webkit-scrollbar-track,
+.dark .custom-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+}
+.custom-scroll::-webkit-scrollbar-thumb,
+.always-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 5px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover,
+.always-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+.theme-dark .custom-scroll::-webkit-scrollbar-thumb,
+.theme-dark .always-scroll::-webkit-scrollbar-thumb,
+[data-theme="dark"] .custom-scroll::-webkit-scrollbar-thumb,
+.dark .custom-scroll::-webkit-scrollbar-thumb {
+  background: #71717a;
+  border-radius: 5px;
+}
+.theme-dark .custom-scroll::-webkit-scrollbar-thumb:hover,
+.theme-dark .always-scroll::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .custom-scroll::-webkit-scrollbar-thumb:hover,
+.dark .custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
+/* Novel typography classes */
+.font-novel-serif {
+  font-family: var(--font-serif);
+}
+.font-novel-display {
+  font-family: var(--font-serif-display);
+}
+.font-novel-garamond {
+  font-family: var(--font-garamond);
+}
+.font-novel-lora {
+  font-family: var(--font-lora);
+}
+.font-novel-sans {
+  font-family: var(--font-sans);
+}
+.font-novel-mono {
+  font-family: var(--font-mono);
+}
+
+/* Hide scrollbar for clean distraction-free elements */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

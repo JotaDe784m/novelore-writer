@@ -1,0 +1,6 @@
+{
+  "name": "Novelore",
+  "description": "Suite profesional para novelistas y escritores narrativos con editor de manuscrito, biblia de mundo, mapa visual de relaciones, planeación y respaldos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

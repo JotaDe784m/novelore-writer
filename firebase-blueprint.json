@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "Novel": {
+      "title": "Novel",
+      "description": "A novel writing project including structural manifest, codex bible, and settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string", "description": "Firebase Auth UID of the project owner" },
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "synopsis": { "type": "string" },
+        "genre": { "type": "string" },
+        "targetWordCount": { "type": "number" },
+        "acts": { "type": "array" },
+        "entities": { "type": "array" },
+        "relationships": { "type": "array" },
+        "timelineEvents": { "type": "array" },
+        "relationshipPositions": { "type": "object" },
+        "whiteboard": { "type": "object" },
+        "settings": { "type": "object" },
+        "schemaVersion": { "type": "number", "description": "1 for legacy monolith, 2 for hybrid partitioned" },
+        "syncVersion": { "type": "number", "description": "Logical cloud commit version counter" },
+        "syncStatus": { "type": "string", "description": "Cloud commit status: committed | pending" },
+        "updatedAt": { "type": "string" },
+        "lastModifiedBySessionId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userDisplayName": { "type": "string" },
+        "userPhotoURL": { "type": "string" }
+      },
+      "required": ["id", "title"]
+    },
+    "SceneContent": {
+      "title": "SceneContent",
+      "description": "Atomic partitioned manuscript prose content for a scene",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "novelId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "actId": { "type": "string" },
+        "content": { "type": "string" },
+        "notes": { "type": "string" },
+        "wordCount": { "type": "number" },
+        "updatedAt": { "type": "string" },
+        "syncVersion": { "type": "number" }
+      },
+      "required": ["id", "novelId", "content"]
+    },
+    "BoardData": {
+      "title": "BoardData",
+      "description": "Segregated visual canvas items and moodboard configuration",
+      "type": "object",
+      "properties": {
+        "novelId": { "type": "string" },
+        "items": { "type": "array" },
+        "zoom": { "type": "number" },
+        "panX": { "type": "number" },
+        "panY": { "type": "number" },
+        "updatedAt": { "type": "string" },
+        "syncVersion": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "/novels/{novelId}": {
+      "schema": "Novel",
+      "description": "Collection of user novel projects saved in the cloud"
+    },
+    "/novels/{novelId}/scenes/{sceneId}": {
+      "schema": "SceneContent",
+      "description": "Partitioned scene manuscript prose documents"
+    },
+    "/novels/{novelId}/boards/{boardId}": {
+      "schema": "BoardData",
+      "description": "Partitioned visual moodboards"
+    },
+    "/novels/{novelId}/data/{dataId}": {
+      "schema": "BoardData",
+      "description": "Legacy whiteboard data subcollection"
+    }
+  }
+}
