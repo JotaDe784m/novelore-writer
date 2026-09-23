@@ -34,16 +34,25 @@ export function formatSpanishDialogue(input: string): string {
     let trimmed = line.trim();
     if (!trimmed) return "";
 
-    // If the line starts with standard hyphens (-, --), en-dash (–), or quotes (", «), convert to em-dash
-    trimmed = trimmed.replace(/^[-–—"«\s]+/, "—");
+    const isDialogue = /^[-–—"«]/.test(trimmed);
+    if (isDialogue) {
+      // Standardize opening dialogue dash: em-dash with no space after
+      trimmed = trimmed.replace(/^[-–—"«]+\s*/, "—");
+      // Remove trailing closing quote if converted from quoted dialogue
+      trimmed = trimmed.replace(/["»]$/, "");
+    }
 
-    // Standardize interior dashes: ensure dialogue tags like " —dijo él— " have correct spacing
-    // Rule: —Dijo él (verb of speech in lower case attached to dash)
-    trimmed = trimmed.replace(/\s*—\s*/g, " —");
+    // Standardize interior dashes: space before em-dash
+    trimmed = trimmed.replace(/([^\s])\s*—\s*/g, "$1 —");
 
-    // Fix dialogue tags: space before dash, no space after dash if continuing, space after if closing tag
-    // e.g. "—Hola —dijo él—. ¿Cómo estás?"
+    // Spanish RAE tag rule: verb of speech in lowercase directly attached to the em-dash
     trimmed = trimmed.replace(/—\s*([a-záéíóúñ])/gi, "—$1");
+
+    // Spanish RAE tag rule: closing tag dash attached to following punctuation
+    trimmed = trimmed.replace(/\s*—\s*([,.;:?!])/g, "—$1");
+
+    // Ensure no accidental space at the very start of the turn
+    trimmed = trimmed.replace(/^\s*—\s*/, "—");
 
     return trimmed;
   });

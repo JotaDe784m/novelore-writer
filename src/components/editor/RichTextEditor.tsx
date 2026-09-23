@@ -1,6 +1,5 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import {
-  Sparkles,
   Maximize2,
   Minimize2,
   Type,
@@ -23,6 +22,8 @@ import {
   PanelRight,
   Undo2,
   Redo2,
+  ScrollText,
+  Focus,
 } from "lucide-react";
 import { NovelProject, Scene, SceneStatus } from "../../types";
 import {
@@ -32,6 +33,12 @@ import {
   formatSpanishDialogue,
   insertEmDashAtCursor,
 } from "../../utils/formatters";
+import {
+  getParagraphBounds,
+  calculateTypewriterScrollTop,
+  calculateFocusMaskGradient,
+  getOptimalReadingColumnWidth,
+} from "../../utils/editorErgonomics";
 
 interface RichTextEditorProps {
   scene: Scene | null;
@@ -42,6 +49,15 @@ interface RichTextEditorProps {
   setIsZenMode: (val: boolean) => void;
   onOpenInspector: () => void;
   isInspectorOpen: boolean;
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -55,6 +71,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   isInspectorOpen,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mirrorRef = useRef<HTMLDivElement>(null);
   const customFontInputRef = useRef<HTMLInputElement>(null);
   const ribbonRef = useRef<HTMLDivElement>(null);
   const statusMenuRef = useRef<HTMLDivElement>(null);
@@ -96,7 +113,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     lastRecordedContentRef.current = newContent;
   };
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (!scene) return;
     if (historyTimeoutRef.current) {
       clearTimeout(historyTimeoutRef.current);
@@ -106,7 +123,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     let currentIdx = historyIndex;
     let currentHist = history;
 
-    // If current typing hasn't been committed to history yet, commit it now so we can undo back from it
     if (scene.content !== lastRecordedContentRef.current) {
       currentHist = [...history.slice(0, historyIndex + 1), scene.content || ""];
       currentIdx = currentHist.length - 1;
@@ -130,9 +146,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       isUndoRedoActionRef.current = false;
       textareaRef.current?.focus();
     }, 20);
-  };
+  }, [scene, history, historyIndex, onUpdateScene]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (!scene) return;
     if (historyTimeoutRef.current) {
       clearTimeout(historyTimeoutRef.current);
@@ -154,45 +170,75 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       isUndoRedoActionRef.current = false;
       textareaRef.current?.focus();
     }, 20);
-  };
+  }, [scene, history, historyIndex, onUpdateScene]);
 
   const canUndo = historyIndex > 0 || (scene ? scene.content !== lastRecordedContentRef.current : false);
   const canRedo = historyIndex < history.length - 1;
 
-  // Global keyboard shortcuts for Undo / Redo (when not inside the manuscript textarea)
+  // Global keyboard shortcuts (Undo, Redo, Typewriter, Focus, Zen)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      // If focused in the editor textarea, its local onKeyDown handles it with stopPropagation
-      if (target?.id === "novel-manuscript-textarea") return;
-      // If focused in another input (like scene title input or modal), skip
-      const isOtherInput = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
+      const isOtherInput = target && target.id !== "novel-manuscript-textarea" && (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
       if (isOtherInput) return;
 
       const isMac = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
       const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
 
-      if (isCmdOrCtrl && !e.altKey) {
-        // Undo: Ctrl+Z / Cmd+Z (without shift)
+      // Undo / Redo outside textarea
+      if (target?.id !== "novel-manuscript-textarea" && isCmdOrCtrl && !e.altKey) {
         if (e.key.toLowerCase() === "z" && !e.shiftKey) {
           e.preventDefault();
           handleUndo();
           return;
         }
-        // Redo: Ctrl+Y / Cmd+Y or Ctrl+Shift+Z / Cmd+Shift+Z
         if (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey)) {
           e.preventDefault();
           handleRedo();
           return;
         }
       }
+
+      // Alt+T: Toggle Typewriter Mode
+      if (e.altKey && e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        const nextVal = !(project.settings.typewriterMode ?? false);
+        onUpdateProjectSettings({ typewriterMode: nextVal });
+        showToast(nextVal ? "Scroll de máquina de escribir activado" : "Scroll de máquina de escribir desactivado");
+        return;
+      }
+
+      // Alt+F: Toggle Focus Mode
+      if (e.altKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        const nextVal = !(project.settings.focusMode ?? false);
+        onUpdateProjectSettings({ focusMode: nextVal });
+        showToast(nextVal ? "Modo foco por párrafo activado" : "Modo foco desactivado");
+        return;
+      }
+
+      // Alt+Z: Toggle Zen Mode
+      if (e.altKey && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        setIsZenMode(!isZenMode);
+        showToast(!isZenMode ? "Modo Zen activado (Esc para salir)" : "Modo Zen desactivado");
+        return;
+      }
+
+      // Esc: Exit Zen Mode
+      if (e.key === "Escape" && isZenMode) {
+        e.preventDefault();
+        setIsZenMode(false);
+        showToast("Modo Zen desactivado");
+        return;
+      }
     };
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [handleUndo, handleRedo]);
+  }, [handleUndo, handleRedo, isZenMode, setIsZenMode, project.settings.typewriterMode, project.settings.focusMode, onUpdateProjectSettings]);
 
-  // Close ribbon and status menus on pointer down outside
+  // Close menus on pointer down outside
   useEffect(() => {
     if (!showFontMenu && !showSpacingMenu && !showStatusMenu) return;
     const handlePointerDownOutside = (e: MouseEvent) => {
@@ -269,6 +315,102 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     showToast("Fuente propia eliminada. Restaurado a Serif Clásica");
   };
 
+  /**
+   * Literary Ergonomics: Typewriter Scrolling & Focus Mode Caret Synchronization
+   */
+  const updateErgonomics = useCallback(
+    (isTyping = false) => {
+      if (!textareaRef.current || !mirrorRef.current || !scene) return;
+      if (typeof window === "undefined" || !window.getComputedStyle) return;
+
+      const textarea = textareaRef.current;
+      const mirror = mirrorRef.current;
+      const content = textarea.value || "";
+      const caretPos = textarea.selectionStart;
+
+      const isTypewriter = project.settings.typewriterMode ?? false;
+      const isFocus = project.settings.focusMode ?? false;
+
+      if (!isTypewriter && !isFocus) {
+        textarea.style.webkitMaskImage = "none";
+        textarea.style.maskImage = "none";
+        return;
+      }
+
+      const bounds = getParagraphBounds(content, caretPos);
+
+      // Mirror computed typography styles
+      const computed = window.getComputedStyle(textarea);
+      mirror.style.fontFamily = computed.fontFamily;
+      mirror.style.fontSize = computed.fontSize;
+      mirror.style.lineHeight = computed.lineHeight;
+      mirror.style.letterSpacing = computed.letterSpacing;
+      mirror.style.wordSpacing = computed.wordSpacing;
+      mirror.style.textAlign = computed.textAlign;
+      mirror.style.textIndent = computed.textIndent;
+      mirror.style.whiteSpace = "pre-wrap";
+      mirror.style.wordBreak = "break-word";
+      mirror.style.boxSizing = "border-box";
+      mirror.style.width = `${textarea.clientWidth}px`;
+      mirror.style.paddingLeft = computed.paddingLeft;
+      mirror.style.paddingRight = computed.paddingRight;
+      mirror.style.paddingTop = computed.paddingTop;
+
+      const beforePara = escapeHtml(content.substring(0, bounds.start));
+      const paraBeforeCaret = escapeHtml(content.substring(bounds.start, caretPos));
+      const paraAfterCaret = escapeHtml(content.substring(caretPos, bounds.end));
+      const afterPara = escapeHtml(content.substring(bounds.end));
+
+      mirror.innerHTML = `<span>${beforePara}</span><span id="mirror-active-para">${paraBeforeCaret}<span id="mirror-caret-anchor">|</span>${paraAfterCaret}</span><span>${afterPara}</span>`;
+
+      const caretAnchor = mirror.querySelector("#mirror-caret-anchor") as HTMLElement | null;
+      const activeParaSpan = mirror.querySelector("#mirror-active-para") as HTMLElement | null;
+
+      // Typewriter scrolling adjustment
+      if (isTypewriter && caretAnchor) {
+        const caretTop = caretAnchor.offsetTop;
+        const targetScroll = calculateTypewriterScrollTop(caretTop, textarea.clientHeight, 0.45);
+        if (isTyping) {
+          textarea.scrollTop = targetScroll;
+        } else if (Math.abs(textarea.scrollTop - targetScroll) > 12) {
+          textarea.scrollTo({ top: targetScroll, behavior: "smooth" });
+        }
+      }
+
+      // Paragraph Focus gradient mask
+      if (isFocus && activeParaSpan) {
+        const paraTop = activeParaSpan.offsetTop;
+        const paraHeight = activeParaSpan.offsetHeight;
+        const mask = calculateFocusMaskGradient(paraTop, paraHeight, textarea.scrollTop, 28);
+        textarea.style.webkitMaskImage = mask;
+        textarea.style.maskImage = mask;
+      } else {
+        textarea.style.webkitMaskImage = "none";
+        textarea.style.maskImage = "none";
+      }
+    },
+    [scene, project.settings.typewriterMode, project.settings.focusMode]
+  );
+
+  // Recalculate focus mask on manual scroll
+  const handleScroll = () => {
+    if (project.settings.focusMode && mirrorRef.current && textareaRef.current) {
+      const activeParaSpan = mirrorRef.current.querySelector("#mirror-active-para") as HTMLElement | null;
+      if (activeParaSpan) {
+        const paraTop = activeParaSpan.offsetTop;
+        const paraHeight = activeParaSpan.offsetHeight;
+        const mask = calculateFocusMaskGradient(paraTop, paraHeight, textareaRef.current.scrollTop, 28);
+        textareaRef.current.style.webkitMaskImage = mask;
+        textareaRef.current.style.maskImage = mask;
+      }
+    }
+  };
+
+  // Sync ergonomics when mode toggles change or scene switches
+  useEffect(() => {
+    updateErgonomics(false);
+  }, [updateErgonomics, project.settings.typewriterMode, project.settings.focusMode, scene?.id]);
+
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (!scene) return;
     const newContent = e.target.value;
@@ -278,13 +420,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       wordCount: newWordCount,
     });
 
+    updateErgonomics(true);
+
     if (isUndoRedoActionRef.current) return;
 
     if (historyTimeoutRef.current) {
       clearTimeout(historyTimeoutRef.current);
     }
-    const isMajor = Math.abs(newContent.length - lastRecordedContentRef.current.length) > 1 ||
-                    newContent.endsWith(" ") || newContent.endsWith("\n");
+    const isMajor =
+      Math.abs(newContent.length - lastRecordedContentRef.current.length) > 1 ||
+      newContent.endsWith(" ") ||
+      newContent.endsWith("\n");
     historyTimeoutRef.current = setTimeout(() => {
       pushToHistory(newContent);
     }, isMajor ? 200 : 450);
@@ -298,6 +444,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         wordCount: countWords(newText),
       });
       pushToHistory(newText);
+      setTimeout(() => updateErgonomics(true), 10);
     });
     showToast("Guion largo '—' insertado");
   };
@@ -310,6 +457,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       wordCount: countWords(formatted),
     });
     pushToHistory(formatted);
+    setTimeout(() => updateErgonomics(false), 10);
     showToast("Diálogos formateados según la norma RAE");
   };
 
@@ -321,8 +469,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const originalText = textarea.value;
     const breakText = "\n\n* * *\n\n";
 
-    const newText =
-      originalText.substring(0, start) + breakText + originalText.substring(end);
+    const newText = originalText.substring(0, start) + breakText + originalText.substring(end);
     onUpdateScene(scene.id, {
       content: newText,
       wordCount: countWords(newText),
@@ -332,6 +479,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start + breakText.length, start + breakText.length);
+      updateErgonomics(true);
     }, 0);
   };
 
@@ -344,8 +492,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const selected = originalText.substring(start, end);
     const replacement = `«${selected || "texto"}»`;
 
-    const newText =
-      originalText.substring(0, start) + replacement + originalText.substring(end);
+    const newText = originalText.substring(0, start) + replacement + originalText.substring(end);
     onUpdateScene(scene.id, {
       content: newText,
       wordCount: countWords(newText),
@@ -354,10 +501,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(
-        start + 1,
-        start + 1 + (selected ? selected.length : 5)
-      );
+      textarea.setSelectionRange(start + 1, start + 1 + (selected ? selected.length : 5));
+      updateErgonomics(true);
     }, 0);
   };
 
@@ -374,7 +519,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (selected === selected.toUpperCase()) {
       transformed = selected.toLowerCase();
     } else if (selected === selected.toLowerCase()) {
-      // Capitalize words
       transformed = selected.replace(/\b\w/g, (c) => c.toUpperCase());
     } else {
       transformed = selected.toUpperCase();
@@ -385,6 +529,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start, start + transformed.length);
+      updateErgonomics(false);
     }, 0);
     showToast("Formato de mayúsculas/minúsculas alternado");
   };
@@ -395,10 +540,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     showToast("Contenido de la escena copiado al portapapeles");
   };
 
-  /**
-   * Enhanced Indentation handler: Supports Tab / Shift+Tab keyboard usage
-   * and paragraph indentation via ribbon button.
-   */
   const handleIndentOrOutdent = (isOutdent: boolean = false, forceParagraph: boolean = false) => {
     if (!textareaRef.current || !scene) return;
     const textarea = textareaRef.current;
@@ -406,7 +547,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const end = textarea.selectionEnd;
     const originalText = textarea.value || "";
 
-    // If cursor at single position and not forcing paragraph start and not outdenting:
     if (start === end && !isOutdent && !forceParagraph) {
       const newText = originalText.substring(0, start) + "\t" + originalText.substring(end);
       onUpdateScene(scene.id, {
@@ -416,11 +556,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(start + 1, start + 1);
+        updateErgonomics(true);
       }, 0);
       return;
     }
 
-    // Paragraph-level indent / outdent (for single paragraph under cursor or multiple selected paragraphs)
     const lineStart = originalText.lastIndexOf("\n", start - 1) + 1;
     const nextNewline = originalText.indexOf("\n", end);
     const lineEnd = nextNewline === -1 ? originalText.length : nextNewline;
@@ -471,6 +611,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       const newStart = Math.max(lineStart, start + firstLineShift);
       const newEnd = Math.max(newStart, end + totalShift);
       textarea.setSelectionRange(newStart, newEnd);
+      updateErgonomics(true);
     }, 0);
   };
 
@@ -480,7 +621,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     showToast("Sangría añadida al párrafo (Tab)");
   };
 
-  // Keyboard shortcut listener: Ctrl+Shift+M or Alt+- for em-dash
+  // Keyboard shortcut listener for em-dash (Ctrl+Shift+M or Alt+-)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "m") || (e.altKey && e.key === "-")) {
@@ -492,27 +633,18 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [scene]);
 
-  // Auto-resize textarea to fit content so the scrollbar is placed at the far right edge of the screen
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      const scrollHeight = textareaRef.current.scrollHeight;
-      textareaRef.current.style.height = `${Math.max(650, scrollHeight + 40)}px`;
-    }
-  }, [scene?.content, project.settings.fontSize, project.settings.lineSpacing]);
-
   if (!scene) {
     return (
       <div
         id="editor-empty-state"
         className="flex-1 flex flex-col items-center justify-center p-8 text-center"
         style={{
-          backgroundColor: "var(--bg-main)",
+          backgroundColor: "var(--bg-editor)",
           color: "var(--text-muted)",
         }}
       >
         <BookOpen className="w-12 h-12 mb-3 opacity-40 text-[var(--accent)]" />
-        <h3 className="text-lg font-bold font-novel-display text-[var(--text-main)] mb-1">
+        <h3 className="text-lg font-bold font-novel-display text-[var(--text-primary)] mb-1">
           Ninguna escena seleccionada
         </h3>
         <p className="text-sm max-w-sm">
@@ -528,7 +660,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const targetWords = scene.targetWordCount || 1500;
   const progressPercent = Math.min(100, Math.round((wordCount / targetWords) * 100));
 
-  // Determine line height numerically for guaranteed inline CSS application
+  const isTypewriterActive = project.settings.typewriterMode ?? false;
+  const isFocusActive = project.settings.focusMode ?? false;
+
   const getNumericLineHeight = (): number => {
     const sp = String(project.settings.lineSpacing);
     switch (sp) {
@@ -584,11 +718,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       : fontOptions.find((f) => f.id === project.settings.fontFamily)?.label || "Merriweather (Serif)";
 
   const statusOptions: { value: SceneStatus; label: string; badgeClass: string }[] = [
-    { value: "idea", label: "💡 Idea", badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30" },
-    { value: "draft", label: "📝 Borrador", badgeClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" },
-    { value: "revised", label: "🔍 En Revisión", badgeClass: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30" },
-    { value: "polished", label: "✨ Pulido", badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" },
-    { value: "final", label: "🏆 Final", badgeClass: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30" },
+    { value: "idea", label: "💡 Idea", badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+    { value: "draft", label: "📝 Borrador", badgeClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
+    { value: "revised", label: "🔍 En Revisión", badgeClass: "bg-purple-500/15 text-purple-600 dark:text-purple-400" },
+    { value: "polished", label: "✨ Pulido", badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
+    { value: "final", label: "🏆 Final", badgeClass: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" },
   ];
 
   const currentStatusObj =
@@ -601,41 +735,57 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     { id: "loose", val: "2.0", label: "2.0 Doble Manuscrito" },
   ];
 
+  const columnConfig = getOptimalReadingColumnWidth(isZenMode);
+
   return (
     <main
       id="rich-text-editor-container"
       className="flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-hidden relative"
       style={{
-        backgroundColor: "var(--bg-main)",
-        color: "var(--text-main)",
+        backgroundColor: "var(--bg-editor)",
+        color: "var(--text-primary)",
       }}
     >
       {/* Toast Notification */}
       {notification && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-[var(--text-main)] text-[var(--bg-main)] text-xs font-semibold px-4 py-2 rounded-full shadow-lg z-50 animate-in fade-in slide-in-from-top-2">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-[var(--text-primary)] text-[var(--bg-editor)] text-xs font-semibold px-4 py-2 rounded-full shadow-lg z-50 animate-in fade-in slide-in-from-top-2">
           {notification}
         </div>
       )}
+
+      {/* Hidden Mirror Div for Caret & Paragraph Measurement */}
+      <div
+        ref={mirrorRef}
+        id="editor-caret-mirror"
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          visibility: "hidden",
+          pointerEvents: "none",
+          zIndex: -100,
+        }}
+      />
 
       {/* FILA 1: Barra de Información de la Escena (Scene Header) */}
       {!isZenMode && (
         <header
           id="editor-scene-header"
-          className="h-11 border-b px-3 sm:px-4 flex items-center justify-between shrink-0 select-none min-w-0"
+          className="h-11 px-3 sm:px-5 flex items-center justify-between shrink-0 select-none min-w-0 border-b border-[var(--border-subtle)]"
           style={{
-            backgroundColor: "var(--bg-surface)",
-            borderColor: "var(--border-color)",
+            backgroundColor: "var(--bg-sidebar)",
           }}
         >
-          {/* Left: Scene Title Input - Comfortable width, never covered by tools */}
-          <div className="flex-1 min-w-0 flex items-center gap-2 mr-2 sm:mr-3">
+          {/* Left: Scene Title Input */}
+          <div className="flex-1 min-w-0 flex items-center gap-2 mr-3">
             <FileText className="w-4 h-4 text-[var(--accent)] shrink-0 opacity-70" />
             <input
               type="text"
               id="scene-title-input"
               value={scene.title}
               onChange={(e) => onUpdateScene(scene.id, { title: e.target.value })}
-              className="w-full min-w-0 text-sm font-semibold font-novel-display bg-transparent border-b border-transparent hover:border-[var(--border-color)] focus:border-[var(--accent)] focus:outline-none py-0.5 text-[var(--text-main)] transition-colors placeholder-[var(--text-muted)] truncate focus:truncate-none"
+              className="w-full min-w-0 text-sm font-semibold font-novel-display bg-transparent border-b border-transparent hover:border-[var(--border-subtle)] focus:border-[var(--accent)] focus:outline-none py-0.5 text-[var(--text-primary)] transition-colors placeholder-[var(--text-muted)] truncate focus:truncate-none"
               placeholder="Escribe el nombre de esta escena..."
               title="Haz clic para editar el nombre de la escena"
             />
@@ -647,8 +797,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <div ref={statusMenuRef} className="relative">
               <button
                 type="button"
+                id="scene-status-button"
                 onClick={() => setShowStatusMenu(!showStatusMenu)}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors cursor-pointer shrink-0 ${currentStatusObj.badgeClass}`}
+                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer shrink-0 ${currentStatusObj.badgeClass}`}
                 title="Cambiar estado de la escena"
               >
                 <span>{currentStatusObj.label}</span>
@@ -657,10 +808,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
               {showStatusMenu && (
                 <div
-                  className="absolute right-0 top-full mt-1.5 w-40 rounded-xl shadow-xl border p-1 z-50"
+                  className="absolute right-0 top-full mt-1.5 w-40 rounded-xl shadow-xl p-1 z-50 border border-[var(--border-subtle)]"
                   style={{
-                    backgroundColor: "var(--bg-card)",
-                    borderColor: "var(--border-color)",
+                    backgroundColor: "var(--bg-editor)",
                   }}
                 >
                   <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-1">
@@ -673,10 +823,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                         onUpdateScene(scene.id, { status: opt.value });
                         setShowStatusMenu(false);
                       }}
-                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
                         scene.status === opt.value
                           ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
-                          : "hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-main)]"
+                          : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
                       }`}
                     >
                       <span>{opt.label}</span>
@@ -689,10 +839,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
             {/* Quick Word counter pill */}
             <div
-              className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-mono border shrink-0"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono shrink-0 bg-[var(--bg-surface-hover)]"
               style={{
-                backgroundColor: "var(--bg-input)",
-                borderColor: "var(--border-color)",
                 color: "var(--text-muted)",
               }}
               title={
@@ -701,7 +849,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   : `${wordCount} palabras escritas en esta escena`
               }
             >
-              <span className="font-semibold text-[var(--text-main)]">{wordCount}</span>
+              <span className="font-semibold text-[var(--text-primary)]">{wordCount}</span>
               {project.settings.enableWordGoals !== false ? (
                 <span>/ {targetWords} pal.</span>
               ) : (
@@ -711,24 +859,28 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
             {/* Inspector Toggle */}
             <button
+              id="inspector-toggle-btn"
               onClick={onOpenInspector}
-              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer shrink-0 ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0 ${
                 isInspectorOpen
-                  ? "bg-[var(--accent)] text-[var(--accent-contrast)] border-[var(--accent)] shadow-xs"
-                  : "border-[var(--border-color)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                  ? "bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]"
               }`}
-              title="Inspector de Escena"
+              title="Inspector de Escena (Ctrl+I)"
             >
               <PanelRight className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden xl:inline">Inspector de Escena</span>
-              <span className="hidden sm:inline xl:hidden">Inspector</span>
+              <span className="hidden xl:inline">Inspector</span>
             </button>
 
             {/* Zen Mode Button */}
             <button
-              onClick={() => setIsZenMode(true)}
-              className="p-1 rounded-md border border-[var(--border-color)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer shrink-0"
-              title="Modo Zen (Sin distracciones - Esc)"
+              id="zen-mode-btn"
+              onClick={() => {
+                setIsZenMode(true);
+                showToast("Modo Zen activado (Pulsa Esc para salir)");
+              }}
+              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer shrink-0"
+              title="Modo Zen (Sin distracciones - Alt+Z / Esc)"
             >
               <Maximize2 className="w-3.5 h-3.5" />
             </button>
@@ -736,44 +888,41 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </header>
       )}
 
-      {/* FILA 2: Cinta de Procesador de Textos Tradicional (Ribbon / Toolbar) */}
+      {/* FILA 2: Cinta de Herramientas Ergonomía y Formato (Toolbar / Ribbon) */}
       {!isZenMode && (
         <div
           ref={ribbonRef}
           id="editor-word-processor-ribbon"
-          className="min-h-[40px] border-b px-2.5 sm:px-4 py-1 flex items-center gap-1 sm:gap-2 shrink-0 relative z-30 overflow-visible select-none flex-wrap"
+          className="min-h-[42px] px-3 sm:px-5 py-1 flex items-center gap-1 sm:gap-2 shrink-0 relative z-30 select-none flex-wrap border-b border-[var(--border-subtle)]"
           style={{
-            backgroundColor: "var(--bg-main)",
-            borderColor: "var(--border-color)",
+            backgroundColor: "var(--bg-sidebar)",
           }}
         >
           {/* GRUPO 0: DESHACER & REHACER (UNDO / REDO) */}
-          <div className="flex items-center border border-[var(--border-color)] rounded-md overflow-hidden bg-[var(--bg-input)] shrink-0 shadow-2xs">
+          <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)] shrink-0">
             <button
               type="button"
               id="ribbon-undo-btn"
               disabled={!canUndo}
               onClick={handleUndo}
-              className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-main)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
               title="Deshacer última acción (Ctrl+Z / ⌘Z)"
             >
               <Undo2 className="w-3.5 h-3.5" />
             </button>
-            <div className="w-px h-3.5 bg-[var(--border-color)]" />
             <button
               type="button"
               id="ribbon-redo-btn"
               disabled={!canRedo}
               onClick={handleRedo}
-              className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-main)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
               title="Rehacer acción deshecha (Ctrl+Y / ⌘Shift+Z)"
             >
               <Redo2 className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Divisor vertical */}
-          <div className="h-5 w-px bg-[var(--border-color)] shrink-0 mx-0.5" />
+          <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
 
           {/* GRUPO 1: TIPOGRAFÍA & FUENTE */}
           <div className="flex items-center gap-1 shrink-0">
@@ -790,7 +939,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   setShowSpacingMenu(false);
                   setShowStatusMenu(false);
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-[var(--border-color)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-main)] transition-colors cursor-pointer max-w-[170px] truncate"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer max-w-[170px] truncate"
                 title="Cambiar tipografía del manuscrito"
               >
                 <Type className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
@@ -801,10 +950,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               {showFontMenu && (
                 <div
                   onMouseDown={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full mt-1.5 w-64 rounded-xl shadow-2xl border p-2 z-[100] space-y-1"
+                  className="absolute left-0 top-full mt-1.5 w-64 rounded-xl shadow-2xl p-2 z-[100] space-y-1 border border-[var(--border-subtle)]"
                   style={{
-                    backgroundColor: "var(--bg-card)",
-                    borderColor: "var(--border-color)",
+                    backgroundColor: "var(--bg-editor)",
                   }}
                 >
                   <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-0.5">
@@ -821,7 +969,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                       className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-left transition-colors cursor-pointer ${
                         project.settings.fontFamily === font.id
                           ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
-                          : "hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-main)]"
+                          : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
                       }`}
                     >
                       <span className={font.previewClass}>{font.label}</span>
@@ -831,7 +979,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                     </button>
                   ))}
 
-                  <div className="pt-2 border-t border-[var(--border-color)] mt-1">
+                  <div className="pt-2 border-t border-[var(--border-subtle)] mt-1">
                     <input
                       ref={customFontInputRef}
                       type="file"
@@ -841,9 +989,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                     />
 
                     {project.settings.customFontData && project.settings.customFontName ? (
-                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-color)] mb-1">
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-[var(--bg-surface-hover)] mb-1">
                         <div className="truncate flex-1 pr-1">
-                          <p className="text-xs font-bold text-[var(--text-main)] truncate">
+                          <p className="text-xs font-bold text-[var(--text-primary)] truncate">
                             {project.settings.customFontName.replace(/^Custom_/, "")}
                           </p>
                           <span className="text-[10px] text-[var(--accent)] font-medium">
@@ -889,33 +1037,35 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             </div>
 
             {/* Font Size Step Controls (- / Size / +) */}
-            <div className="flex items-center border border-[var(--border-color)] rounded-md overflow-hidden bg-[var(--bg-input)]">
+            <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
               <button
                 type="button"
+                id="font-size-decrease-btn"
                 onClick={() =>
                   onUpdateProjectSettings({
                     fontSize: Math.max(10, (project.settings.fontSize || 18) - 1),
                   })
                 }
-                className="p-1 hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-main)] cursor-pointer"
+                className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
                 title="Reducir tamaño de letra"
               >
                 <Minus className="w-3 h-3" />
               </button>
               <span
-                className="px-1.5 text-xs font-mono font-bold text-[var(--text-main)] min-w-[32px] text-center select-none"
+                className="px-1.5 text-xs font-mono font-bold text-[var(--text-primary)] min-w-[28px] text-center select-none"
                 title="Tamaño actual de letra"
               >
                 {project.settings.fontSize || 18}
               </span>
               <button
                 type="button"
+                id="font-size-increase-btn"
                 onClick={() =>
                   onUpdateProjectSettings({
                     fontSize: Math.min(36, (project.settings.fontSize || 18) + 1),
                   })
                 }
-                className="p-1 hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-main)] cursor-pointer"
+                className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
                 title="Aumentar tamaño de letra"
               >
                 <Plus className="w-3 h-3" />
@@ -923,12 +1073,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             </div>
           </div>
 
-          {/* Divisor vertical */}
-          <div className="h-5 w-px bg-[var(--border-color)] shrink-0 mx-0.5" />
+          <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
 
           {/* GRUPO 2: PÁRRAFO, INTERLINEADO & ALINEACIÓN */}
           <div className="flex items-center gap-1 shrink-0">
-            {/* Line Spacing Dropdown (Interlineado 100% Funcional) */}
+            {/* Line Spacing Dropdown */}
             <div ref={spacingMenuRef} className="relative z-50">
               <button
                 type="button"
@@ -941,7 +1090,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   setShowFontMenu(false);
                   setShowStatusMenu(false);
                 }}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border border-[var(--border-color)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-main)] transition-colors cursor-pointer"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
                 title="Ajustar interlineado del manuscrito"
               >
                 <span className="font-mono text-xs text-[var(--accent)] font-bold">↕</span>
@@ -952,10 +1101,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               {showSpacingMenu && (
                 <div
                   onMouseDown={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full mt-1.5 w-48 rounded-xl shadow-2xl border p-1 z-[100] space-y-0.5"
+                  className="absolute left-0 top-full mt-1.5 w-48 rounded-xl shadow-2xl p-1 z-[100] space-y-0.5 border border-[var(--border-subtle)]"
                   style={{
-                    backgroundColor: "var(--bg-card)",
-                    borderColor: "var(--border-color)",
+                    backgroundColor: "var(--bg-editor)",
                   }}
                 >
                   <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-1">
@@ -971,7 +1119,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                       className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
                         project.settings.lineSpacing === opt.id || project.settings.lineSpacing === opt.val
                           ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
-                          : "hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-main)]"
+                          : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
                       }`}
                     >
                       <span>{opt.label}</span>
@@ -985,14 +1133,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             </div>
 
             {/* Alignment: Left vs Justify */}
-            <div className="flex items-center border border-[var(--border-color)] rounded-md overflow-hidden bg-[var(--bg-input)]">
+            <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
               <button
                 type="button"
+                id="align-left-btn"
                 onClick={() => onUpdateProjectSettings({ textAlign: "left" })}
-                className={`p-1.5 transition-colors cursor-pointer ${
+                className={`p-1 rounded-md transition-colors cursor-pointer ${
                   (project.settings.textAlign || "left") === "left"
                     ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
                 }`}
                 title="Alinear texto a la izquierda"
               >
@@ -1000,11 +1149,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
               <button
                 type="button"
+                id="align-justify-btn"
                 onClick={() => onUpdateProjectSettings({ textAlign: "justify" })}
-                className={`p-1.5 transition-colors cursor-pointer ${
+                className={`p-1 rounded-md transition-colors cursor-pointer ${
                   project.settings.textAlign === "justify"
                     ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
                 }`}
                 title="Justificar texto (formato editorial)"
               >
@@ -1012,21 +1162,19 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
             </div>
 
-            {/* GRUPO SANGRÍA & PÁRRAFO */}
-            <div className="flex items-center border border-[var(--border-color)] rounded-lg overflow-hidden bg-[var(--bg-input)]/50">
-              {/* Sangrar párrafo seleccionado con Tab */}
+            {/* Sangría & 1ª Línea */}
+            <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
               <button
                 id="apply-indent-btn"
                 type="button"
                 onClick={handleIndentButtonClick}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[var(--text-main)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] transition-colors cursor-pointer"
-                title="Añadir sangría al párrafo seleccionado (o pulsa la tecla Tab)"
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] transition-colors cursor-pointer"
+                title="Añadir sangría al párrafo seleccionado (Tab)"
               >
                 <Indent className="w-3.5 h-3.5 text-[var(--accent)]" />
-                <span className="hidden sm:inline">Sangría (Tab)</span>
+                <span className="hidden sm:inline">Sangría</span>
               </button>
 
-              {/* Reducir sangría */}
               <button
                 id="outdent-btn"
                 type="button"
@@ -1034,13 +1182,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   handleIndentOrOutdent(true, true);
                   showToast("Sangría reducida (Shift+Tab)");
                 }}
-                className="px-1.5 py-1 border-l border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] transition-colors cursor-pointer"
                 title="Reducir sangría en el párrafo seleccionado (Shift+Tab)"
               >
                 <Outdent className="w-3.5 h-3.5" />
               </button>
 
-              {/* Sangría de 1.ª línea automática (1.5em en todo el manuscrito) */}
               <button
                 id="toggle-first-line-indent-btn"
                 type="button"
@@ -1049,24 +1196,23 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   onUpdateProjectSettings({ paragraphIndent: nextState });
                   showToast(
                     nextState
-                      ? "Sangría de 1.ª línea (1.5em) activada en manuscrito"
+                      ? "Sangría de 1.ª línea (1.5em) activada"
                       : "Sangría de 1.ª línea desactivada"
                   );
                 }}
-                className={`px-2.5 py-1 border-l border-[var(--border-color)] text-xs font-medium transition-colors cursor-pointer ${
+                className={`px-2 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                   project.settings.paragraphIndent
                     ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-bold shadow-xs"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
                 }`}
-                title="Activar/Desactivar sangría de primera línea automática (1.5em) en el manuscrito"
+                title="Activar/Desactivar sangría de primera línea automática (1.5em)"
               >
                 1.ª Línea {project.settings.paragraphIndent ? "✓" : ""}
               </button>
             </div>
           </div>
 
-          {/* Divisor vertical */}
-          <div className="h-5 w-px bg-[var(--border-color)] shrink-0 mx-0.5" />
+          <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
 
           {/* GRUPO 3: ELEMENTOS DE NOVELA & DIÁLOGOS */}
           <div className="flex items-center gap-1 shrink-0">
@@ -1075,18 +1221,19 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               id="insert-em-dash-btn"
               type="button"
               onClick={handleInsertDash}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-[var(--accent-subtle)] text-[var(--text-main)] border border-[var(--border-color)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] transition-colors shadow-xs cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[var(--text-primary)] bg-[var(--accent-subtle)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] transition-colors cursor-pointer"
               title="Insertar Guion Largo de Diálogo (—) [Ctrl+Shift+M o Alt+-]"
             >
               <span className="text-base leading-none font-bold text-[var(--accent)]">—</span>
-              <span className="hidden sm:inline">Guion Largo</span>
+              <span className="hidden sm:inline">Guion</span>
             </button>
 
             {/* Comillas Latinas (« ») */}
             <button
+              id="insert-guillemets-btn"
               type="button"
               onClick={handleInsertGuillemets}
-              className="px-2 py-1 rounded-md text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+              className="px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
               title="Insertar Comillas Latinas (« »)"
             >
               « »
@@ -1094,9 +1241,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
             {/* Separador de Escena (* * *) */}
             <button
+              id="insert-break-btn"
               type="button"
               onClick={handleInsertBreak}
-              className="px-2 py-1 rounded-md text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+              className="px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
               title="Insertar Separador de Escena (* * *)"
             >
               * * *
@@ -1107,7 +1255,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               id="format-dialogue-btn"
               type="button"
               onClick={handleFormatAllDialogues}
-              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
               title="Escanear y corregir puntuación y rayas de diálogo según la norma RAE"
             >
               <Wand2 className="w-3.5 h-3.5 text-[var(--accent)]" />
@@ -1115,26 +1263,80 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             </button>
           </div>
 
-          {/* Divisor vertical */}
-          <div className="h-5 w-px bg-[var(--border-color)] shrink-0 mx-0.5" />
+          <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
 
-          {/* GRUPO 4: UTILIDADES RÁPIDAS */}
+          {/* GRUPO 4: ERGONOMÍA LITERARIA (TOGGLEABLE TYPEWRITER & FOCUS MODE) */}
           <div className="flex items-center gap-1 shrink-0">
-            {/* Toggle Case */}
+            {/* Typewriter Scroll Toggle */}
+            <button
+              id="toggle-typewriter-mode-btn"
+              type="button"
+              onClick={() => {
+                const nextVal = !isTypewriterActive;
+                onUpdateProjectSettings({ typewriterMode: nextVal });
+                showToast(
+                  nextVal
+                    ? "Scroll de máquina de escribir activado (línea centrada)"
+                    : "Scroll de máquina de escribir desactivado"
+                );
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                isTypewriterActive
+                  ? "bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold shadow-2xs"
+                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]"
+              }`}
+              title="Scroll de Máquina de Escribir (Mantiene la línea activa en el centro) [Alt+T]"
+            >
+              <ScrollText className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">Máquina</span>
+              {isTypewriterActive && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" />}
+            </button>
+
+            {/* Paragraph Focus Mode Toggle */}
+            <button
+              id="toggle-focus-mode-btn"
+              type="button"
+              onClick={() => {
+                const nextVal = !isFocusActive;
+                onUpdateProjectSettings({ focusMode: nextVal });
+                showToast(
+                  nextVal
+                    ? "Modo foco por párrafo activado (atenúa párrafos adyacentes)"
+                    : "Modo foco desactivado"
+                );
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                isFocusActive
+                  ? "bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold shadow-2xs"
+                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]"
+              }`}
+              title="Modo Foco por Párrafo (Atenúa los párrafos circundantes) [Alt+F]"
+            >
+              <Focus className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">Foco</span>
+              {isFocusActive && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" />}
+            </button>
+          </div>
+
+          <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
+
+          {/* GRUPO 5: UTILIDADES */}
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
+              id="toggle-case-btn"
               onClick={handleToggleCase}
-              className="p-1 rounded-md border border-[var(--border-color)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
               title="Alternar MAYÚSCULAS / minúsculas / Título en la selección"
             >
               <CaseSensitive className="w-3.5 h-3.5" />
             </button>
 
-            {/* Copy Content */}
             <button
               type="button"
+              id="copy-content-btn"
               onClick={handleCopyContent}
-              className="p-1 rounded-md border border-[var(--border-color)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
               title="Copiar texto de la escena al portapapeles"
             >
               <Copy className="w-3.5 h-3.5" />
@@ -1148,30 +1350,71 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         id="editor-scroll-container"
         className="flex-1 min-h-0 relative w-full h-full flex flex-col overflow-hidden"
       >
-        {/* Zen mode exit floating badge */}
+        {/* Zen mode floating badge with quick toggles */}
         {isZenMode && (
-          <div className="absolute top-3 right-8 z-30 flex items-center gap-3 bg-[var(--bg-surface)]/95 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-[var(--border-color)] shadow-md text-xs text-[var(--text-muted)] select-none">
-            <span className="font-novel-display font-semibold tracking-wider text-[var(--text-main)] truncate max-w-[240px]">
+          <div className="absolute top-4 right-8 z-30 flex items-center gap-3 bg-[var(--bg-sidebar)]/90 backdrop-blur-md px-4 py-1.5 rounded-full border border-[var(--border-subtle)] shadow-lg text-xs select-none opacity-40 hover:opacity-100 transition-opacity duration-300">
+            <span className="font-novel-display font-semibold tracking-wider text-[var(--text-primary)] truncate max-w-[200px]">
               {scene.title}
             </span>
+
+            {/* Quick Typewriter toggle inside Zen */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextVal = !isTypewriterActive;
+                onUpdateProjectSettings({ typewriterMode: nextVal });
+                showToast(nextVal ? "Máquina activada" : "Máquina desactivada");
+              }}
+              className={`p-1 rounded-md transition-colors cursor-pointer ${
+                isTypewriterActive
+                  ? "text-[var(--accent)] font-bold"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              }`}
+              title="Alternar Scroll de Máquina de Escribir (Alt+T)"
+            >
+              <ScrollText className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Quick Focus toggle inside Zen */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextVal = !isFocusActive;
+                onUpdateProjectSettings({ focusMode: nextVal });
+                showToast(nextVal ? "Foco activado" : "Foco desactivado");
+              }}
+              className={`p-1 rounded-md transition-colors cursor-pointer ${
+                isFocusActive
+                  ? "text-[var(--accent)] font-bold"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              }`}
+              title="Alternar Modo Foco por Párrafo (Alt+F)"
+            >
+              <Focus className="w-3.5 h-3.5" />
+            </button>
+
             <button
               type="button"
               onClick={() => setIsZenMode(false)}
-              className="flex items-center gap-1 hover:text-[var(--accent)] cursor-pointer text-[var(--accent)] font-medium"
-              title="Salir de Modo Zen (Esc)"
+              className="flex items-center gap-1 hover:text-[var(--accent)] cursor-pointer text-[var(--accent)] font-medium pl-1 border-l border-[var(--border-subtle)]"
+              title="Salir de Modo Zen (Esc / Alt+Z)"
             >
               <Minimize2 className="w-3.5 h-3.5" />
-              <span>Salir (Esc)</span>
+              <span>Salir</span>
             </button>
           </div>
         )}
 
-        {/* Native Textarea: Full width & height, text centered via padding, scrollbar at the far right edge */}
+        {/* Literary Textarea: Centered Column ~720px, scrollbar at far right edge */}
         <textarea
           id="novel-manuscript-textarea"
           ref={textareaRef}
           value={scene.content || ""}
           onChange={handleTextChange}
+          onScroll={handleScroll}
+          onClick={() => updateErgonomics(false)}
+          onKeyUp={() => updateErgonomics(false)}
+          onSelect={() => updateErgonomics(false)}
           onKeyDown={(e) => {
             const isMac = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
             const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
@@ -1196,7 +1439,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               handleIndentOrOutdent(e.shiftKey);
             }
           }}
-          placeholder="Comienza a escribir tu escena aquí... Usa Tab o el botón Sangría para sangrar párrafos, y Ctrl+Shift+M para diálogos (—)."
+          placeholder="Comienza a escribir tu escena aquí... Usa Tab para sangrar párrafos, y Ctrl+Shift+M para diálogos (—)."
           style={{
             fontSize: `${project.settings.fontSize || 18}px`,
             lineHeight: getNumericLineHeight(),
@@ -1209,15 +1452,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               project.settings.fontFamily === "custom" && project.settings.customFontData
                 ? `"${project.settings.customFontName}", serif`
                 : undefined,
-            color: "var(--text-main)",
-            paddingLeft: isZenMode
-              ? "max(1.5rem, calc((100% - 50rem) / 2))"
-              : "max(1rem, calc((100% - 44rem) / 2))",
-            paddingRight: isZenMode
-              ? "max(1.5rem, calc((100% - 50rem) / 2))"
-              : "max(1rem, calc((100% - 44rem) / 2))",
-            paddingTop: isZenMode ? "3rem" : "2rem",
-            paddingBottom: "35vh",
+            color: "var(--text-primary)",
+            paddingLeft: columnConfig.sidePaddingCalc,
+            paddingRight: columnConfig.sidePaddingCalc,
+            paddingTop: isZenMode ? "4rem" : "2.5rem",
+            paddingBottom: "60vh",
             scrollbarGutter: "stable",
           }}
           className={`w-full h-full flex-1 bg-transparent resize-none focus:outline-none border-none tracking-wide overflow-y-scroll custom-scroll always-scroll ${
@@ -1234,56 +1473,57 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               : project.settings.fontFamily === "custom"
               ? ""
               : "font-novel-serif"
-          } text-[var(--text-main)] placeholder-[var(--text-muted)]/70 selection:bg-[var(--accent-subtle)]`}
+          } text-[var(--text-primary)] placeholder-[var(--text-muted)]/60 selection:bg-[var(--accent-subtle)] transition-[mask-image,-webkit-mask-image] duration-150`}
           spellCheck="true"
         />
       </div>
 
       {/* Bottom Status & Word Count Footer */}
-      <footer
-        id="editor-footer"
-        className="h-9 border-t px-4 flex items-center justify-between shrink-0 text-xs text-[var(--text-muted)] select-none font-mono"
-        style={{
-          backgroundColor: "var(--bg-surface)",
-          borderColor: "var(--border-color)",
-        }}
-      >
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-[var(--text-main)]">{wordCount}</span>
-            <span>palabras en escena</span>
-          </div>
+      {!isZenMode && (
+        <footer
+          id="editor-footer"
+          className="h-9 px-4 sm:px-6 flex items-center justify-between shrink-0 text-xs text-[var(--text-muted)] select-none font-mono border-t border-[var(--border-subtle)]"
+          style={{
+            backgroundColor: "var(--bg-sidebar)",
+          }}
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-[var(--text-primary)]">{wordCount}</span>
+              <span>palabras</span>
+            </div>
 
-          <div className="hidden sm:flex items-center gap-1.5">
-            <span>{charCount} caracteres</span>
-          </div>
+            <div className="hidden sm:flex items-center gap-1.5">
+              <span>{charCount} caracteres</span>
+            </div>
 
-          <div className="hidden md:flex items-center gap-1.5">
-            <Clock className="w-3 h-3" />
-            <span>~{readingTime} min de lectura</span>
-          </div>
-        </div>
-
-        {/* Scene goal progress bar */}
-        {project.settings.enableWordGoals !== false ? (
-          <div className="flex items-center gap-2">
-            <span className="hidden sm:inline">Meta escena:</span>
-            <span className="font-semibold text-[var(--text-main)]">
-              {wordCount} / {targetWords}
-            </span>
-            <div className="w-20 sm:w-28 h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[var(--accent)] transition-all"
-                style={{ width: `${progressPercent}%` }}
-              />
+            <div className="hidden md:flex items-center gap-1.5">
+              <Clock className="w-3 h-3" />
+              <span>~{readingTime} min de lectura</span>
             </div>
           </div>
-        ) : (
-          <div className="text-[11px] text-[var(--text-muted)] opacity-80">
-            Escritura libre (Metas desactivadas)
-          </div>
-        )}
-      </footer>
+
+          {/* Scene goal progress bar */}
+          {project.settings.enableWordGoals !== false ? (
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline">Meta:</span>
+              <span className="font-semibold text-[var(--text-primary)]">
+                {wordCount} / {targetWords}
+              </span>
+              <div className="w-20 sm:w-28 h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[var(--accent)] transition-all"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-[11px] text-[var(--text-muted)] opacity-80">
+              Escritura libre (Metas desactivadas)
+            </div>
+          )}
+        </footer>
+      )}
     </main>
   );
 };

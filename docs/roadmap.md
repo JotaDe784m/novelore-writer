@@ -42,18 +42,18 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Conectar operaciones de Actos, Capítulos y Escenas directamente con el sistema de archivos (`manuscript/act-X/chap-Y/esc-Z.md`) y canales IPC nativos (`deleteSceneMarkdown`).
 - [x] Conteo de palabras en tiempo real por escena, capítulo y acto.
 
-### Subfase 1.4: Editor Literario & Ergonomía de Lectura (Estilo Ulysses / iA Writer)
-- Rediseñar `RichTextEditor.tsx`:
-  - Columna de lectura centrada con ancho ergonómico óptimo de **~720px (65-75 caracteres por línea)** y márgenes respirables.
-  - Desplazamiento suave de máquina de escribir (*typewriter scrolling*).
-  - Modo Foco opcional (resaltado del párrafo activo y atenuación suave del resto).
-  - Modo Zen a pantalla completa con desvanecimiento de controles.
-- Lectura y guardado de prosa limpia en archivos `.md`.
-- Formateador tipográfico avanzado para lengua española:
-  - Inserción y reemplazo ágil de la raya de diálogo canónica (`—`).
-  - Algoritmo de formateo automático de diálogos según reglas RAE.
-  - Inserción de comillas latinas (`« »`) y marcas de corte de escena (`* * *`).
-- Pila de historial Deshacer / Rehacer (*Undo/Redo*) con atajos estándar (`Ctrl+Z`, `Ctrl+Y`).
+### Subfase 1.4: Editor Literario & Ergonomía de Lectura (Estilo Ulysses / iA Writer) [COMPLETADA]
+- [x] Rediseñar `RichTextEditor.tsx` bajo la filosofía de diseño sin marcos (`docs/design-system.md`):
+  - [x] Columna de lectura centrada con ancho ergonómico óptimo de **~720px (65-75 caracteres por línea)** y márgenes respirables.
+  - [x] Desplazamiento suave de máquina de escribir (*typewriter scrolling*), opción desactivable a demanda (`Alt+T` o botón en barra de herramientas).
+  - [x] Modo Foco por párrafo (*focus mode*), opción desactivable a demanda (`Alt+F` o botón en barra de herramientas) con atenuación al 40% de párrafos circundantes.
+  - [x] Modo Zen a pantalla completa con desvanecimiento de controles flotantes y atajo `Esc` / `Alt+Z`.
+- [x] Lectura y guardado de prosa limpia en archivos `.md` con persistencia incremental.
+- [x] Formateador tipográfico avanzado para lengua española:
+  - [x] Inserción y reemplazo ágil de la raya de diálogo canónica (`—`, atajo `Ctrl+Shift+M` o `Alt+-`).
+  - [x] Algoritmo de formateo automático de diálogos según reglas RAE (apertura, incisos con verbos de habla y puntuación).
+  - [x] Inserción de comillas latinas (`« »`) y marcas de corte de escena (`* * *`).
+- [x] Pila de historial Deshacer / Rehacer (*Undo/Redo*) con atajos estándar (`Ctrl+Z`, `Ctrl+Y`).
 
 ### Subfase 1.5: Inspector de Escenas Básico
 - Rediseñar `SceneInspector.tsx` con arquitectura colapsable al 100% hacia el borde derecho (`Ctrl+I` / `Cmd+I`), sin marcos de panel:

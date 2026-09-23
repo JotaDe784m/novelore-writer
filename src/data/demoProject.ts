@@ -20,6 +20,7 @@ export const initialDemoProject: NovelProject = {
     fontSize: 18,
     lineSpacing: "relaxed",
     typewriterMode: false,
+    focusMode: false,
     theme: "minimal",
   },
   acts: [

@@ -158,6 +158,7 @@ export interface ProjectSettings {
   textAlign?: "left" | "justify";
   paragraphIndent?: boolean;
   typewriterMode: boolean;
+  focusMode?: boolean;
   theme: "minimal" | "clean" | "sepia" | "fantasy" | "dark" | "light" | "scifi" | "noir" | "gothic" | "romance" | "forest" | "midnight" | "dream" | string;
   customAccentColor?: string;
   customExportTemplates?: import("./types/exportTemplates").ExportTemplate[];

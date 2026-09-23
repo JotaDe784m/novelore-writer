@@ -53,6 +53,7 @@ export function createBlankProject(title: string = "Mi Nueva Novela"): NovelProj
       fontSize: 18,
       lineSpacing: "relaxed",
       typewriterMode: false,
+      focusMode: false,
       theme: "minimal",
     },
     acts: [
@@ -397,6 +398,7 @@ export async function createNewProject(
       fontSize: 18,
       lineSpacing: "relaxed",
       typewriterMode: false,
+      focusMode: false,
       theme: options.theme || "minimal",
     },
     acts: [
