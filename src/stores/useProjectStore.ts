@@ -77,6 +77,10 @@ declare global {
         success: boolean;
         error?: string;
       }>;
+      deleteSceneMarkdown: (relativePath: string) => Promise<{
+        success: boolean;
+        error?: string;
+      }>;
       saveProjectData: (data: {
         projectMeta?: any;
         manuscript?: any;
@@ -97,6 +101,13 @@ declare global {
 // Variables privadas para el debounce de guardado
 let sceneSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 let projectSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const getElectronAPI = () => {
+  if (typeof window !== "undefined" && window.electronAPI) {
+    return window.electronAPI;
+  }
+  return undefined;
+};
 
 export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   projectPath: null,
@@ -119,9 +130,10 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     }),
 
   loadRecentProjects: async () => {
-    if (!window.electronAPI?.getRecentProjects) return;
+    const electronAPI = getElectronAPI();
+    if (!electronAPI?.getRecentProjects) return;
     try {
-      const recents = await window.electronAPI.getRecentProjects();
+      const recents = await electronAPI.getRecentProjects();
       set({ recentProjects: recents });
     } catch (err: any) {
       console.error("Error al cargar proyectos recientes:", err);
@@ -129,9 +141,10 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   removeRecentProject: async (pathToRemove: string) => {
-    if (!window.electronAPI?.removeRecentProject) return;
+    const electronAPI = getElectronAPI();
+    if (!electronAPI?.removeRecentProject) return;
     try {
-      const updated = await window.electronAPI.removeRecentProject(pathToRemove);
+      const updated = await electronAPI.removeRecentProject(pathToRemove);
       set({ recentProjects: updated });
     } catch (err: any) {
       console.error("Error al quitar proyecto reciente:", err);
@@ -139,7 +152,8 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   openProjectFolder: async () => {
-    if (!window.electronAPI?.openProjectFolder) {
+    const electronAPI = getElectronAPI();
+    if (!electronAPI?.openProjectFolder) {
       const msg = "Electron API no está disponible en este entorno.";
       console.warn(msg);
       set({ errorMessage: msg });
@@ -148,7 +162,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
 
     set({ isLoading: true, errorMessage: null });
     try {
-      const result = await window.electronAPI.openProjectFolder();
+      const result = await electronAPI.openProjectFolder();
       if (result.canceled || !result.projectPath) {
         set({ isLoading: false });
         return null;
@@ -178,7 +192,8 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   createProjectFolder: async (options: CreateProjectDialogOptions) => {
-    if (!window.electronAPI?.createProjectFolder) {
+    const electronAPI = getElectronAPI();
+    if (!electronAPI?.createProjectFolder) {
       const msg = "Electron API no está disponible en este entorno.";
       console.warn(msg);
       set({ errorMessage: msg });
@@ -187,7 +202,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
 
     set({ isLoading: true, errorMessage: null });
     try {
-      const result = await window.electronAPI.createProjectFolder(options);
+      const result = await electronAPI.createProjectFolder(options);
       if (result.canceled || !result.projectPath) {
         set({ isLoading: false });
         return null;
@@ -217,7 +232,8 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   initOrLoadFromPath: async (folderPath: string) => {
-    if (!window.electronAPI?.initOrLoadProject) {
+    const electronAPI = getElectronAPI();
+    if (!electronAPI?.initOrLoadProject) {
       const msg = "Electron API no está disponible en este entorno.";
       console.warn(msg);
       set({ errorMessage: msg });
@@ -226,7 +242,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
 
     set({ isLoading: true, errorMessage: null });
     try {
-      const result = await window.electronAPI.initOrLoadProject(folderPath);
+      const result = await electronAPI.initOrLoadProject(folderPath);
       if (!result.success || result.error) {
         set({ isLoading: false, errorMessage: result.error || "Fallo al inicializar proyecto." });
         return null;
@@ -250,10 +266,11 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   updateProjectMeta: async (folderPath: string, updates: any) => {
-    if (!window.electronAPI?.updateProjectMeta) return false;
+    const electronAPI = getElectronAPI();
+    if (!electronAPI?.updateProjectMeta) return false;
     try {
       set({ isSaving: true });
-      const result = await window.electronAPI.updateProjectMeta(folderPath, updates);
+      const result = await electronAPI.updateProjectMeta(folderPath, updates);
       if (result.success) {
         // Si la novela editada es la actualmente cargada en memoria, sincronizar estado
         const current = get().project;
@@ -290,10 +307,11 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   saveSceneMarkdown: async (relativePath: string, content: string) => {
-    if (!window.electronAPI?.writeSceneMarkdown) return false;
+    const electronAPI = getElectronAPI();
+    if (!electronAPI?.writeSceneMarkdown) return false;
     try {
       set({ isSaving: true });
-      const result = await window.electronAPI.writeSceneMarkdown(relativePath, content);
+      const result = await electronAPI.writeSceneMarkdown(relativePath, content);
       if (result.success) {
         set({ isSaving: false, lastSavedAt: new Date() });
         return true;
@@ -308,7 +326,8 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   saveProjectData: async (projectData?: NovelProject) => {
-    if (!window.electronAPI?.saveProjectData) return false;
+    const electronAPI = getElectronAPI();
+    if (!electronAPI?.saveProjectData) return false;
     const targetProject = projectData || get().project;
     if (!targetProject) return false;
 
@@ -354,7 +373,8 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
         storyBeats: targetProject.storyBeats || [],
       };
 
-      const result = await window.electronAPI.saveProjectData({
+      const electronAPI = getElectronAPI();
+      const result = await electronAPI!.saveProjectData({
         projectMeta,
         manuscript: cleanManuscript,
         codex: codexData,

@@ -419,6 +419,23 @@ ipcMain.handle("fs:writeSceneMarkdown", async (_event, relativePath: string, con
   }
 });
 
+ipcMain.handle("fs:deleteSceneMarkdown", async (_event, relativePath: string) => {
+  if (!currentProjectPath) return { success: false, error: "No hay proyecto abierto." };
+  try {
+    const fullPath = path.resolve(currentProjectPath, relativePath);
+    // Verificar que la ruta no escape de la carpeta del proyecto
+    if (!fullPath.startsWith(path.resolve(currentProjectPath))) {
+      return { success: false, error: "Ruta fuera del directorio del proyecto." };
+    }
+    if (await fileExists(fullPath)) {
+      await fs.unlink(fullPath);
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+});
+
 // 6. Guardado atómico completo de datos del proyecto (project.json, manuscript.json, etc.)
 ipcMain.handle("fs:saveProjectData", async (_event, data: {
   projectMeta?: any;

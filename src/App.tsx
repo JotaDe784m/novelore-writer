@@ -94,6 +94,26 @@ export const App: React.FC = () => {
     useThemeStore.getState().syncWithProject(project);
   }, [project.settings?.theme, project.settings?.customAccentColor]);
 
+  // Atajo de teclado global: Ctrl+\ o Cmd+\ para alternar la barra lateral del manuscrito
+  useEffect(() => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      const isMac =
+        typeof navigator !== "undefined" &&
+        /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+      const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+
+      if (isCmdOrCtrl) {
+        if (e.key === "\\" || e.code === "Backslash") {
+          e.preventDefault();
+          setIsSidebarOpen((prev) => !prev);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalShortcuts);
+    return () => window.removeEventListener("keydown", handleGlobalShortcuts);
+  }, []);
+
   // Selección de escena actual
   const currentScene = useMemo(() => {
     const storeScene = useManuscriptStore.getState().getSelectedScene();

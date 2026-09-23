@@ -20,10 +20,15 @@ export interface ManuscriptStoreState {
   addScene: (chapterId: string, title?: string) => Scene | null;
   deleteScene: (sceneId: string) => void;
   reorderScenes: (chapterId: string, orderedSceneIds: string[]) => void;
+  moveScene: (sceneId: string, targetChapterId: string, targetIndex?: number) => void;
   addChapter: (actId: string, title?: string) => Chapter | null;
+  updateChapterTitle: (chapterId: string, title: string) => void;
   deleteChapter: (chapterId: string) => void;
+  reorderChapters: (actId: string, orderedChapterIds: string[]) => void;
   addAct: (title?: string) => Act | null;
+  updateActTitle: (actId: string, title: string) => void;
   deleteAct: (actId: string) => void;
+  reorderActs: (orderedActIds: string[]) => void;
 
   // Getters computados
   getSelectedScene: () => Scene | null;
@@ -37,6 +42,13 @@ export interface ManuscriptStoreState {
 
 let sceneSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 let manuscriptMetaSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const getElectronAPI = () => {
+  if (typeof window !== "undefined" && window.electronAPI) {
+    return window.electronAPI;
+  }
+  return undefined;
+};
 
 export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
   acts: [],
@@ -144,9 +156,10 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
     // Debounce de 500 ms para persistir a disco
     if (sceneSaveTimeout) clearTimeout(sceneSaveTimeout);
     sceneSaveTimeout = setTimeout(async () => {
-      if (targetFilePath && window.electronAPI?.writeSceneMarkdown) {
+      const electronAPI = getElectronAPI();
+      if (targetFilePath && electronAPI?.writeSceneMarkdown) {
         try {
-          await window.electronAPI.writeSceneMarkdown(targetFilePath, content);
+          await electronAPI.writeSceneMarkdown(targetFilePath, content);
           set({ isSavingScene: false, lastSavedAt: new Date() });
           // También guardar manuscript.json con los conteos actualizados
           if (currentProj) {
@@ -246,8 +259,9 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
       });
 
       // Escribir archivo .md en blanco en disco
-      if (window.electronAPI?.writeSceneMarkdown && created.filePath) {
-        window.electronAPI.writeSceneMarkdown(created.filePath, "");
+      const electronAPI = getElectronAPI();
+      if (electronAPI?.writeSceneMarkdown && created.filePath) {
+        electronAPI.writeSceneMarkdown(created.filePath, "");
       }
 
       // Sincronizar proyecto
@@ -272,6 +286,18 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
   deleteScene: (sceneId) => {
     const { acts, selectedSceneId } = get();
     let nextSelectedSceneId = selectedSceneId;
+    let sceneToDeleteFilePath: string | undefined;
+
+    for (const act of acts) {
+      for (const chap of act.chapters || []) {
+        const found = (chap.scenes || []).find((s) => s.id === sceneId);
+        if (found) {
+          sceneToDeleteFilePath = found.filePath;
+          break;
+        }
+      }
+      if (sceneToDeleteFilePath) break;
+    }
 
     const updatedActs = acts.map((act) => ({
       ...act,
@@ -311,6 +337,14 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
       activeSceneContent: nextContent,
     });
 
+    // Eliminar archivo físico en disco de forma segura si Electron está disponible
+    const electronAPI = getElectronAPI();
+    if (sceneToDeleteFilePath && electronAPI?.deleteSceneMarkdown) {
+      electronAPI.deleteSceneMarkdown(sceneToDeleteFilePath).catch((err) => {
+        console.warn("No se pudo eliminar archivo físico de escena:", err);
+      });
+    }
+
     const projectStore = useProjectStore.getState();
     const currentProj = projectStore.project;
     if (currentProj) {
@@ -341,6 +375,68 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
             }
           });
           return { ...chap, scenes: reordered };
+        }
+        return chap;
+      }),
+    }));
+
+    set({ acts: updatedActs });
+
+    const projectStore = useProjectStore.getState();
+    const currentProj = projectStore.project;
+    if (currentProj) {
+      projectStore.setProject({
+        ...currentProj,
+        acts: updatedActs,
+        updatedAt: new Date().toISOString(),
+      });
+      projectStore.debouncedSaveProjectData({
+        ...currentProj,
+        acts: updatedActs,
+      });
+    }
+  },
+
+  moveScene: (sceneId, targetChapterId, targetIndex) => {
+    const { acts } = get();
+    let targetScene: Scene | null = null;
+
+    // 1. Extraer escena de su capítulo origen
+    const actsWithoutScene = acts.map((act) => ({
+      ...act,
+      chapters: (act.chapters || []).map((chap) => {
+        const found = (chap.scenes || []).find((s) => s.id === sceneId);
+        if (found) {
+          targetScene = { ...found, chapterId: targetChapterId };
+          return {
+            ...chap,
+            scenes: (chap.scenes || [])
+              .filter((s) => s.id !== sceneId)
+              .map((s, idx) => ({ ...s, order: idx + 1 })),
+          };
+        }
+        return chap;
+      }),
+    }));
+
+    if (!targetScene) return;
+    const sceneToInsert = targetScene as Scene;
+
+    // 2. Insertar escena en capítulo destino
+    const updatedActs = actsWithoutScene.map((act) => ({
+      ...act,
+      chapters: (act.chapters || []).map((chap) => {
+        if (chap.id === targetChapterId) {
+          const currentScenes = [...(chap.scenes || [])];
+          const insertPos =
+            targetIndex !== undefined && targetIndex >= 0 && targetIndex <= currentScenes.length
+              ? targetIndex
+              : currentScenes.length;
+          currentScenes.splice(insertPos, 0, sceneToInsert);
+          return {
+            ...chap,
+            scenes: currentScenes.map((s, idx) => ({ ...s, order: idx + 1 })),
+          };
         }
         return chap;
       }),
@@ -418,8 +514,9 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
         activeSceneContent: "",
       });
 
-      if (window.electronAPI?.writeSceneMarkdown && initialScene.filePath) {
-        window.electronAPI.writeSceneMarkdown(initialScene.filePath, "");
+      const electronAPI = getElectronAPI();
+      if (electronAPI?.writeSceneMarkdown && initialScene.filePath) {
+        electronAPI.writeSceneMarkdown(initialScene.filePath, "");
       }
 
       const projectStore = useProjectStore.getState();
@@ -440,9 +537,48 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
     return newChapter;
   },
 
+  updateChapterTitle: (chapterId, title) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    const { acts } = get();
+    const updatedActs = acts.map((act) => ({
+      ...act,
+      chapters: (act.chapters || []).map((chap) =>
+        chap.id === chapterId ? { ...chap, title: trimmed } : chap
+      ),
+    }));
+
+    set({ acts: updatedActs });
+
+    const projectStore = useProjectStore.getState();
+    const currentProj = projectStore.project;
+    if (currentProj) {
+      projectStore.setProject({
+        ...currentProj,
+        acts: updatedActs,
+        updatedAt: new Date().toISOString(),
+      });
+      projectStore.debouncedSaveProjectData({
+        ...currentProj,
+        acts: updatedActs,
+      });
+    }
+  },
+
   deleteChapter: (chapterId) => {
     const { acts, selectedSceneId } = get();
     let nextSceneId = selectedSceneId;
+    const filePathsToDelete: string[] = [];
+
+    for (const act of acts) {
+      const foundChap = (act.chapters || []).find((c) => c.id === chapterId);
+      if (foundChap) {
+        for (const sc of foundChap.scenes || []) {
+          if (sc.filePath) filePathsToDelete.push(sc.filePath);
+        }
+        break;
+      }
+    }
 
     const updatedActs = acts.map((act) => {
       const remainingChaps = (act.chapters || []).filter((c) => c.id !== chapterId);
@@ -460,7 +596,63 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
       nextSceneId = allScenes[0]?.id || "";
     }
 
-    set({ acts: updatedActs, selectedSceneId: nextSceneId });
+    let nextContent = "";
+    if (nextSceneId) {
+      for (const act of updatedActs) {
+        for (const chap of act.chapters || []) {
+          const found = (chap.scenes || []).find((s) => s.id === nextSceneId);
+          if (found) {
+            nextContent = found.content || "";
+            break;
+          }
+        }
+      }
+    }
+
+    set({ acts: updatedActs, selectedSceneId: nextSceneId, activeSceneContent: nextContent });
+
+    const electronAPI = getElectronAPI();
+    if (electronAPI?.deleteSceneMarkdown && filePathsToDelete.length > 0) {
+      filePathsToDelete.forEach((fp) => {
+        electronAPI?.deleteSceneMarkdown(fp).catch((err) => {
+          console.warn("Error eliminando archivo físico:", err);
+        });
+      });
+    }
+
+    const projectStore = useProjectStore.getState();
+    const currentProj = projectStore.project;
+    if (currentProj) {
+      projectStore.setProject({
+        ...currentProj,
+        acts: updatedActs,
+        updatedAt: new Date().toISOString(),
+      });
+      projectStore.debouncedSaveProjectData({
+        ...currentProj,
+        acts: updatedActs,
+      });
+    }
+  },
+
+  reorderChapters: (actId, orderedChapterIds) => {
+    const { acts } = get();
+    const updatedActs = acts.map((act) => {
+      if (act.id === actId) {
+        const chapMap = new Map((act.chapters || []).map((c) => [c.id, c]));
+        const reordered: Chapter[] = [];
+        orderedChapterIds.forEach((id, idx) => {
+          const found = chapMap.get(id);
+          if (found) {
+            reordered.push({ ...found, order: idx + 1 });
+          }
+        });
+        return { ...act, chapters: reordered };
+      }
+      return act;
+    });
+
+    set({ acts: updatedActs });
 
     const projectStore = useProjectStore.getState();
     const currentProj = projectStore.project;
@@ -528,8 +720,9 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
       activeSceneContent: "",
     });
 
-    if (window.electronAPI?.writeSceneMarkdown && initialScene.filePath) {
-      window.electronAPI.writeSceneMarkdown(initialScene.filePath, "");
+    const electronAPI = getElectronAPI();
+    if (electronAPI?.writeSceneMarkdown && initialScene.filePath) {
+      electronAPI.writeSceneMarkdown(initialScene.filePath, "");
     }
 
     const projectStore = useProjectStore.getState();
@@ -549,8 +742,44 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
     return newAct;
   },
 
+  updateActTitle: (actId, title) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    const { acts } = get();
+    const updatedActs = acts.map((act) =>
+      act.id === actId ? { ...act, title: trimmed } : act
+    );
+
+    set({ acts: updatedActs });
+
+    const projectStore = useProjectStore.getState();
+    const currentProj = projectStore.project;
+    if (currentProj) {
+      projectStore.setProject({
+        ...currentProj,
+        acts: updatedActs,
+        updatedAt: new Date().toISOString(),
+      });
+      projectStore.debouncedSaveProjectData({
+        ...currentProj,
+        acts: updatedActs,
+      });
+    }
+  },
+
   deleteAct: (actId) => {
     const { acts, selectedSceneId } = get();
+    const filePathsToDelete: string[] = [];
+
+    const foundAct = acts.find((a) => a.id === actId);
+    if (foundAct) {
+      for (const chap of foundAct.chapters || []) {
+        for (const sc of chap.scenes || []) {
+          if (sc.filePath) filePathsToDelete.push(sc.filePath);
+        }
+      }
+    }
+
     const remainingActs = acts
       .filter((a) => a.id !== actId)
       .map((a, idx) => ({ ...a, order: idx + 1 }));
@@ -564,7 +793,29 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
       nextSceneId = allScenes[0]?.id || "";
     }
 
-    set({ acts: remainingActs, selectedSceneId: nextSceneId });
+    let nextContent = "";
+    if (nextSceneId) {
+      for (const act of remainingActs) {
+        for (const chap of act.chapters || []) {
+          const found = (chap.scenes || []).find((s) => s.id === nextSceneId);
+          if (found) {
+            nextContent = found.content || "";
+            break;
+          }
+        }
+      }
+    }
+
+    set({ acts: remainingActs, selectedSceneId: nextSceneId, activeSceneContent: nextContent });
+
+    const electronAPI = getElectronAPI();
+    if (electronAPI?.deleteSceneMarkdown && filePathsToDelete.length > 0) {
+      filePathsToDelete.forEach((fp) => {
+        electronAPI?.deleteSceneMarkdown(fp).catch((err) => {
+          console.warn("Error eliminando archivo físico:", err);
+        });
+      });
+    }
 
     const projectStore = useProjectStore.getState();
     const currentProj = projectStore.project;
@@ -577,6 +828,34 @@ export const useManuscriptStore = create<ManuscriptStoreState>((set, get) => ({
       projectStore.debouncedSaveProjectData({
         ...currentProj,
         acts: remainingActs,
+      });
+    }
+  },
+
+  reorderActs: (orderedActIds) => {
+    const { acts } = get();
+    const actMap = new Map(acts.map((a) => [a.id, a]));
+    const reordered: Act[] = [];
+    orderedActIds.forEach((id, idx) => {
+      const found = actMap.get(id);
+      if (found) {
+        reordered.push({ ...found, order: idx + 1 });
+      }
+    });
+
+    set({ acts: reordered });
+
+    const projectStore = useProjectStore.getState();
+    const currentProj = projectStore.project;
+    if (currentProj) {
+      projectStore.setProject({
+        ...currentProj,
+        acts: reordered,
+        updatedAt: new Date().toISOString(),
+      });
+      projectStore.debouncedSaveProjectData({
+        ...currentProj,
+        acts: reordered,
       });
     }
   },

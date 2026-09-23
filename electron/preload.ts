@@ -57,6 +57,10 @@ export interface ElectronAPI {
     success: boolean;
     error?: string;
   }>;
+  deleteSceneMarkdown: (relativePath: string) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
   saveProjectData: (data: {
     projectMeta?: any;
     manuscript?: any;
@@ -87,6 +91,8 @@ const api: ElectronAPI = {
     ipcRenderer.invoke("fs:readSceneMarkdown", relativePath),
   writeSceneMarkdown: (relativePath: string, content: string) =>
     ipcRenderer.invoke("fs:writeSceneMarkdown", relativePath, content),
+  deleteSceneMarkdown: (relativePath: string) =>
+    ipcRenderer.invoke("fs:deleteSceneMarkdown", relativePath),
   saveProjectData: (data) => ipcRenderer.invoke("fs:saveProjectData", data),
   saveProjectJson: (projectData: any) =>
     ipcRenderer.invoke("fs:saveProjectJson", projectData),

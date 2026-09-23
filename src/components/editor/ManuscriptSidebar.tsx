@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -6,69 +6,150 @@ import {
   Trash2,
   FileText,
   Folder,
-  Layers,
+  FolderOpen,
   Search,
-  MoreVertical,
   Edit2,
-  ArrowUp,
-  ArrowDown,
-  CheckCircle2,
-  Circle,
-  HelpCircle,
-  Eye,
   Check,
   X,
   AlertCircle,
+  PanelLeftClose,
+  BookOpen,
 } from "lucide-react";
 import { Act, Chapter, NovelProject, Scene, SceneStatus } from "../../types";
 import { countWords } from "../../utils/formatters";
+import { useManuscriptStore } from "../../stores/useManuscriptStore";
+import { useProjectStore } from "../../stores/useProjectStore";
 
 interface ManuscriptSidebarProps {
-  project: NovelProject;
+  project?: NovelProject;
   selectedSceneId?: string | null;
   activeSceneId?: string | null;
-  onSelectScene: (sceneId: string) => void;
-  onUpdateProject: (updater: (prev: NovelProject) => NovelProject) => void;
+  onSelectScene?: (sceneId: string) => void;
+  onUpdateProject?: (updater: (prev: NovelProject) => NovelProject) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   onCloseSidebar?: () => void;
 }
 
+const MIN_WIDTH = 220;
+const MAX_WIDTH = 480;
+const DEFAULT_WIDTH = 280;
+const STORAGE_KEY_WIDTH = "novelore:manuscript_sidebar_width";
+
 export const ManuscriptSidebar: React.FC<ManuscriptSidebarProps> = ({
-  project,
-  selectedSceneId,
-  activeSceneId,
-  onSelectScene,
-  onUpdateProject,
+  project: propProject,
+  selectedSceneId: propSelectedSceneId,
+  activeSceneId: propActiveSceneId,
+  onSelectScene: propOnSelectScene,
+  onUpdateProject: propOnUpdateProject,
   isCollapsed = false,
   onToggleCollapse,
   onCloseSidebar,
 }) => {
-  const currentActiveSceneId = selectedSceneId ?? activeSceneId ?? null;
-  const handleToggleOrClose = onCloseSidebar || onToggleCollapse || (() => {});
+  // Conexión reactiva directa al store modular de manuscrito
+  const storeActs = useManuscriptStore((s) => s.acts);
+  const storeSelectedSceneId = useManuscriptStore((s) => s.selectedSceneId);
+  const activeSceneContent = useManuscriptStore((s) => s.activeSceneContent);
+  const selectSceneStore = useManuscriptStore((s) => s.selectScene);
+  const addSceneStore = useManuscriptStore((s) => s.addScene);
+  const deleteSceneStore = useManuscriptStore((s) => s.deleteScene);
+  const updateSceneMetaStore = useManuscriptStore((s) => s.updateSceneMeta);
+  const addChapterStore = useManuscriptStore((s) => s.addChapter);
+  const updateChapterTitleStore = useManuscriptStore((s) => s.updateChapterTitle);
+  const deleteChapterStore = useManuscriptStore((s) => s.deleteChapter);
+  const addActStore = useManuscriptStore((s) => s.addAct);
+  const updateActTitleStore = useManuscriptStore((s) => s.updateActTitle);
+  const deleteActStore = useManuscriptStore((s) => s.deleteAct);
+
+  // Determinar los actos a utilizar (store prioritario, fallback a project prop)
+  const acts = storeActs.length > 0 ? storeActs : (propProject?.acts || []);
+  const currentActiveSceneId = storeSelectedSceneId || propSelectedSceneId || propActiveSceneId || "";
+
+  // Estado de ancho redimensionable persistido en localStorage
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_WIDTH);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
+          return parsed;
+        }
+      }
+    } catch {
+      // Ignorar error de acceso a localStorage
+    }
+    return DEFAULT_WIDTH;
+  });
+
+  const [isResizing, setIsResizing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [collapsedActs, setCollapsedActs] = useState<Record<string, boolean>>({});
   const [collapsedChapters, setCollapsedChapters] = useState<Record<string, boolean>>({});
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+
   const [editingItem, setEditingItem] = useState<{
     type: "act" | "chapter" | "scene";
     id: string;
     title: string;
   } | null>(null);
+
   const [confirmDelete, setConfirmDelete] = useState<{
     type: "act" | "chapter" | "scene";
-    actId: string;
-    chapterId?: string;
-    sceneId?: string;
+    id: string;
     title: string;
+    actId?: string;
+    chapterId?: string;
   } | null>(null);
+
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const resizeHandleRef = useRef<HTMLDivElement>(null);
 
   const showAlert = (msg: string) => {
     setAlertMessage(msg);
     setTimeout(() => setAlertMessage(null), 3500);
   };
 
+  // Redimensionamiento interactivo de la barra lateral
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.min(Math.max(e.clientX, MIN_WIDTH), MAX_WIDTH);
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      try {
+        localStorage.setItem(STORAGE_KEY_WIDTH, sidebarWidth.toString());
+      } catch {
+        // Ignorar
+      }
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing, sidebarWidth]);
+
+  // Selección de escena con doble sincronización (store y prop)
+  const handleSelectScene = (sceneId: string) => {
+    selectSceneStore(sceneId);
+    if (propOnSelectScene) {
+      propOnSelectScene(sceneId);
+    }
+  };
+
+  // Alternar colapso de Actos y Capítulos
   const toggleAct = (actId: string) => {
     setCollapsedActs((prev) => ({ ...prev, [actId]: !prev[actId] }));
   };
@@ -77,137 +158,75 @@ export const ManuscriptSidebar: React.FC<ManuscriptSidebarProps> = ({
     setCollapsedChapters((prev) => ({ ...prev, [chapId]: !prev[chapId] }));
   };
 
-  const addAct = () => {
-    const actNumber = project.acts.length + 1;
-    const newActId = `act-${Date.now()}`;
-    const newChapId = `chap-${Date.now()}`;
-    const newSceneId = `scene-${Date.now()}`;
+  // Cálculo en vivo de conteo de palabras
+  const liveActiveWords = useMemo(() => {
+    return countWords(activeSceneContent);
+  }, [activeSceneContent]);
 
-    const newAct: Act = {
-      id: newActId,
-      title: `Acto ${actNumber}: Nuevo Acto`,
-      description: "Descripción del arco...",
-      order: actNumber,
-      chapters: [
-        {
-          id: newChapId,
-          actId: newActId,
-          title: `Capítulo 1`,
-          description: "",
-          order: 1,
-          scenes: [
-            {
-              id: newSceneId,
-              chapterId: newChapId,
-              title: "Escena 1",
-              content: "",
-              synopsis: "Sinopsis inicial...",
-              notes: "",
-              status: "draft",
-              characterIds: [],
-              goal: "",
-              conflict: "",
-              outcome: "",
-              targetWordCount: 1500,
-              wordCount: 0,
-              order: 1,
-            },
-          ],
-        },
-      ],
-    };
-
-    onUpdateProject((p) => ({
-      ...p,
-      acts: [...p.acts, newAct],
-    }));
-    onSelectScene(newSceneId);
+  const getSceneWordCount = (scene: Scene): number => {
+    if (scene.id === currentActiveSceneId) {
+      return liveActiveWords;
+    }
+    return scene.wordCount || 0;
   };
 
-  const addChapter = (actId: string) => {
-    const act = project.acts.find((a) => a.id === actId);
-    if (!act) return;
-
-    const chapNumber = act.chapters.length + 1;
-    const newChapId = `chap-${Date.now()}`;
-    const newSceneId = `scene-${Date.now()}`;
-
-    const newChapter: Chapter = {
-      id: newChapId,
-      actId,
-      title: `Capítulo ${chapNumber}`,
-      description: "",
-      order: chapNumber,
-      scenes: [
-        {
-          id: newSceneId,
-          chapterId: newChapId,
-          title: `Escena 1`,
-          content: "",
-          synopsis: "",
-          notes: "",
-          status: "draft",
-          characterIds: [],
-          goal: "",
-          conflict: "",
-          outcome: "",
-          targetWordCount: 1500,
-          wordCount: 0,
-          order: 1,
-        },
-      ],
-    };
-
-    onUpdateProject((p) => ({
-      ...p,
-      acts: p.acts.map((a) =>
-        a.id === actId ? { ...a, chapters: [...a.chapters, newChapter] } : a
-      ),
-    }));
-    onSelectScene(newSceneId);
+  const getChapterWordCount = (chapter: Chapter): number => {
+    return (chapter.scenes || []).reduce(
+      (acc, sc) => acc + getSceneWordCount(sc),
+      0
+    );
   };
 
-  const addScene = (actId: string, chapterId: string) => {
-    const act = project.acts.find((a) => a.id === actId);
-    const chap = act?.chapters.find((c) => c.id === chapterId);
-    if (!chap) return;
-
-    const sceneNumber = chap.scenes.length + 1;
-    const newSceneId = `scene-${Date.now()}`;
-
-    const newScene: Scene = {
-      id: newSceneId,
-      chapterId,
-      title: `Escena ${sceneNumber}`,
-      content: "",
-      synopsis: "",
-      notes: "",
-      status: "draft",
-      characterIds: [],
-      goal: "",
-      conflict: "",
-      outcome: "",
-      targetWordCount: 1500,
-      wordCount: 0,
-      order: sceneNumber,
-    };
-
-    onUpdateProject((p) => ({
-      ...p,
-      acts: p.acts.map((a) =>
-        a.id === actId
-          ? {
-              ...a,
-              chapters: a.chapters.map((c) =>
-                c.id === chapterId ? { ...c, scenes: [...c.scenes, newScene] } : c
-              ),
-            }
-          : a
-      ),
-    }));
-    onSelectScene(newSceneId);
+  const getActWordCount = (act: Act): number => {
+    return (act.chapters || []).reduce(
+      (acc, chap) => acc + getChapterWordCount(chap),
+      0
+    );
   };
 
+  const manuscriptTotals = useMemo(() => {
+    let totalWords = 0;
+    let totalScenes = 0;
+    for (const act of acts) {
+      for (const chap of act.chapters || []) {
+        for (const sc of chap.scenes || []) {
+          totalScenes++;
+          totalWords += sc.id === currentActiveSceneId ? liveActiveWords : (sc.wordCount || 0);
+        }
+      }
+    }
+    return { totalWords, totalScenes };
+  }, [acts, currentActiveSceneId, liveActiveWords]);
+
+  // Operaciones de Creación
+  const handleAddAct = () => {
+    const newAct = addActStore();
+    if (newAct && propOnUpdateProject) {
+      const currentStoreActs = useManuscriptStore.getState().acts;
+      propOnUpdateProject((prev) => ({ ...prev, acts: currentStoreActs }));
+    }
+  };
+
+  const handleAddChapter = (actId: string) => {
+    const newChap = addChapterStore(actId);
+    if (newChap && propOnUpdateProject) {
+      const currentStoreActs = useManuscriptStore.getState().acts;
+      propOnUpdateProject((prev) => ({ ...prev, acts: currentStoreActs }));
+    }
+  };
+
+  const handleAddScene = (chapterId: string) => {
+    const newScene = addSceneStore(chapterId);
+    if (newScene) {
+      handleSelectScene(newScene.id);
+      if (propOnUpdateProject) {
+        const currentStoreActs = useManuscriptStore.getState().acts;
+        propOnUpdateProject((prev) => ({ ...prev, acts: currentStoreActs }));
+      }
+    }
+  };
+
+  // Operaciones de Renombrado
   const handleStartRename = (
     e: React.MouseEvent,
     type: "act" | "chapter" | "scene",
@@ -226,67 +245,47 @@ export const ManuscriptSidebar: React.FC<ManuscriptSidebarProps> = ({
     const trimmed = editingItem.title.trim();
     const { type, id } = editingItem;
 
-    onUpdateProject((p) => {
-      if (type === "act") {
-        return {
-          ...p,
-          acts: p.acts.map((a) => (a.id === id ? { ...a, title: trimmed } : a)),
-        };
-      }
-      if (type === "chapter") {
-        return {
-          ...p,
-          acts: p.acts.map((a) => ({
-            ...a,
-            chapters: a.chapters.map((c) =>
-              c.id === id ? { ...c, title: trimmed } : c
-            ),
-          })),
-        };
-      }
-      if (type === "scene") {
-        return {
-          ...p,
-          acts: p.acts.map((a) => ({
-            ...a,
-            chapters: a.chapters.map((c) => ({
-              ...c,
-              scenes: c.scenes.map((s) =>
-                s.id === id ? { ...s, title: trimmed } : s
-              ),
-            })),
-          })),
-        };
-      }
-      return p;
-    });
+    if (type === "act") {
+      updateActTitleStore(id, trimmed);
+    } else if (type === "chapter") {
+      updateChapterTitleStore(id, trimmed);
+    } else if (type === "scene") {
+      updateSceneMetaStore(id, { title: trimmed });
+    }
+
+    if (propOnUpdateProject) {
+      const currentStoreActs = useManuscriptStore.getState().acts;
+      propOnUpdateProject((prev) => ({ ...prev, acts: currentStoreActs }));
+    }
+
     setEditingItem(null);
   };
 
+  // Operaciones de Eliminación
   const handleDeleteActRequest = (e: React.MouseEvent, act: Act) => {
     e.stopPropagation();
-    if (project.acts.length <= 1) {
+    if (acts.length <= 1) {
       showAlert("No se puede eliminar el único acto de la novela.");
       return;
     }
     setConfirmDelete({
       type: "act",
-      actId: act.id,
+      id: act.id,
       title: act.title,
     });
   };
 
   const handleDeleteChapterRequest = (e: React.MouseEvent, actId: string, chap: Chapter) => {
     e.stopPropagation();
-    const act = project.acts.find((a) => a.id === actId);
-    if (!act || act.chapters.length <= 1) {
+    const act = acts.find((a) => a.id === actId);
+    if (!act || (act.chapters || []).length <= 1) {
       showAlert("El acto debe contener al menos un capítulo.");
       return;
     }
     setConfirmDelete({
       type: "chapter",
+      id: chap.id,
       actId,
-      chapterId: chap.id,
       title: chap.title,
     });
   };
@@ -298,387 +297,393 @@ export const ManuscriptSidebar: React.FC<ManuscriptSidebarProps> = ({
     scene: Scene
   ) => {
     e.stopPropagation();
-    const act = project.acts.find((a) => a.id === actId);
+    const act = acts.find((a) => a.id === actId);
     const chap = act?.chapters.find((c) => c.id === chapterId);
-    if (!chap || chap.scenes.length <= 1) {
+    if (!chap || (chap.scenes || []).length <= 1) {
       showAlert("El capítulo debe contener al menos una escena.");
       return;
     }
     setConfirmDelete({
       type: "scene",
+      id: scene.id,
       actId,
       chapterId,
-      sceneId: scene.id,
       title: scene.title,
     });
   };
 
   const handleExecuteDelete = () => {
     if (!confirmDelete) return;
-    const { type, actId, chapterId, sceneId } = confirmDelete;
+    const { type, id } = confirmDelete;
 
-    let remainingSceneIds: string[] = [];
+    if (type === "act") {
+      deleteActStore(id);
+    } else if (type === "chapter") {
+      deleteChapterStore(id);
+    } else if (type === "scene") {
+      deleteSceneStore(id);
+    }
 
-    onUpdateProject((p) => {
-      let updatedActs = p.acts;
-      if (type === "act") {
-        updatedActs = p.acts.filter((a) => a.id !== actId);
-      } else if (type === "chapter" && chapterId) {
-        updatedActs = p.acts.map((a) =>
-          a.id === actId
-            ? { ...a, chapters: a.chapters.filter((c) => c.id !== chapterId) }
-            : a
-        );
-      } else if (type === "scene" && chapterId && sceneId) {
-        updatedActs = p.acts.map((a) =>
-          a.id === actId
-            ? {
-                ...a,
-                chapters: a.chapters.map((c) =>
-                  c.id === chapterId
-                    ? { ...c, scenes: c.scenes.filter((s) => s.id !== sceneId) }
-                    : c
-                ),
-              }
-            : a
-        );
-      }
-
-      updatedActs.forEach((a) =>
-        a.chapters.forEach((c) =>
-          c.scenes.forEach((s) => remainingSceneIds.push(s.id))
-        )
-      );
-
-      return {
-        ...p,
-        acts: updatedActs,
-      };
-    });
-
-    if (
-      currentActiveSceneId &&
-      !remainingSceneIds.includes(currentActiveSceneId) &&
-      remainingSceneIds.length > 0
-    ) {
-      onSelectScene(remainingSceneIds[0]);
+    if (propOnUpdateProject) {
+      const currentStoreActs = useManuscriptStore.getState().acts;
+      propOnUpdateProject((prev) => ({ ...prev, acts: currentStoreActs }));
     }
 
     setConfirmDelete(null);
   };
 
-  const getStatusColor = (status: SceneStatus) => {
+  // Colores sutiles de estado de escena
+  const getStatusBadge = (status: SceneStatus) => {
     switch (status) {
       case "idea":
-        return "bg-purple-500/20 text-purple-600 dark:text-purple-400";
+        return { label: "Idea", bg: "rgba(168, 85, 247, 0.15)", text: "rgb(192, 132, 252)" };
       case "draft":
-        return "bg-amber-500/20 text-amber-700 dark:text-amber-300";
+        return { label: "Borrador", bg: "rgba(245, 158, 11, 0.15)", text: "rgb(251, 191, 36)" };
       case "revised":
-        return "bg-blue-500/20 text-blue-700 dark:text-blue-300";
+        return { label: "Revisado", bg: "rgba(59, 130, 246, 0.15)", text: "rgb(96, 165, 250)" };
       case "polished":
-        return "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300";
+        return { label: "Pulido", bg: "rgba(16, 185, 129, 0.15)", text: "rgb(52, 211, 153)" };
       case "final":
-        return "bg-teal-500/20 text-teal-800 dark:text-teal-200";
+        return { label: "Final", bg: "rgba(20, 184, 166, 0.15)", text: "rgb(45, 212, 191)" };
       default:
-        return "bg-gray-500/20 text-gray-700";
+        return { label: status, bg: "rgba(156, 163, 175, 0.15)", text: "rgb(156, 163, 175)" };
     }
   };
 
-  if (isCollapsed) {
-    return (
-      <div
-        id="manuscript-sidebar-collapsed"
-        className="w-12 border-r flex flex-col items-center py-3 shrink-0 gap-4"
-        style={{
-          backgroundColor: "var(--bg-surface)",
-          borderColor: "var(--border-color)",
-        }}
-      >
-        <button
-          onClick={handleToggleOrClose}
-          className="p-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)]"
-          title="Expandir Manuscrito"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-        <div className="writing-vertical text-xs tracking-wider uppercase font-semibold text-[var(--text-muted)] mt-4">
-          Manuscrito
-        </div>
-      </div>
-    );
-  }
+  const handleClose = onCloseSidebar || onToggleCollapse;
+
+  // Filtrado reactivo de búsqueda
+  const filteredActs = useMemo(() => {
+    if (!searchQuery.trim()) return acts;
+    const q = searchQuery.toLowerCase();
+
+    return acts
+      .map((act) => {
+        const filteredChapters = (act.chapters || [])
+          .map((chap) => {
+            const filteredScenes = (chap.scenes || []).filter(
+              (sc) =>
+                sc.title.toLowerCase().includes(q) ||
+                (sc.synopsis && sc.synopsis.toLowerCase().includes(q)) ||
+                (sc.notes && sc.notes.toLowerCase().includes(q)) ||
+                (sc.content && sc.content.toLowerCase().includes(q))
+            );
+            return { ...chap, scenes: filteredScenes };
+          })
+          .filter((chap) => chap.scenes.length > 0 || chap.title.toLowerCase().includes(q));
+
+        return { ...act, chapters: filteredChapters };
+      })
+      .filter((act) => act.chapters.length > 0 || act.title.toLowerCase().includes(q));
+  }, [acts, searchQuery]);
 
   return (
     <aside
       id="manuscript-sidebar"
-      className="w-64 sm:w-72 lg:w-80 max-w-[85vw] border-r flex flex-col shrink-0 min-h-0 overflow-hidden transition-all select-none"
       style={{
-        backgroundColor: "var(--bg-surface)",
-        borderColor: "var(--border-color)",
-        color: "var(--text-main)",
+        width: `${sidebarWidth}px`,
+        backgroundColor: "var(--bg-sidebar)",
+        color: "var(--text-primary)",
       }}
+      className="relative flex flex-col shrink-0 min-h-0 h-full overflow-hidden select-none transition-[width] duration-75 ease-out"
     >
-      {/* Header */}
-      <div className="px-4 py-3.5 border-b flex items-center justify-between border-[var(--border-color)]">
-        <div className="flex items-center gap-2.5">
-          <Layers className="w-4 h-4 text-[var(--accent)]" />
-          <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-            Estructura del Manuscrito
+      {/* Cabecera Principal del Árbol (Sin bordes rígidos) */}
+      <div className="px-4 pt-3.5 pb-2.5 flex items-center justify-between">
+        <div className="flex flex-col min-w-0 pr-2">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] truncate">
+              Manuscrito
+            </span>
+          </div>
+          <span className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5 truncate">
+            {manuscriptTotals.totalWords.toLocaleString()} pal. · {manuscriptTotals.totalScenes} esc.
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+
+        <div className="flex items-center gap-1 shrink-0">
           <button
-            onClick={addAct}
-            className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-[var(--accent)] cursor-pointer"
+            type="button"
+            onClick={handleAddAct}
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-surface-hover)] active:bg-[var(--bg-surface-active)] transition-colors cursor-pointer"
             title="Añadir nuevo Acto"
           >
             <Plus className="w-4 h-4" />
           </button>
-          <button
-            onClick={handleToggleOrClose}
-            className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] cursor-pointer"
-            title="Cerrar/Colapsar panel"
-          >
-            <ChevronRight className="w-4 h-4 rotate-180" />
-          </button>
+          {handleClose && (
+            <button
+              type="button"
+              onClick={handleClose}
+              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] active:bg-[var(--bg-surface-active)] transition-colors cursor-pointer"
+              title="Colapsar panel (Ctrl+\ o Cmd+\)"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Search & Filter */}
-      <div className="p-3 border-b border-[var(--border-color)]">
-        <div className="relative">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-[var(--text-muted)]" />
+      {/* Buscador Integrado y Sutil */}
+      <div className="px-3 py-1.5">
+        <div className="relative flex items-center">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 text-[var(--text-muted)] pointer-events-none" />
           <input
             type="text"
-            placeholder="Buscar escena, personaje, notas..."
+            placeholder="Buscar escena, notas..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs pl-9 pr-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] shadow-2xs"
+            className="w-full text-xs pl-8 pr-7 py-1.5 rounded-lg bg-[var(--bg-surface-hover)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border-none outline-none focus:ring-1 focus:ring-[var(--accent)]/50 transition-all"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+              title="Limpiar búsqueda"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Acts / Chapters / Scenes Tree */}
+      {/* Árbol del Manuscrito: Actos > Capítulos > Escenas (Estilo Obsidian / Scrivener) */}
       <div
         id="manuscript-tree-scroll-container"
-        className="flex-1 min-h-0 overflow-y-scroll p-3 space-y-3 custom-scroll always-scroll"
-        style={{
-          overflowY: "scroll",
-          scrollbarGutter: "stable",
-        }}
+        className="flex-1 min-h-0 overflow-y-auto pl-2 pr-1 mr-3 py-1 space-y-1 custom-scroll"
       >
-        {project.acts.map((act) => {
-          const isActCollapsed = collapsedActs[act.id];
-          const actWordCount = act.chapters.reduce(
-            (cAcc, chap) =>
-              cAcc +
-              chap.scenes.reduce((sAcc, sc) => sAcc + (sc.wordCount || 0), 0),
-            0
-          );
+        {filteredActs.length === 0 ? (
+          <div className="px-3 py-8 text-center text-xs text-[var(--text-muted)]">
+            {searchQuery ? "No se encontraron escenas que coincidan." : "El manuscrito está vacío."}
+          </div>
+        ) : (
+          filteredActs.map((act) => {
+            const isActCollapsed = searchQuery ? false : collapsedActs[act.id];
+            const actWords = getActWordCount(act);
 
-          return (
-            <div
-              key={act.id}
-              className="rounded-xl border border-[var(--border-color)] overflow-hidden bg-[var(--bg-card)] shadow-xs transition-shadow hover:shadow-sm"
-            >
-              {/* Act Header */}
-              <div className="flex items-center justify-between px-3 py-2.5 bg-black/5 dark:bg-white/5 group border-b border-[var(--border-color)]/50">
-                {editingItem?.id === act.id ? (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleSaveRename();
-                    }}
-                    className="flex items-center gap-1 flex-1 mr-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <input
-                      type="text"
-                      autoFocus
-                      value={editingItem.title}
-                      onChange={(e) =>
-                        setEditingItem({ ...editingItem, title: e.target.value })
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") setEditingItem(null);
+            return (
+              <div key={act.id} className="space-y-0.5">
+                {/* Cabecera del Acto */}
+                <div className="group flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-[var(--bg-surface-hover)] transition-colors">
+                  {editingItem?.id === act.id ? (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleSaveRename();
                       }}
-                      className="w-full text-xs px-2 py-1 rounded-md border border-[var(--accent)] bg-[var(--bg-input)] text-[var(--text-main)] font-bold focus:outline-hidden"
-                    />
-                    <button
-                      type="submit"
-                      className="p-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"
-                      title="Guardar nombre"
+                      className="flex items-center gap-1 flex-1 mr-2"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <Check className="w-3 h-3" />
-                    </button>
+                      <input
+                        type="text"
+                        autoFocus
+                        value={editingItem.title}
+                        onChange={(e) =>
+                          setEditingItem({ ...editingItem, title: e.target.value })
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") setEditingItem(null);
+                        }}
+                        className="w-full text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-app)] text-[var(--text-primary)] border border-[var(--accent)]/60 outline-none"
+                      />
+                      <button
+                        type="submit"
+                        className="p-1 rounded bg-[var(--accent)] text-[var(--accent-contrast)] cursor-pointer"
+                        title="Guardar"
+                      >
+                        <Check className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem(null)}
+                        className="p-1 rounded hover:bg-[var(--bg-surface-active)] text-[var(--text-muted)] cursor-pointer"
+                        title="Cancelar"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </form>
+                  ) : (
                     <button
                       type="button"
-                      onClick={() => setEditingItem(null)}
-                      className="p-1.5 rounded-md bg-black/10 dark:bg-white/10 hover:bg-black/20 text-[var(--text-muted)] cursor-pointer"
-                      title="Cancelar"
+                      onClick={() => toggleAct(act.id)}
+                      className="flex items-center gap-1.5 flex-1 min-w-0 text-left cursor-pointer py-0.5"
                     >
-                      <X className="w-3 h-3" />
+                      {isActCollapsed ? (
+                        <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
+                      )}
+                      <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] truncate">
+                        {act.title}
+                      </span>
                     </button>
-                  </form>
-                ) : (
-                  <button
-                    onClick={() => toggleAct(act.id)}
-                    className="flex items-center gap-2 text-xs font-bold text-[var(--text-main)] truncate flex-1 text-left cursor-pointer py-0.5"
-                  >
-                    {isActCollapsed ? (
-                      <ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
-                    )}
-                    <span className="truncate tracking-wide">{act.title}</span>
-                  </button>
-                )}
+                  )}
 
-                <div className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] shrink-0 ml-1">
-                  <span className="font-mono text-[10px] mr-1">{actWordCount.toLocaleString()} pal.</span>
-                  <button
-                    onClick={() => addChapter(act.id)}
-                    className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-[var(--accent)] opacity-80 group-hover:opacity-100 cursor-pointer"
-                    title="Añadir Capítulo a este Acto"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => handleStartRename(e, "act", act.id, act.title)}
-                    className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 opacity-70 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
-                    title="Renombrar Acto"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={(e) => handleDeleteActRequest(e, act)}
-                    className="p-1 rounded-md hover:bg-red-500/15 opacity-70 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-500 cursor-pointer"
-                    title="Eliminar Acto"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  {editingItem?.id !== act.id && (
+                    <div className="flex items-center gap-1 shrink-0 ml-1.5">
+                      <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                        {actWords.toLocaleString()}
+                      </span>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => handleAddChapter(act.id)}
+                          className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
+                          title="Añadir Capítulo"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleStartRename(e, "act", act.id, act.title)}
+                          className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
+                          title="Renombrar Acto"
+                        >
+                          <Edit2 className="w-2.5 h-2.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteActRequest(e, act)}
+                          className="p-1 rounded text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                          title="Eliminar Acto"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              {/* Chapters List */}
-              {!isActCollapsed && (
-                <div className="p-2 space-y-2">
-                  {act.chapters.map((chap) => {
-                    const isChapCollapsed = collapsedChapters[chap.id];
-                    const chapWordCount = chap.scenes.reduce(
-                      (acc, sc) => acc + (sc.wordCount || 0),
-                      0
-                    );
+                {/* Lista de Capítulos del Acto */}
+                {!isActCollapsed && (
+                  <div className="space-y-0.5 pl-2">
+                    {(act.chapters || []).map((chap) => {
+                      const isChapCollapsed = searchQuery ? false : collapsedChapters[chap.id];
+                      const chapWords = getChapterWordCount(chap);
 
-                    return (
-                      <div key={chap.id} className="space-y-1">
-                        {/* Chapter Row */}
-                        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 group transition-colors">
-                          {editingItem?.id === chap.id ? (
-                            <form
-                              onSubmit={(e) => {
-                                e.preventDefault();
-                                handleSaveRename();
-                              }}
-                              className="flex items-center gap-1 flex-1 mr-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <input
-                                type="text"
-                                autoFocus
-                                value={editingItem.title}
-                                onChange={(e) =>
-                                  setEditingItem({
-                                    ...editingItem,
-                                    title: e.target.value,
-                                  })
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Escape") setEditingItem(null);
+                      return (
+                        <div key={chap.id} className="space-y-0.5">
+                          {/* Fila del Capítulo */}
+                          <div className="group flex items-center justify-between px-2 py-1 rounded-lg hover:bg-[var(--bg-surface-hover)] transition-colors">
+                            {editingItem?.id === chap.id ? (
+                              <form
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  handleSaveRename();
                                 }}
-                                className="w-full text-xs px-2 py-0.5 rounded border border-[var(--accent)] bg-[var(--bg-input)] text-[var(--text-main)] font-semibold focus:outline-hidden"
-                              />
-                              <button
-                                type="submit"
-                                className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"
-                                title="Guardar nombre"
+                                className="flex items-center gap-1 flex-1 mr-2"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                <Check className="w-3 h-3" />
-                              </button>
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  value={editingItem.title}
+                                  onChange={(e) =>
+                                    setEditingItem({ ...editingItem, title: e.target.value })
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Escape") setEditingItem(null);
+                                  }}
+                                  className="w-full text-xs font-medium px-2 py-0.5 rounded bg-[var(--bg-app)] text-[var(--text-primary)] border border-[var(--accent)]/60 outline-none"
+                                />
+                                <button
+                                  type="submit"
+                                  className="p-1 rounded bg-[var(--accent)] text-[var(--accent-contrast)] cursor-pointer"
+                                  title="Guardar"
+                                >
+                                  <Check className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingItem(null)}
+                                  className="p-1 rounded hover:bg-[var(--bg-surface-active)] text-[var(--text-muted)] cursor-pointer"
+                                  title="Cancelar"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </form>
+                            ) : (
                               <button
                                 type="button"
-                                onClick={() => setEditingItem(null)}
-                                className="p-1 rounded bg-black/10 dark:bg-white/10 hover:bg-black/20 text-[var(--text-muted)] cursor-pointer"
-                                title="Cancelar"
+                                onClick={() => toggleChapter(chap.id)}
+                                className="flex items-center gap-1.5 flex-1 min-w-0 text-left cursor-pointer py-0.5"
                               >
-                                <X className="w-3 h-3" />
+                                {isChapCollapsed ? (
+                                  <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+                                ) : (
+                                  <ChevronDown className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+                                )}
+                                {isChapCollapsed ? (
+                                  <Folder className="w-3.5 h-3.5 text-[var(--accent)]/80 shrink-0" />
+                                ) : (
+                                  <FolderOpen className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
+                                )}
+                                <span className="text-xs font-medium text-[var(--text-primary)] truncate">
+                                  {chap.title}
+                                </span>
                               </button>
-                            </form>
-                          ) : (
-                            <button
-                              onClick={() => toggleChapter(chap.id)}
-                              className="flex items-center gap-2 text-xs font-semibold text-[var(--text-main)] truncate flex-1 text-left cursor-pointer py-0.5"
-                            >
-                              {isChapCollapsed ? (
-                                <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
-                              ) : (
-                                <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
-                              )}
-                              <Folder className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
-                              <span className="truncate">{chap.title}</span>
-                            </button>
-                          )}
+                            )}
 
-                          <div className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] shrink-0 ml-1">
-                            <span className="font-mono text-[10px] mr-0.5">{chapWordCount.toLocaleString()}</span>
-                            <button
-                              onClick={() => addScene(act.id, chap.id)}
-                              className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-[var(--accent)] opacity-80 group-hover:opacity-100 cursor-pointer"
-                              title="Añadir Escena"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={(e) => handleStartRename(e, "chapter", chap.id, chap.title)}
-                              className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 opacity-70 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
-                              title="Renombrar Capítulo"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={(e) => handleDeleteChapterRequest(e, act.id, chap)}
-                              className="p-1 rounded hover:bg-red-500/15 opacity-70 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-500 cursor-pointer"
-                              title="Eliminar Capítulo"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
+                            {editingItem?.id !== chap.id && (
+                              <div className="flex items-center gap-1 shrink-0 ml-1.5">
+                                <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                                  {chapWords.toLocaleString()}
+                                </span>
+                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddScene(chap.id)}
+                                    className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
+                                    title="Añadir Escena"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleStartRename(e, "chapter", chap.id, chap.title)}
+                                    className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
+                                    title="Renombrar Capítulo"
+                                  >
+                                    <Edit2 className="w-2.5 h-2.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleDeleteChapterRequest(e, act.id, chap)}
+                                    className="p-1 rounded text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                                    title="Eliminar Capítulo"
+                                  >
+                                    <Trash2 className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
 
-                        {/* Scenes List */}
-                        {!isChapCollapsed && (
-                          <div className="pl-4 space-y-1 mt-1 border-l-2 border-[var(--border-color)]/70 ml-3.5 py-0.5">
-                            {chap.scenes
-                              .filter((sc) =>
-                                searchQuery
-                                  ? sc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                    sc.synopsis.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                    sc.content.toLowerCase().includes(searchQuery.toLowerCase())
-                                  : true
-                              )
-                              .map((scene) => {
+                          {/* Lista de Escenas del Capítulo */}
+                          {!isChapCollapsed && (
+                            <div className="space-y-0.5 pl-3">
+                              {(chap.scenes || []).map((scene) => {
                                 const isActive = currentActiveSceneId === scene.id;
+                                const sceneWords = getSceneWordCount(scene);
+                                const statusBadge = getStatusBadge(scene.status);
 
                                 return (
                                   <div
                                     key={scene.id}
-                                    onClick={() => onSelectScene(scene.id)}
-                                    className={`group flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer text-xs transition-all ${
+                                    onClick={() => handleSelectScene(scene.id)}
+                                    className={`group relative flex items-center justify-between px-2.5 py-1.5 rounded-lg cursor-pointer text-xs transition-colors ${
                                       isActive
-                                        ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-medium shadow-xs"
-                                        : "hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-main)]"
+                                        ? "bg-[var(--bg-surface-active)] text-[var(--text-primary)] font-medium"
+                                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]"
                                     }`}
                                   >
+                                    {/* Indicador sutil de escena activa */}
+                                    {isActive && (
+                                      <div
+                                        className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r bg-[var(--accent)]"
+                                      />
+                                    )}
+
                                     {editingItem?.id === scene.id ? (
                                       <form
                                         onSubmit={(e) => {
@@ -701,11 +706,11 @@ export const ManuscriptSidebar: React.FC<ManuscriptSidebarProps> = ({
                                           onKeyDown={(e) => {
                                             if (e.key === "Escape") setEditingItem(null);
                                           }}
-                                          className="w-full text-xs px-2 py-0.5 rounded border border-[var(--accent)] bg-[var(--bg-input)] text-[var(--text-main)] focus:outline-hidden"
+                                          className="w-full text-xs px-2 py-0.5 rounded bg-[var(--bg-app)] text-[var(--text-primary)] border border-[var(--accent)]/60 outline-none"
                                         />
                                         <button
                                           type="submit"
-                                          className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"
+                                          className="p-1 rounded bg-[var(--accent)] text-[var(--accent-contrast)] cursor-pointer"
                                           title="Guardar"
                                         >
                                           <Check className="w-2.5 h-2.5" />
@@ -713,7 +718,7 @@ export const ManuscriptSidebar: React.FC<ManuscriptSidebarProps> = ({
                                         <button
                                           type="button"
                                           onClick={() => setEditingItem(null)}
-                                          className="p-1 rounded bg-black/10 dark:bg-white/10 hover:bg-black/20 text-[var(--text-muted)] cursor-pointer"
+                                          className="p-1 rounded hover:bg-[var(--bg-surface-active)] text-[var(--text-muted)] cursor-pointer"
                                           title="Cancelar"
                                         >
                                           <X className="w-2.5 h-2.5" />
@@ -724,7 +729,7 @@ export const ManuscriptSidebar: React.FC<ManuscriptSidebarProps> = ({
                                         <FileText
                                           className={`w-3.5 h-3.5 shrink-0 ${
                                             isActive
-                                              ? "text-[var(--accent-contrast)]"
+                                              ? "text-[var(--accent)]"
                                               : "text-[var(--text-muted)]"
                                           }`}
                                         />
@@ -734,53 +739,40 @@ export const ManuscriptSidebar: React.FC<ManuscriptSidebarProps> = ({
 
                                     {editingItem?.id !== scene.id && (
                                       <div className="flex items-center gap-1.5 shrink-0">
-                                        {/* Status pill */}
+                                        {/* Status pill sutil */}
                                         <span
-                                          className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
-                                            isActive
-                                              ? "bg-[var(--accent-contrast)]/20 text-[var(--accent-contrast)]"
-                                              : getStatusColor(scene.status)
-                                          }`}
+                                          style={{
+                                            backgroundColor: statusBadge.bg,
+                                            color: statusBadge.text,
+                                          }}
+                                          className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider"
                                         >
-                                          {scene.status}
+                                          {statusBadge.label}
                                         </span>
 
-                                        {/* Word count */}
-                                        <span
-                                          className={`text-[10px] font-mono ${
-                                            isActive
-                                              ? "text-[var(--accent-contrast)] opacity-85"
-                                              : "text-[var(--text-muted)]"
-                                          }`}
-                                        >
-                                          {(scene.wordCount || 0).toLocaleString()}
+                                        {/* Conteo de palabras */}
+                                        <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                                          {sceneWords.toLocaleString()}
                                         </span>
 
-                                        {/* Action buttons on hover */}
+                                        {/* Botones fantasma en hover */}
                                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                           <button
+                                            type="button"
                                             onClick={(e) =>
                                               handleStartRename(e, "scene", scene.id, scene.title)
                                             }
-                                            className={`p-1 rounded cursor-pointer ${
-                                              isActive
-                                                ? "hover:bg-white/20 text-[var(--accent-contrast)]"
-                                                : "hover:bg-black/10 text-[var(--text-muted)] hover:text-[var(--text-main)]"
-                                            }`}
+                                            className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
                                             title="Renombrar Escena"
                                           >
                                             <Edit2 className="w-2.5 h-2.5" />
                                           </button>
-
                                           <button
+                                            type="button"
                                             onClick={(e) =>
                                               handleDeleteSceneRequest(e, act.id, chap.id, scene)
                                             }
-                                            className={`p-1 rounded cursor-pointer ${
-                                              isActive
-                                                ? "hover:bg-red-500 text-white"
-                                                : "hover:bg-red-500/15 text-[var(--text-muted)] hover:text-red-500"
-                                            }`}
+                                            className="p-1 rounded text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
                                             title="Eliminar Escena"
                                           >
                                             <Trash2 className="w-2.5 h-2.5" />
@@ -791,42 +783,62 @@ export const ManuscriptSidebar: React.FC<ManuscriptSidebarProps> = ({
                                   </div>
                                 );
                               })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
 
-      {/* Alert toast notification */}
+      {/* Manejador de Redimensionamiento interactivo */}
+      <div
+        ref={resizeHandleRef}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          setIsResizing(true);
+        }}
+        title="Arrastra para redimensionar"
+        className="absolute top-0 right-0 w-2 h-full cursor-col-resize z-20 flex items-center justify-end group select-none"
+      >
+        <div
+          className={`w-0.5 h-full transition-colors ${
+            isResizing
+              ? "bg-[var(--accent)]"
+              : "bg-transparent group-hover:bg-[var(--accent)]/40"
+          }`}
+        />
+      </div>
+
+      {/* Alerta de notificación flotante */}
       {alertMessage && (
-        <div className="p-2.5 m-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-center gap-2 animate-in fade-in">
+        <div className="p-2.5 m-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-300 text-xs flex items-center gap-2 animate-in fade-in shadow-xs">
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-500" />
           <span className="leading-tight">{alertMessage}</span>
         </div>
       )}
 
-      {/* In-app Modal: Confirm Delete */}
+      {/* Modal de Confirmación de Borrado (Acorde a Sistema de Diseño) */}
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
           <div
-            className="w-full max-w-sm rounded-2xl border p-5 shadow-2xl space-y-3"
+            className="w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4"
             style={{
               backgroundColor: "var(--bg-card)",
-              borderColor: "var(--border-color)",
+              color: "var(--text-primary)",
             }}
           >
             <div className="flex items-center gap-3">
-              <span className="p-2 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20">
-                <Trash2 className="w-4 h-4" />
+              <span className="p-2.5 rounded-xl bg-red-500/10 text-red-500 shrink-0">
+                <Trash2 className="w-5 h-5" />
               </span>
               <div>
-                <h3 className="font-bold text-sm text-[var(--text-main)]">
+                <h3 className="font-bold text-sm text-[var(--text-primary)]">
                   {confirmDelete.type === "act"
                     ? "¿Eliminar Acto?"
                     : confirmDelete.type === "chapter"
@@ -834,25 +846,25 @@ export const ManuscriptSidebar: React.FC<ManuscriptSidebarProps> = ({
                     : "¿Eliminar Escena?"}
                 </h3>
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  Esta acción es irreversible
+                  Esta acción es permanente
                 </p>
               </div>
             </div>
 
-            <p className="text-xs text-[var(--text-main)] leading-relaxed">
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
               {confirmDelete.type === "act" && (
                 <>
-                  ¿Eliminar permanentemente el acto <strong>«{confirmDelete.title}»</strong> y todos sus capítulos y escenas asociadas?
+                  ¿Deseas eliminar el acto <strong>«{confirmDelete.title}»</strong> con todos sus capítulos y escenas?
                 </>
               )}
               {confirmDelete.type === "chapter" && (
                 <>
-                  ¿Eliminar permanentemente el capítulo <strong>«{confirmDelete.title}»</strong> y todas sus escenas asociadas?
+                  ¿Deseas eliminar el capítulo <strong>«{confirmDelete.title}»</strong> y todas sus escenas?
                 </>
               )}
               {confirmDelete.type === "scene" && (
                 <>
-                  ¿Eliminar permanentemente la escena <strong>«{confirmDelete.title}»</strong> y todo su texto redactado?
+                  ¿Deseas eliminar la escena <strong>«{confirmDelete.title}»</strong> y su archivo de prosa Markdown?
                 </>
               )}
             </p>
@@ -861,16 +873,16 @@ export const ManuscriptSidebar: React.FC<ManuscriptSidebarProps> = ({
               <button
                 type="button"
                 onClick={() => setConfirmDelete(null)}
-                className="px-3 py-1.5 rounded-xl border border-[var(--border-color)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] cursor-pointer transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleExecuteDelete}
-                className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 shadow-xs cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 shadow-xs cursor-pointer transition-colors"
               >
-                Sí, eliminar
+                Eliminar
               </button>
             </div>
           </div>

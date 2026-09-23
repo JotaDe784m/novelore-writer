@@ -34,13 +34,13 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Implementar `useManuscriptStore` en Zustand desacoplando la jerarquía de actos, capítulos, escenas y selección activa.
 - [x] Persistencia atómica de archivos Markdown de escenas (`esc-X.md`) con debounce de 500 ms coordinada desde Zustand.
 
-### Subfase 1.3: Árbol del Manuscrito & Navegación (Estilo Obsidian / Scrivener)
-- Rediseñar `ManuscriptSidebar.tsx` bajo las reglas de `docs/design-system.md`:
-  - Fondo tonal suave (`--bg-sidebar`) sin líneas divisorias rígidas.
-  - Botones fantasma (*ghost buttons*) y colapso total hacia el borde izquierdo con atajo `Ctrl+\` / `Cmd+\`.
-  - Ancho redimensionable manualmente con persistencia de dimensiones en preferencias.
-- Conectar operaciones de Actos, Capítulos y Escenas directamente con el sistema de archivos (`manuscript/act-X/chap-Y/esc-Z.md`).
-- Conteo de palabras en tiempo real por escena, capítulo y acto.
+### Subfase 1.3: Árbol del Manuscrito & Navegación (Estilo Obsidian / Scrivener) [COMPLETADA]
+- [x] Rediseñar `ManuscriptSidebar.tsx` bajo las reglas de `docs/design-system.md`:
+  - [x] Fondo tonal suave (`--bg-sidebar`) sin líneas divisorias rígidas.
+  - [x] Botones fantasma (*ghost buttons*) y colapso total hacia el borde izquierdo con atajo `Ctrl+\` / `Cmd+\`.
+  - [x] Ancho redimensionable manualmente con persistencia de dimensiones en preferencias (`localStorage`).
+- [x] Conectar operaciones de Actos, Capítulos y Escenas directamente con el sistema de archivos (`manuscript/act-X/chap-Y/esc-Z.md`) y canales IPC nativos (`deleteSceneMarkdown`).
+- [x] Conteo de palabras en tiempo real por escena, capítulo y acto.
 
 ### Subfase 1.4: Editor Literario & Ergonomía de Lectura (Estilo Ulysses / iA Writer)
 - Rediseñar `RichTextEditor.tsx`:
