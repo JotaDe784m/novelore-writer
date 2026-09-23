@@ -26,33 +26,14 @@ import { HomeDashboard } from "./components/home/HomeDashboard";
 import { WordGoalsModal } from "./components/project/WordGoalsModal";
 import { VisualBoardView } from "./components/board/VisualBoardView";
 import { useProjectStore } from "./stores/useProjectStore";
+import { useThemeStore } from "./stores/useThemeStore";
+import { useManuscriptStore } from "./stores/useManuscriptStore";
 
 export const App: React.FC = () => {
   const projectStore = useProjectStore();
 
   const [project, setProject] = useState<NovelProject>(() => {
-    const initial = demoProject;
-    const savedTheme = typeof window !== "undefined" ? localStorage.getItem("novelore_user_theme") : null;
-    const savedAccent = typeof window !== "undefined" ? localStorage.getItem("novelore_user_accent") : null;
-    const savedNeutralAccent = typeof window !== "undefined" ? localStorage.getItem("novelore_neutral_accent") : null;
-
-    if (savedTheme || savedAccent || savedNeutralAccent) {
-      const activeTheme = (savedTheme as any) || initial.settings.theme || "minimal";
-      const isNeutral = activeTheme === "minimal" || activeTheme === "dark";
-      const targetAccent = isNeutral
-        ? (savedNeutralAccent || savedAccent || initial.settings.customAccentColor)
-        : (initial.settings.customAccentColor || undefined);
-
-      return {
-        ...initial,
-        settings: {
-          ...initial.settings,
-          theme: activeTheme,
-          customAccentColor: targetAccent,
-        },
-      };
-    }
-    return initial;
+    return demoProject;
   });
 
   const [isInitialLoadDone, setIsInitialLoadDone] = useState(false);
@@ -61,7 +42,9 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (projectStore.project && projectStore.project.id !== project.id) {
       setProject(projectStore.project);
+      useThemeStore.getState().syncWithProject(projectStore.project);
       const first = projectStore.project.acts[0]?.chapters[0]?.scenes[0];
+      useManuscriptStore.getState().loadManuscript(projectStore.project.acts, first?.id);
       if (first) {
         setSelectedSceneId(first.id);
       }
@@ -74,34 +57,13 @@ export const App: React.FC = () => {
     loadActiveProject().then((loaded) => {
       if (isCancelled) return;
       if (!projectStore.project) {
-        const savedTheme = typeof window !== "undefined" ? localStorage.getItem("novelore_user_theme") : null;
-        const savedAccent = typeof window !== "undefined" ? localStorage.getItem("novelore_user_accent") : null;
-        const savedNeutralAccent = typeof window !== "undefined" ? localStorage.getItem("novelore_neutral_accent") : null;
-
-        let finalProject = loaded;
-        if (savedTheme || savedAccent || savedNeutralAccent) {
-          const activeTheme = (savedTheme as any) || loaded.settings?.theme || "minimal";
-          const isNeutral = activeTheme === "minimal" || activeTheme === "dark";
-          const targetAccent = isNeutral
-            ? (savedNeutralAccent || savedAccent || loaded.settings?.customAccentColor)
-            : (loaded.settings?.customAccentColor || undefined);
-
-          finalProject = {
-            ...loaded,
-            settings: {
-              ...loaded.settings,
-              theme: activeTheme,
-              customAccentColor: targetAccent,
-            },
-          };
+        setProject(loaded);
+        useThemeStore.getState().syncWithProject(loaded);
+        const firstScene = loaded.acts[0]?.chapters[0]?.scenes[0];
+        useManuscriptStore.getState().loadManuscript(loaded.acts, firstScene?.id);
+        if (firstScene) {
+          setSelectedSceneId(firstScene.id);
         }
-
-        setProject(finalProject);
-        setSelectedSceneId((prev) => {
-          if (prev) return prev;
-          const firstScene = finalProject.acts[0]?.chapters[0]?.scenes[0];
-          return firstScene ? firstScene.id : "";
-        });
       }
       setIsInitialLoadDone(true);
     });
@@ -127,40 +89,24 @@ export const App: React.FC = () => {
   const [dossierInitialTab, setDossierInitialTab] = useState<"details" | "whiteboard">("details");
   const [isCreatingCharacterFromInspector, setIsCreatingCharacterFromInspector] = useState(false);
 
-  // Aplicar tema dinámico en CSS variables
+  // Sincronizar tema con useThemeStore cuando cambien las preferencias del proyecto
   useEffect(() => {
-    const themeName = project.settings?.theme || "minimal";
-    const darkThemes = ["dark", "scifi", "noir", "gothic", "forest", "midnight", "dream"];
-    const isDark = darkThemes.includes(themeName);
-
-    document.documentElement.setAttribute("data-theme", themeName);
-    document.body.setAttribute("data-theme", themeName);
-    document.documentElement.className = `theme-${themeName}${isDark ? " dark" : ""}`;
-    document.body.className = isDark ? "dark" : "";
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("novelore_user_theme", themeName);
-      if (project.settings?.customAccentColor) {
-        localStorage.setItem("novelore_user_accent", project.settings.customAccentColor);
-        if (themeName === "minimal" || themeName === "dark") {
-          localStorage.setItem("novelore_neutral_accent", project.settings.customAccentColor);
-        }
-      } else {
-        localStorage.removeItem("novelore_user_accent");
-      }
-    }
+    useThemeStore.getState().syncWithProject(project);
   }, [project.settings?.theme, project.settings?.customAccentColor]);
 
   // Selección de escena actual
   const currentScene = useMemo(() => {
+    const storeScene = useManuscriptStore.getState().getSelectedScene();
+    if (storeScene) return storeScene;
+
     for (const act of project.acts) {
-      for (const chapter of act.chapters) {
-        const found = chapter.scenes.find((s) => s.id === selectedSceneId);
+      for (const chapter of act.chapters || []) {
+        const found = (chapter.scenes || []).find((s) => s.id === selectedSceneId);
         if (found) return found;
       }
     }
     return project.acts[0]?.chapters[0]?.scenes[0] || null;
-  }, [project, selectedSceneId]);
+  }, [project.acts, selectedSceneId]);
 
   // Entidad de dossier activa
   const selectedDossierEntity = useMemo(() => {
@@ -181,55 +127,21 @@ export const App: React.FC = () => {
     });
   };
 
-  // Actualizar escena y persistir a disco atómicamente
+  // Actualizar escena y persistir a disco atómicamente a través de useManuscriptStore
   const handleUpdateScene = (sceneId: string, updates: Partial<Scene>) => {
-    const nowIso = new Date().toISOString();
-    setProject((prev) => {
-      let targetFilePath: string | undefined;
+    if (updates.content !== undefined) {
+      useManuscriptStore.getState().updateActiveSceneContent(updates.content);
+    }
+    if (Object.keys(updates).some((k) => k !== "content")) {
+      useManuscriptStore.getState().updateSceneMeta(sceneId, updates);
+    }
 
-      const updatedActs = prev.acts.map((act) => ({
-        ...act,
-        chapters: act.chapters.map((chap) => ({
-          ...chap,
-          scenes: chap.scenes.map((sc) => {
-            if (sc.id === sceneId) {
-              const newWords =
-                updates.content !== undefined
-                  ? countWords(updates.content)
-                  : updates.wordCount !== undefined
-                  ? updates.wordCount
-                  : sc.wordCount;
-              targetFilePath =
-                sc.filePath ||
-                `manuscript/act-${act.order || 1}/chap-${chap.order || 1}/${sc.id}.md`;
-              return {
-                ...sc,
-                ...updates,
-                wordCount: newWords,
-                filePath: targetFilePath,
-              };
-            }
-            return sc;
-          }),
-        })),
-      }));
-
-      const updatedProject: NovelProject = {
-        ...prev,
-        updatedAt: nowIso,
-        acts: updatedActs,
-      };
-
-      // Si se editó el contenido, guardar archivo markdown en disco con debounce
-      if (updates.content !== undefined && targetFilePath) {
-        useProjectStore.getState().debouncedSaveScene(targetFilePath, updates.content);
-      }
-
-      // Guardar estructura del proyecto con debounce
-      useProjectStore.getState().debouncedSaveProjectData(updatedProject);
-
-      return updatedProject;
-    });
+    const currentActs = useManuscriptStore.getState().acts;
+    setProject((prev) => ({
+      ...prev,
+      acts: currentActs,
+      updatedAt: new Date().toISOString(),
+    }));
   };
 
   // Actualizar configuración del proyecto
@@ -278,7 +190,9 @@ export const App: React.FC = () => {
             const opened = await projectStore.openProjectFolder();
             if (opened) {
               setProject(opened);
+              useThemeStore.getState().syncWithProject(opened);
               const first = opened.acts[0]?.chapters[0]?.scenes[0];
+              useManuscriptStore.getState().loadManuscript(opened.acts, first?.id);
               if (first) setSelectedSceneId(first.id);
               setActiveView("manuscript");
             }
@@ -312,7 +226,9 @@ export const App: React.FC = () => {
                 onSelectProject={(newProj) => {
                   setProject(newProj);
                   useProjectStore.getState().setProject(newProj);
+                  useThemeStore.getState().syncWithProject(newProj);
                   const first = newProj.acts[0]?.chapters[0]?.scenes[0];
+                  useManuscriptStore.getState().loadManuscript(newProj.acts, first?.id);
                   if (first) setSelectedSceneId(first.id);
                   setActiveView("manuscript");
                 }}
@@ -328,7 +244,10 @@ export const App: React.FC = () => {
                   <ManuscriptSidebar
                     project={project}
                     selectedSceneId={selectedSceneId}
-                    onSelectScene={setSelectedSceneId}
+                    onSelectScene={(sceneId) => {
+                      setSelectedSceneId(sceneId);
+                      useManuscriptStore.getState().selectScene(sceneId);
+                    }}
                     onUpdateProject={handleUpdateProject}
                     onCloseSidebar={() => setIsSidebarOpen(false)}
                   />

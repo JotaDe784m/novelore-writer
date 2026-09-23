@@ -264,8 +264,8 @@ export const BookCover: React.FC<BookCoverProps> = ({
 
       {/* Dragging over indicator */}
       {isDragging && (
-        <div className="absolute inset-0 bg-[var(--accent)]/80 z-30 flex flex-col items-center justify-center p-2 text-center text-white">
-          <ImageIcon className="w-5 h-5 mb-1 animate-bounce" />
+        <div className="absolute inset-0 bg-[var(--accent)]/80 z-30 flex flex-col items-center justify-center p-2 text-center text-[var(--accent-contrast)]">
+          <ImageIcon className="w-5 h-5 mb-1 animate-bounce text-[var(--accent-contrast)]" />
           <span className="text-[10px] font-bold">Soltar portada</span>
         </div>
       )}

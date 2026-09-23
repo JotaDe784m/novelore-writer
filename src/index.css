@@ -9,233 +9,346 @@
     --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
 
-    /* Default Clean Minimalism Theme */
-    --bg-main: #FDFDFB;
-    --bg-surface: #F5F5F3;
-    --bg-card: #FFFFFF;
-    --bg-input: #F0F0EE;
-    --text-main: #2D2D2D;
-    --text-body: #4A4A48;
-    --text-muted: #8A8A88;
-    --border-color: #EBEBE9;
-    --accent: #2A2A2A;
-    --accent-hover: #141414;
-    --accent-contrast: #FFFFFF;
-    --accent-subtle: #F0F0EE;
-    --highlight: #2A2A2A;
+    /* Canonical Semantic Tokens (docs/design-system.md) */
+    --bg-app: #F9F9F7;
+    --bg-sidebar: #F3F3F0;
+    --bg-editor: #FCFCFA;
+    --bg-surface-hover: rgba(0, 0, 0, 0.04);
+    --bg-surface-active: rgba(0, 0, 0, 0.08);
+    --text-primary: #18181B;
+    --text-secondary: #3F3F46;
+    --text-muted: #71717A;
+    --border-subtle: rgba(0, 0, 0, 0.06);
+
+    --accent: var(--custom-accent, #18181B);
+    --accent-hover: var(--custom-accent-hover, #09090B);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-readable: var(--custom-accent-readable, var(--accent));
+    --accent-subtle: var(--custom-accent-subtle, rgba(24, 24, 27, 0.08));
+    --highlight: var(--custom-highlight, #18181B);
+
+    /* Backward Compatibility Aliases */
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
   }
 
-  /* Theme: Clean Minimalism (Claro Neutro) - Acento personalizable */
+  /* ATMÓSFERA 1: Claro Editorial (Minimal / Clean) - Blanco marfil neutro */
   .theme-minimal,
   .theme-clean,
   [data-theme="minimal"],
   [data-theme="clean"] {
-    --bg-main: #FCFCFA;
-    --bg-surface: #F4F4F1;
-    --bg-card: #FFFFFF;
-    --bg-input: #ECECE8;
-    --bg-canvas: #F8F8F5;
-    --text-main: #1A1A1A;
-    --text-body: #374151;
-    --text-muted: #6B7280;
-    --border-color: #E5E5DF;
+    --bg-app: #F9F9F7;
+    --bg-sidebar: #F3F3F0;
+    --bg-editor: #FCFCFA;
+    --bg-surface-hover: rgba(0, 0, 0, 0.04);
+    --bg-surface-active: rgba(0, 0, 0, 0.08);
+    --text-primary: #18181B;
+    --text-secondary: #3F3F46;
+    --text-muted: #71717A;
+    --border-subtle: rgba(0, 0, 0, 0.06);
     --accent: var(--custom-accent, #18181B);
     --accent-hover: var(--custom-accent-hover, #09090B);
     --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
-    --accent-subtle: var(--custom-accent-subtle, #F4F4F5);
+    --accent-subtle: var(--custom-accent-subtle, rgba(24, 24, 27, 0.08));
     --highlight: var(--custom-highlight, #18181B);
+
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
   }
 
-  /* Theme: Nordic Daylight (Luz Nórdica - Claridad Ártica) */
-  .theme-light,
-  [data-theme="light"] {
-    --bg-main: #F8FAFC;
-    --bg-surface: #F1F5F9;
-    --bg-card: #FFFFFF;
-    --bg-input: #E2E8F0;
-    --bg-canvas: #F1F5F9;
-    --text-main: #0F172A;
-    --text-body: #334155;
-    --text-muted: #64748B;
-    --border-color: #CBD5E1;
-    --accent: var(--custom-accent, #2563EB);
-    --accent-hover: var(--custom-accent-hover, #1D4ED8);
-    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
-    --accent-subtle: var(--custom-accent-subtle, #EFF6FF);
-    --highlight: var(--custom-highlight, #2563EB);
+  /* ATMÓSFERA 2: Carbón Nocturno (Dark) - Carbón mate de descanso ocular */
+  .theme-dark,
+  [data-theme="dark"] {
+    --bg-app: #101012;
+    --bg-sidebar: #161619;
+    --bg-editor: #141416;
+    --bg-surface-hover: rgba(255, 255, 255, 0.05);
+    --bg-surface-active: rgba(255, 255, 255, 0.1);
+    --text-primary: #F4F4F6;
+    --text-secondary: #D1D1DB;
+    --text-muted: #8E8E9B;
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --accent: var(--custom-accent, #E5A93C);
+    --accent-hover: var(--custom-accent-hover, #D99B26);
+    --accent-contrast: var(--custom-accent-contrast, #121214);
+    --accent-subtle: var(--custom-accent-subtle, rgba(229, 169, 60, 0.15));
+    --highlight: var(--custom-highlight, #F59E0B);
+
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
   }
 
-  /* Theme: Sepia / Fantasy (Fantasía Épica - Pergamino Dorado) */
+  /* ATMÓSFERA 3: Pergamino Fantasía (Sepia / Fantasy) - Papel añejo y tinta nogalina */
   .theme-sepia,
   .theme-fantasy,
   [data-theme="sepia"],
   [data-theme="fantasy"] {
-    --bg-main: #FAF5E8;
-    --bg-surface: #F2E9D4;
-    --bg-card: #FFFDF8;
-    --bg-input: #E8DDC3;
-    --bg-canvas: #F5ECD8;
-    --text-main: #2D1E14;
-    --text-body: #4A3423;
-    --text-muted: #7D6752;
-    --border-color: #DCCBB0;
+    --bg-app: #F4ECE0;
+    --bg-sidebar: #EEE4D4;
+    --bg-editor: #F8F3EA;
+    --bg-surface-hover: rgba(80, 50, 20, 0.06);
+    --bg-surface-active: rgba(80, 50, 20, 0.12);
+    --text-primary: #2A1B10;
+    --text-secondary: #493322;
+    --text-muted: #7E644D;
+    --border-subtle: rgba(80, 50, 20, 0.08);
     --accent: var(--custom-accent, #92400E);
     --accent-hover: var(--custom-accent-hover, #78350F);
     --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
-    --accent-subtle: var(--custom-accent-subtle, #F6EBCE);
+    --accent-subtle: var(--custom-accent-subtle, rgba(146, 64, 14, 0.12));
     --highlight: var(--custom-highlight, #B45309);
+
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
   }
 
-  /* Theme: Dark (Oscuro Neutro) - Carbón mate de descanso ocular, acento personalizable */
-  .theme-dark,
-  [data-theme="dark"] {
-    --bg-main: #121214;
-    --bg-surface: #1A1A1E;
-    --bg-card: #222228;
-    --bg-input: #17171B;
-    --bg-canvas: #0E0E10;
-    --text-main: #F4F4F6;
-    --text-body: #D1D1DB;
-    --text-muted: #9494A3;
-    --border-color: #2D2D38;
-    --accent: var(--custom-accent, #E5A93C);
-    --accent-hover: var(--custom-accent-hover, #D99B26);
-    --accent-contrast: var(--custom-accent-contrast, #121214);
-    --accent-subtle: var(--custom-accent-subtle, #2A2216);
-    --highlight: var(--custom-highlight, #F59E0B);
-  }
-
-  /* Theme: Sci-Fi & Cyberpunk (Ciberespacio) */
-  .theme-scifi,
-  [data-theme="scifi"] {
-    --bg-main: #0B0E14;
-    --bg-surface: #111722;
-    --bg-card: #162030;
-    --bg-input: #0E141E;
-    --bg-canvas: #080B10;
-    --text-main: #E0F2FE;
-    --text-body: #BAE6FD;
-    --text-muted: #38BDF8;
-    --border-color: #1E293B;
-    --accent: var(--custom-accent, #00D8F6);
-    --accent-hover: var(--custom-accent-hover, #06B6D4);
-    --accent-contrast: var(--custom-accent-contrast, #082F49);
-    --accent-subtle: var(--custom-accent-subtle, #083344);
-    --highlight: var(--custom-highlight, #00D8F6);
-  }
-
-  /* Theme: Noir & Mystery (Novela Negra / Noir Clásico) */
-  .theme-noir,
-  [data-theme="noir"] {
-    --bg-main: #141416;
-    --bg-surface: #1B1B1E;
-    --bg-card: #232328;
-    --bg-input: #18181C;
-    --bg-canvas: #0F0F11;
-    --text-main: #F4F4F5;
-    --text-body: #D4D4D8;
-    --text-muted: #A1A1AA;
-    --border-color: #2E2E36;
-    --accent: var(--custom-accent, #E11D48);
-    --accent-hover: var(--custom-accent-hover, #BE123C);
-    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
-    --accent-subtle: var(--custom-accent-subtle, #30111A);
-    --highlight: var(--custom-highlight, #F43F5E);
-  }
-
-  /* Theme: Gothic & Horror (Cripta Gótica) */
-  .theme-gothic,
-  [data-theme="gothic"] {
-    --bg-main: #12090D;
-    --bg-surface: #1A0F15;
-    --bg-card: #24141D;
-    --bg-input: #160D12;
-    --bg-canvas: #0D070A;
-    --text-main: #FDE8EF;
-    --text-body: #E7B8C8;
-    --text-muted: #9D6379;
-    --border-color: #381928;
-    --accent: var(--custom-accent, #BE185D);
-    --accent-hover: var(--custom-accent-hover, #9D174D);
-    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
-    --accent-subtle: var(--custom-accent-subtle, #2D0B1B);
-    --highlight: var(--custom-highlight, #DB2777);
-  }
-
-  /* Theme: Romance & Drama (Atardecer Rosa) */
-  .theme-romance,
-  [data-theme="romance"] {
-    --bg-main: #FFF8F6;
-    --bg-surface: #FDF0EB;
-    --bg-card: #FFFFFF;
-    --bg-input: #F7E4DC;
-    --bg-canvas: #FCF1EC;
-    --text-main: #331A1D;
-    --text-body: #5A353A;
-    --text-muted: #96676E;
-    --border-color: #ECD2C8;
-    --accent: var(--custom-accent, #E11D48);
-    --accent-hover: var(--custom-accent-hover, #BE123C);
-    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
-    --accent-subtle: var(--custom-accent-subtle, #FFE4E6);
-    --highlight: var(--custom-highlight, #FB7185);
-  }
-
-  /* Theme: Forest & Adventure (Biblioteca Silvestre) */
+  /* ATMÓSFERA 4: Bosque Brumoso (Forest) - Verde pino profundo y niebla botánica */
   .theme-forest,
   [data-theme="forest"] {
-    --bg-main: #0A1510;
-    --bg-surface: #112019;
-    --bg-card: #162820;
-    --bg-input: #0E1A14;
-    --bg-canvas: #08120D;
-    --text-main: #F0FDF4;
-    --text-body: #DCFCE7;
-    --text-muted: #86EFAC;
-    --border-color: #1E382D;
+    --bg-app: #0A130F;
+    --bg-sidebar: #101D17;
+    --bg-editor: #0D1813;
+    --bg-surface-hover: rgba(255, 255, 255, 0.05);
+    --bg-surface-active: rgba(255, 255, 255, 0.1);
+    --text-primary: #ECFDF5;
+    --text-secondary: #D1FAE5;
+    --text-muted: #6EE7B7;
+    --border-subtle: rgba(255, 255, 255, 0.07);
     --accent: var(--custom-accent, #10B981);
     --accent-hover: var(--custom-accent-hover, #059669);
     --accent-contrast: var(--custom-accent-contrast, #041A12);
-    --accent-subtle: var(--custom-accent-subtle, #0D2E22);
+    --accent-subtle: var(--custom-accent-subtle, rgba(16, 185, 129, 0.15));
     --highlight: var(--custom-highlight, #34D399);
+
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
   }
 
-  /* Theme: Midnight & Thriller (Medianoche Táctico) */
+  /* ATMÓSFERA 5: Medianoche (Midnight) - Azul marino abisal de baja saturación */
   .theme-midnight,
   [data-theme="midnight"] {
-    --bg-main: #090D1A;
-    --bg-surface: #10162A;
-    --bg-card: #17203A;
-    --bg-input: #0D1322;
-    --bg-canvas: #070A15;
-    --text-main: #F0F4FF;
-    --text-body: #C7D2FE;
+    --bg-app: #090D18;
+    --bg-sidebar: #101626;
+    --bg-editor: #0C1220;
+    --bg-surface-hover: rgba(255, 255, 255, 0.05);
+    --bg-surface-active: rgba(255, 255, 255, 0.1);
+    --text-primary: #F0F4FF;
+    --text-secondary: #C7D2FE;
     --text-muted: #818CF8;
-    --border-color: #1E2B4E;
+    --border-subtle: rgba(255, 255, 255, 0.07);
     --accent: var(--custom-accent, #38BDF8);
     --accent-hover: var(--custom-accent-hover, #0284C7);
     --accent-contrast: var(--custom-accent-contrast, #050B16);
-    --accent-subtle: var(--custom-accent-subtle, #132040);
+    --accent-subtle: var(--custom-accent-subtle, rgba(56, 189, 248, 0.15));
     --highlight: var(--custom-highlight, #38BDF8);
+
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
   }
 
-  /* Theme: Magical Realism & Poetry (Lavanda Onírica) */
+  /* ATMÓSFERA 6: Noir Monocromo (Noir) - Escala de grises pura cinematográfica */
+  .theme-noir,
+  [data-theme="noir"] {
+    --bg-app: #0E0E10;
+    --bg-sidebar: #141416;
+    --bg-editor: #111113;
+    --bg-surface-hover: rgba(255, 255, 255, 0.05);
+    --bg-surface-active: rgba(255, 255, 255, 0.1);
+    --text-primary: #F4F4F5;
+    --text-secondary: #D4D4D8;
+    --text-muted: #A1A1AA;
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --accent: var(--custom-accent, #E11D48);
+    --accent-hover: var(--custom-accent-hover, #BE123C);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-subtle: var(--custom-accent-subtle, rgba(225, 29, 72, 0.15));
+    --highlight: var(--custom-highlight, #F43F5E);
+
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
+  }
+
+  /* ATMÓSFERAS COMPLEMENTARIAS */
+  /* Ciencia Ficción (Sci-Fi) */
+  .theme-scifi,
+  [data-theme="scifi"] {
+    --bg-app: #090C12;
+    --bg-sidebar: #0F1522;
+    --bg-editor: #0C111A;
+    --bg-surface-hover: rgba(255, 255, 255, 0.05);
+    --bg-surface-active: rgba(255, 255, 255, 0.1);
+    --text-primary: #E0F2FE;
+    --text-secondary: #BAE6FD;
+    --text-muted: #38BDF8;
+    --border-subtle: rgba(56, 189, 248, 0.12);
+    --accent: var(--custom-accent, #00D8F6);
+    --accent-hover: var(--custom-accent-hover, #06B6D4);
+    --accent-contrast: var(--custom-accent-contrast, #082F49);
+    --accent-subtle: var(--custom-accent-subtle, rgba(0, 216, 246, 0.15));
+    --highlight: var(--custom-highlight, #00D8F6);
+
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
+  }
+
+  /* Terror & Gótico (Gothic) */
+  .theme-gothic,
+  [data-theme="gothic"] {
+    --bg-app: #10080B;
+    --bg-sidebar: #170D12;
+    --bg-editor: #130A0E;
+    --bg-surface-hover: rgba(255, 255, 255, 0.05);
+    --bg-surface-active: rgba(255, 255, 255, 0.1);
+    --text-primary: #FDE8EF;
+    --text-secondary: #E7B8C8;
+    --text-muted: #9D6379;
+    --border-subtle: rgba(190, 24, 93, 0.14);
+    --accent: var(--custom-accent, #BE185D);
+    --accent-hover: var(--custom-accent-hover, #9D174D);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-subtle: var(--custom-accent-subtle, rgba(190, 24, 93, 0.15));
+    --highlight: var(--custom-highlight, #DB2777);
+
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
+  }
+
+  /* Romance & Drama (Romance) */
+  .theme-romance,
+  [data-theme="romance"] {
+    --bg-app: #FFF3F0;
+    --bg-sidebar: #FCEBE6;
+    --bg-editor: #FFF8F6;
+    --bg-surface-hover: rgba(225, 29, 72, 0.04);
+    --bg-surface-active: rgba(225, 29, 72, 0.08);
+    --text-primary: #331A1D;
+    --text-secondary: #5A353A;
+    --text-muted: #96676E;
+    --border-subtle: rgba(225, 29, 72, 0.08);
+    --accent: var(--custom-accent, #E11D48);
+    --accent-hover: var(--custom-accent-hover, #BE123C);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-subtle: var(--custom-accent-subtle, rgba(225, 29, 72, 0.12));
+    --highlight: var(--custom-highlight, #FB7185);
+
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
+  }
+
+  /* Lavanda Onírica (Dream) */
   .theme-dream,
   [data-theme="dream"] {
-    --bg-main: #12101C;
-    --bg-surface: #1A1728;
-    --bg-card: #231F36;
-    --bg-input: #161323;
-    --bg-canvas: #0E0C17;
-    --text-main: #F5F0FF;
-    --text-body: #D8CEF6;
+    --bg-app: #100E1A;
+    --bg-sidebar: #171424;
+    --bg-editor: #13111E;
+    --bg-surface-hover: rgba(255, 255, 255, 0.05);
+    --bg-surface-active: rgba(255, 255, 255, 0.1);
+    --text-primary: #F5F0FF;
+    --text-secondary: #D8CEF6;
     --text-muted: #9588BA;
-    --border-color: #2F2948;
+    --border-subtle: rgba(168, 85, 247, 0.12);
     --accent: var(--custom-accent, #A855F7);
     --accent-hover: var(--custom-accent-hover, #9333EA);
     --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
-    --accent-subtle: var(--custom-accent-subtle, #24133A);
+    --accent-subtle: var(--custom-accent-subtle, rgba(168, 85, 247, 0.15));
     --highlight: var(--custom-highlight, #C084FC);
+
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
+  }
+
+  /* Luz Nórdica (Light) */
+  .theme-light,
+  [data-theme="light"] {
+    --bg-app: #F4F7FB;
+    --bg-sidebar: #EAF0F8;
+    --bg-editor: #F9FBFE;
+    --bg-surface-hover: rgba(0, 0, 0, 0.04);
+    --bg-surface-active: rgba(0, 0, 0, 0.08);
+    --text-primary: #0F172A;
+    --text-secondary: #334155;
+    --text-muted: #64748B;
+    --border-subtle: rgba(0, 0, 0, 0.06);
+    --accent: var(--custom-accent, #2563EB);
+    --accent-hover: var(--custom-accent-hover, #1D4ED8);
+    --accent-contrast: var(--custom-accent-contrast, #FFFFFF);
+    --accent-subtle: var(--custom-accent-subtle, rgba(37, 99, 235, 0.1));
+    --highlight: var(--custom-highlight, #2563EB);
+
+    --bg-main: var(--bg-app);
+    --bg-surface: var(--bg-sidebar);
+    --bg-card: var(--bg-editor);
+    --bg-input: var(--bg-surface-hover);
+    --bg-canvas: var(--bg-editor);
+    --text-main: var(--text-primary);
+    --text-body: var(--text-secondary);
+    --border-color: var(--border-subtle);
   }
 }
 
@@ -272,6 +385,19 @@ a.bg-\[var\(--accent\)\],
 .accent-btn,
 .accent-badge {
   color: var(--accent-contrast) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.dark button.bg-\[var\(--accent\)\],
+.dark a.bg-\[var\(--accent\)\],
+.dark .accent-btn,
+.dark .accent-badge,
+[data-theme="dark"] button.bg-\[var\(--accent\)\],
+[data-theme="dark"] a.bg-\[var\(--accent\)\],
+[data-theme="dark"] .accent-btn,
+[data-theme="dark"] .accent-badge {
+  color: var(--accent-contrast) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 button.bg-\[var\(--accent\)\] svg,
@@ -285,6 +411,41 @@ a.bg-\[var\(--accent\)\] svg,
 button.bg-\[var\(--accent\)\] span,
 a.bg-\[var\(--accent\)\] span {
   color: inherit !important;
+}
+
+/* Guarantee text and icons with text-[var(--accent)] adapt to readable contrast on surface */
+.text-\[var\(--accent\)\] {
+  color: var(--accent-readable, var(--accent)) !important;
+}
+
+.text-\[var\(--accent\)\] svg {
+  color: var(--accent-readable, var(--accent)) !important;
+  stroke: currentColor !important;
+}
+
+.text-\[var\(--accent-contrast\)\] {
+  color: var(--accent-contrast) !important;
+}
+
+.text-\[var\(--accent-contrast\)\] svg {
+  color: var(--accent-contrast) !important;
+  stroke: currentColor !important;
+}
+
+.border-\[var\(--accent\)\] {
+  border-color: var(--accent-readable, var(--accent)) !important;
+}
+
+.focus\:border-\[var\(--accent\)\]:focus {
+  border-color: var(--accent-readable, var(--accent)) !important;
+}
+
+.hover\:border-\[var\(--accent\)\]:hover {
+  border-color: var(--accent-readable, var(--accent)) !important;
+}
+
+.ring-\[var\(--accent\)\] {
+  --tw-ring-color: var(--accent-readable, var(--accent)) !important;
 }
 
 html,
@@ -425,3 +586,36 @@ body,
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Design System Utilities (docs/design-system.md) */
+.surface-app {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+}
+
+.surface-sidebar {
+  background-color: var(--bg-sidebar);
+  color: var(--text-secondary);
+}
+
+.surface-editor {
+  background-color: var(--bg-editor);
+  color: var(--text-primary);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: none;
+  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-ghost:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.btn-ghost:active {
+  background-color: var(--bg-surface-active);
+}
+

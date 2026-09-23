@@ -27,11 +27,12 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Implementar gestor de historial de proyectos recientes en almacenamiento de configuración local (`userData/recent-projects.json`).
 - [x] Inicialización de escenas en blanco (`.md`) y soporte para edición de metadatos (título, autor, sinopsis, género, metas) desde el inicio y el editor.
 
-### Subfase 1.2: Tokens de Diseño, Temas Atmosféricos & Store Modular (Zustand)
-- Implementar el sistema de tokens semánticos en `src/index.css` (`--bg-app`, `--bg-sidebar`, `--bg-editor`, `--bg-surface-hover`, `--text-primary`, `--accent`) eliminando bordes duros por defecto.
-- Refactorizar el catálogo de temas como **Atmósferas Visuales** (Claro Editorial, Carbón Nocturno, Pergamino Fantasía, Bosque Brumoso, Medianoche, Noir) con acento personalizable y guardado dual (preferencia global o por proyecto).
-- Implementar `useProjectStore` y `useManuscriptStore` en Zustand, eliminando el estado monolítico centralizado.
-- Implementar adaptadores de lectura y escritura atómica en disco (`node:fs/promises`) con debounce de 500 ms.
+### Subfase 1.2: Tokens de Diseño, Temas Atmosféricos & Store Modular (Zustand) [COMPLETADA]
+- [x] Implementar el sistema de tokens semánticos en `src/index.css` (`--bg-app`, `--bg-sidebar`, `--bg-editor`, `--bg-surface-hover`, `--bg-surface-active`, `--text-primary`, `--text-secondary`, `--text-muted`, `--accent`, `--border-subtle`) eliminando bordes duros por defecto.
+- [x] Refactorizar el catálogo de temas como **Atmósferas Visuales** (Claro Editorial, Carbón Nocturno, Pergamino Fantasía, Bosque Brumoso, Medianoche, Noir y complementarios) con acento personalizable e independencia tipográfica.
+- [x] Implementar `useThemeStore` con soporte para persistencia dual (global en `localStorage` o exclusiva de novela en `project.json`).
+- [x] Implementar `useManuscriptStore` en Zustand desacoplando la jerarquía de actos, capítulos, escenas y selección activa.
+- [x] Persistencia atómica de archivos Markdown de escenas (`esc-X.md`) con debounce de 500 ms coordinada desde Zustand.
 
 ### Subfase 1.3: Árbol del Manuscrito & Navegación (Estilo Obsidian / Scrivener)
 - Rediseñar `ManuscriptSidebar.tsx` bajo las reglas de `docs/design-system.md`:

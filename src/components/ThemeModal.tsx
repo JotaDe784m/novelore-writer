@@ -15,12 +15,18 @@ import {
   Layers,
 } from "lucide-react";
 import { NovelProject } from "../types";
+import {
+  useThemeStore,
+  getReadableAccent,
+  getContrastColor,
+  applyStylesToDOM,
+} from "../stores/useThemeStore";
 
 export interface ThemeOption {
   id: string;
   name: string;
   genre: string;
-  category: "neutral" | "genre" | "mood";
+  category: "literary" | "genre" | "neutral" | "mood";
   description: string;
   isDark: boolean;
   allowsCustomAccent: boolean;
@@ -39,62 +45,122 @@ export interface ThemeOption {
 export const THEME_CATALOG: ThemeOption[] = [
   {
     id: "minimal",
-    name: "Claro Neutro",
-    genre: "Minimalismo Editorial & Ensayo",
-    category: "neutral",
+    name: "Claro Editorial",
+    genre: "Minimalismo & Ensayo",
+    category: "literary",
     description:
-      "Lienzo blanco neutral de máxima claridad tipográfica. Libre de distracciones para escribir de día con pulcritud y enfoque absoluto.",
+      "Lienzo blanco marfil neutro de máxima claridad tipográfica. Libre de distracciones para escribir con pulcritud y enfoque absoluto.",
     isDark: false,
     allowsCustomAccent: true,
     palette: {
-      bgMain: "#FCFCFA",
-      bgSurface: "#F4F4F1",
-      bgCard: "#FFFFFF",
-      border: "#E5E5DF",
-      textMain: "#1A1A1A",
-      textBody: "#374151",
-      textMuted: "#6B7280",
+      bgMain: "#F9F9F7",
+      bgSurface: "#F3F3F0",
+      bgCard: "#FCFCFA",
+      border: "rgba(0, 0, 0, 0.06)",
+      textMain: "#18181B",
+      textBody: "#3F3F46",
+      textMuted: "#71717A",
       defaultAccent: "#18181B",
     },
   },
   {
     id: "dark",
-    name: "Oscuro Neutro",
+    name: "Carbón Nocturno",
     genre: "Descanso Ocular & Noche",
-    category: "neutral",
+    category: "literary",
     description:
       "Superficie carbón mate profunda sin reflejos agresivos. Diseñada para proteger la vista en sesiones prolongadas de escritura nocturna.",
     isDark: true,
     allowsCustomAccent: true,
     palette: {
-      bgMain: "#121214",
-      bgSurface: "#1A1A1E",
-      bgCard: "#222228",
-      border: "#2D2D38",
+      bgMain: "#101012",
+      bgSurface: "#161619",
+      bgCard: "#141416",
+      border: "rgba(255, 255, 255, 0.07)",
       textMain: "#F4F4F6",
       textBody: "#D1D1DB",
-      textMuted: "#9494A3",
+      textMuted: "#8E8E9B",
       defaultAccent: "#E5A93C",
     },
   },
   {
     id: "sepia",
-    name: "Fantasía Épica",
-    genre: "Fantasía & Crónicas Históricas",
-    category: "genre",
+    name: "Pergamino Fantasía",
+    genre: "Fantasía Épica & Crónicas",
+    category: "literary",
     description:
-      "Tonalidad cálida de pergamino antiguo y tinta nogalina. Conecta con la atmósfera de bibliotecas medievales, mapas y reinos legendarios.",
+      "Tonalidad cálida de papel añejo y tinta nogalina. Conecta con la atmósfera de bibliotecas medievales, mapas y reinos legendarios.",
     isDark: false,
     allowsCustomAccent: true,
     palette: {
-      bgMain: "#FAF5E8",
-      bgSurface: "#F2E9D4",
-      bgCard: "#FFFDF8",
-      border: "#DCCBB0",
-      textMain: "#2D1E14",
-      textBody: "#4A3423",
-      textMuted: "#7D6752",
+      bgMain: "#F4ECE0",
+      bgSurface: "#EEE4D4",
+      bgCard: "#F8F3EA",
+      border: "rgba(80, 50, 20, 0.08)",
+      textMain: "#2A1B10",
+      textBody: "#493322",
+      textMuted: "#7E644D",
       defaultAccent: "#92400E",
+    },
+  },
+  {
+    id: "forest",
+    name: "Bosque Brumoso",
+    genre: "Aventura, Naturaleza & Realismo",
+    category: "literary",
+    description:
+      "Verde pino profundo y niebla botánica serena. Evoca caminatas entre senderos húmedos, cabañas lejanas y una calma inmersiva.",
+    isDark: true,
+    allowsCustomAccent: true,
+    palette: {
+      bgMain: "#0A130F",
+      bgSurface: "#101D17",
+      bgCard: "#0D1813",
+      border: "rgba(255, 255, 255, 0.07)",
+      textMain: "#ECFDF5",
+      textBody: "#D1FAE5",
+      textMuted: "#6EE7B7",
+      defaultAccent: "#10B981",
+    },
+  },
+  {
+    id: "midnight",
+    name: "Medianoche",
+    genre: "Thriller, Espionaje & Tensión",
+    category: "literary",
+    description:
+      "Azul marino abisal de baja saturación con acentos cian tenues. Proyecta concentración rigurosa y misterio nocturno.",
+    isDark: true,
+    allowsCustomAccent: true,
+    palette: {
+      bgMain: "#090D18",
+      bgSurface: "#101626",
+      bgCard: "#0C1220",
+      border: "rgba(255, 255, 255, 0.07)",
+      textMain: "#F0F4FF",
+      textBody: "#C7D2FE",
+      textMuted: "#818CF8",
+      defaultAccent: "#38BDF8",
+    },
+  },
+  {
+    id: "noir",
+    name: "Noir Monocromo",
+    genre: "Policiaco, Intriga & Misterio",
+    category: "literary",
+    description:
+      "Claroscuro cinematográfico en escala de grises pura. Alto contraste monocromático con un destello carmesí de peligro.",
+    isDark: true,
+    allowsCustomAccent: true,
+    palette: {
+      bgMain: "#0E0E10",
+      bgSurface: "#141416",
+      bgCard: "#111113",
+      border: "rgba(255, 255, 255, 0.07)",
+      textMain: "#F4F4F5",
+      textBody: "#D4D4D8",
+      textMuted: "#A1A1AA",
+      defaultAccent: "#E11D48",
     },
   },
   {
@@ -103,14 +169,14 @@ export const THEME_CATALOG: ThemeOption[] = [
     genre: "Cyberpunk & Distopía Espacial",
     category: "genre",
     description:
-      "Gris obsidiana metálico con acentos cian eléctrico y neón azul. Evoca interfaces de naves interestelares, inteligencias sintéticas y futuros lejanos.",
+      "Gris obsidiana metálico con acentos cian eléctrico y neón azul. Evoca interfaces de naves interestelares y futuros lejanos.",
     isDark: true,
     allowsCustomAccent: true,
     palette: {
-      bgMain: "#0B0E14",
-      bgSurface: "#111722",
-      bgCard: "#162030",
-      border: "#1E293B",
+      bgMain: "#090C12",
+      bgSurface: "#0F1522",
+      bgCard: "#0C111A",
+      border: "rgba(56, 189, 248, 0.12)",
       textMain: "#E0F2FE",
       textBody: "#BAE6FD",
       textMuted: "#38BDF8",
@@ -118,39 +184,19 @@ export const THEME_CATALOG: ThemeOption[] = [
     },
   },
   {
-    id: "noir",
-    name: "Novela Negra",
-    genre: "Noir, Policiaco & Misterio",
-    category: "genre",
-    description:
-      "Claroscuro cinematográfico de asfalto mojado y persianas venecianas. Alto contraste monocromático con un destello carmesí de peligro e intriga.",
-    isDark: true,
-    allowsCustomAccent: true,
-    palette: {
-      bgMain: "#141416",
-      bgSurface: "#1B1B1E",
-      bgCard: "#232328",
-      border: "#2E2E36",
-      textMain: "#F4F4F5",
-      textBody: "#D4D4D8",
-      textMuted: "#A1A1AA",
-      defaultAccent: "#E11D48",
-    },
-  },
-  {
     id: "gothic",
     name: "Terror & Gótico",
-    genre: "Terror, Horror & Thriller Psicológico",
+    genre: "Horror, Suspense & Mansiones",
     category: "genre",
     description:
-      "Sombras lúgubres de cripta y terciopelo borgoña envejecido. Ideal para sumergirse en relatos de suspense ominoso, pesadillas y mansiones victorianas.",
+      "Sombras lúgubres de cripta y terciopelo borgoña envejecido. Ideal para sumergirse en relatos de suspense ominoso y pesadillas victorianas.",
     isDark: true,
     allowsCustomAccent: true,
     palette: {
-      bgMain: "#12090D",
-      bgSurface: "#1A0F15",
-      bgCard: "#24141D",
-      border: "#381928",
+      bgMain: "#10080B",
+      bgSurface: "#170D12",
+      bgCard: "#130A0E",
+      border: "rgba(190, 24, 93, 0.14)",
       textMain: "#FDE8EF",
       textBody: "#E7B8C8",
       textMuted: "#9D6379",
@@ -160,17 +206,17 @@ export const THEME_CATALOG: ThemeOption[] = [
   {
     id: "romance",
     name: "Romance & Drama",
-    genre: "Romántica, Drama & Sentimental",
+    genre: "Lírica, Recuerdos & Sentimental",
     category: "genre",
     description:
-      "Matices melocotón empolvado, rosa cálido y suavidad crepuscular. Transmite intimidad emocional, calidez de recuerdos y belleza lírica.",
+      "Matices melocotón empolvado, rosa cálido y suavidad crepuscular. Transmite intimidad emocional y belleza poética.",
     isDark: false,
     allowsCustomAccent: true,
     palette: {
-      bgMain: "#FFF8F6",
-      bgSurface: "#FDF0EB",
-      bgCard: "#FFFFFF",
-      border: "#ECD2C8",
+      bgMain: "#FFF3F0",
+      bgSurface: "#FCEBE6",
+      bgCard: "#FFF8F6",
+      border: "rgba(225, 29, 72, 0.08)",
       textMain: "#331A1D",
       textBody: "#5A353A",
       textMuted: "#96676E",
@@ -178,59 +224,19 @@ export const THEME_CATALOG: ThemeOption[] = [
     },
   },
   {
-    id: "forest",
-    name: "Bosque Silvestre",
-    genre: "Aventura, Naturaleza & Realismo",
-    category: "mood",
-    description:
-      "Verde pino profundo y musgo botánico sereno. Evoca caminatas entre niebla boscosa, cabañas lejanas y una calma orgánica inmersiva.",
-    isDark: true,
-    allowsCustomAccent: true,
-    palette: {
-      bgMain: "#0A1510",
-      bgSurface: "#112019",
-      bgCard: "#162820",
-      border: "#1E382D",
-      textMain: "#F0FDF4",
-      textBody: "#DCFCE7",
-      textMuted: "#86EFAC",
-      defaultAccent: "#10B981",
-    },
-  },
-  {
-    id: "midnight",
-    name: "Medianoche Táctico",
-    genre: "Thriller, Espionaje & Acción",
-    category: "mood",
-    description:
-      "Azul zafiro abisal y acero frío militar. Proyecta concentración rigurosa, tensión calculada y elegancia ejecutiva nocturna.",
-    isDark: true,
-    allowsCustomAccent: true,
-    palette: {
-      bgMain: "#090D1A",
-      bgSurface: "#10162A",
-      bgCard: "#17203A",
-      border: "#1E2B4E",
-      textMain: "#F0F4FF",
-      textBody: "#C7D2FE",
-      textMuted: "#818CF8",
-      defaultAccent: "#38BDF8",
-    },
-  },
-  {
     id: "dream",
     name: "Lavanda Onírica",
-    genre: "Realismo Mágico, Poesía & Ensueño",
-    category: "mood",
+    genre: "Realismo Mágico & Ensueño",
+    category: "genre",
     description:
-      "Púrpura amatista crepuscular con destellos violeta etéreos. Para historias poéticas donde la frontera entre vigilia y sueño se disuelve.",
+      "Púrpura amatista crepuscular con destellos violeta etéreos. Para historias donde la frontera entre vigilia y sueño se disuelve.",
     isDark: true,
     allowsCustomAccent: true,
     palette: {
-      bgMain: "#12101C",
-      bgSurface: "#1A1728",
-      bgCard: "#231F36",
-      border: "#2F2948",
+      bgMain: "#100E1A",
+      bgSurface: "#171424",
+      bgCard: "#13111E",
+      border: "rgba(168, 85, 247, 0.12)",
       textMain: "#F5F0FF",
       textBody: "#D8CEF6",
       textMuted: "#9588BA",
@@ -240,17 +246,17 @@ export const THEME_CATALOG: ThemeOption[] = [
   {
     id: "light",
     name: "Luz Nórdica",
-    genre: "No Ficción, Filosofía & Claridad Ártica",
-    category: "neutral",
+    genre: "Filosofía & Claridad Ártica",
+    category: "genre",
     description:
-      "Claridad escandinava con sutiles matices azul pálido y acento cobalto. Inspirada en la luz fría de las mañanas boreales y la precisión analítica.",
+      "Claridad escandinava con sutiles matices azul pálido y acento cobalto. Inspirada en la luz fría de las mañanas boreales.",
     isDark: false,
     allowsCustomAccent: true,
     palette: {
-      bgMain: "#F8FAFC",
-      bgSurface: "#F1F5F9",
-      bgCard: "#FFFFFF",
-      border: "#CBD5E1",
+      bgMain: "#F4F7FB",
+      bgSurface: "#EAF0F8",
+      bgCard: "#F9FBFE",
+      border: "rgba(0, 0, 0, 0.06)",
       textMain: "#0F172A",
       textBody: "#334155",
       textMuted: "#64748B",
@@ -259,9 +265,11 @@ export const THEME_CATALOG: ThemeOption[] = [
   },
 ];
 
-// Presets for customizable accents
-const ACCENT_PRESETS = [
+// Presets universales de acento: el autor puede elegir libremente cualquier color
+export const ACCENT_PRESETS = [
   { name: "Blanco Puro", color: "#FFFFFF" },
+  { name: "Tinta Pura", color: "#18181B" },
+  { name: "Titanio / Grafito", color: "#71717A" },
   { name: "Ámbar Dorado", color: "#E5A93C" },
   { name: "Azul Cobalto", color: "#2563EB" },
   { name: "Esmeralda Viva", color: "#10B981" },
@@ -270,8 +278,6 @@ const ACCENT_PRESETS = [
   { name: "Cobre Terracota", color: "#EA580C" },
   { name: "Cian Neón", color: "#00D8F6" },
   { name: "Rosa Vibrante", color: "#EC4899" },
-  { name: "Titanio / Grafito", color: "#71717A" },
-  { name: "Tinta Pura", color: "#18181B" },
 ];
 
 interface ThemeModalProps {
@@ -287,8 +293,9 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
   project,
   onUpdateProject,
 }) => {
+  const { scope, setScope, setTheme: setStoreTheme, setCustomAccent: setStoreAccent } = useThemeStore();
   const currentThemeId = project.settings.theme || "minimal";
-  const [selectedCategory, setSelectedCategory] = useState<"all" | "neutral" | "genre" | "mood">("all");
+  const [selectedCategory, setSelectedCategory] = useState<"all" | "literary" | "genre">("all");
   const [toneFilter, setToneFilter] = useState<"all" | "light" | "dark">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -357,114 +364,31 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
     };
   }, []);
 
-  // Instant DOM style update helper to avoid UI freezing during color wheel drag
+  // Instant DOM style update helper with guaranteed contrast adaptation
   const applyInstantAccent = (color: string) => {
-    const clean = color.replace("#", "");
-    let lum = 0.5;
-    if (clean.length === 6) {
-      const r = parseInt(clean.substring(0, 2), 16) / 255;
-      const g = parseInt(clean.substring(2, 4), 16) / 255;
-      const b = parseInt(clean.substring(4, 6), 16) / 255;
-      lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    }
-    const contrast = lum > 0.45 ? (activeTheme.isDark ? "#121214" : "#18181B") : "#FFFFFF";
-    const rootStyle = document.documentElement.style;
-    rootStyle.setProperty("--custom-accent", color);
-    rootStyle.setProperty("--custom-highlight", color);
-    rootStyle.setProperty("--custom-accent-hover", color);
-    rootStyle.setProperty("--custom-accent-contrast", contrast);
-    rootStyle.setProperty("--custom-accent-subtle", `${color}25`);
+    applyStylesToDOM(currentThemeId, color);
   };
 
   const handleSelectTheme = (themeId: string) => {
-    const isTargetNeutral = themeId === "minimal" || themeId === "dark";
-    const isCurrentNeutral = currentThemeId === "minimal" || currentThemeId === "dark";
-
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
 
     const targetThemeObj = THEME_CATALOG.find((t) => t.id === themeId) || THEME_CATALOG[0];
+    setLocalAccent(targetThemeObj.palette.defaultAccent);
 
-    if (isTargetNeutral) {
-      // Switching to a neutral theme: restore saved neutral accent if previously customized
-      const savedNeutral =
-        typeof window !== "undefined"
-          ? localStorage.getItem("novelore_neutral_accent")
-          : null;
-      const targetAccent = savedNeutral || undefined;
-
-      if (targetAccent) {
-        applyInstantAccent(targetAccent);
-        setLocalAccent(targetAccent);
-      } else {
-        setLocalAccent(targetThemeObj.palette.defaultAccent);
-        const rootStyle = document.documentElement.style;
-        rootStyle.removeProperty("--custom-accent");
-        rootStyle.removeProperty("--custom-highlight");
-        rootStyle.removeProperty("--custom-accent-hover");
-        rootStyle.removeProperty("--custom-accent-contrast");
-        rootStyle.removeProperty("--custom-accent-subtle");
-      }
-
-      onUpdateProject((p) => ({
-        ...p,
-        settings: {
-          ...p.settings,
-          theme: themeId as any,
-          customAccentColor: targetAccent,
-        },
-      }));
-    } else {
-      // Switching to a non-neutral theme (fantasy, scifi, noir, gothic, romance, etc.):
-      // Preserve neutral accent in localStorage if we were currently in a neutral theme with custom accent
-      if (isCurrentNeutral && project.settings.customAccentColor) {
-        if (typeof window !== "undefined") {
-          localStorage.setItem("novelore_neutral_accent", project.settings.customAccentColor);
-        }
-      }
-
-      // Restore the non-neutral theme's original focus color cleanly
-      setLocalAccent(targetThemeObj.palette.defaultAccent);
-
-      const rootStyle = document.documentElement.style;
-      rootStyle.removeProperty("--custom-accent");
-      rootStyle.removeProperty("--custom-highlight");
-      rootStyle.removeProperty("--custom-accent-hover");
-      rootStyle.removeProperty("--custom-accent-contrast");
-      rootStyle.removeProperty("--custom-accent-subtle");
-
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("novelore_user_accent");
-      }
-
-      onUpdateProject((p) => ({
-        ...p,
-        settings: {
-          ...p.settings,
-          theme: themeId as any,
-          customAccentColor: undefined,
-        },
-      }));
-    }
+    setStoreTheme(themeId, {
+      persistScope: scope,
+      onUpdateProject,
+    });
   };
 
   const commitAccent = (color: string) => {
-    onUpdateProject((p) => ({
-      ...p,
-      settings: {
-        ...p.settings,
-        customAccentColor: color,
-      },
-    }));
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("novelore_user_accent", color);
-      if (currentThemeId === "minimal" || currentThemeId === "dark") {
-        localStorage.setItem("novelore_neutral_accent", color);
-      }
-    }
+    setStoreAccent(color, {
+      persistScope: scope,
+      onUpdateProject,
+    });
   };
 
   const handleSetAccent = (color: string, immediate = false) => {
@@ -507,27 +431,10 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
     }
 
     setLocalAccent(activeTheme.palette.defaultAccent);
-    const rootStyle = document.documentElement.style;
-    rootStyle.removeProperty("--custom-accent");
-    rootStyle.removeProperty("--custom-highlight");
-    rootStyle.removeProperty("--custom-accent-hover");
-    rootStyle.removeProperty("--custom-accent-contrast");
-    rootStyle.removeProperty("--custom-accent-subtle");
-
-    onUpdateProject((p) => ({
-      ...p,
-      settings: {
-        ...p.settings,
-        customAccentColor: undefined,
-      },
-    }));
-
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("novelore_user_accent");
-      if (currentThemeId === "minimal" || currentThemeId === "dark") {
-        localStorage.removeItem("novelore_neutral_accent");
-      }
-    }
+    setStoreAccent(null, {
+      persistScope: scope,
+      onUpdateProject,
+    });
   };
 
   // Build combined presets list: original theme accent first, then curated palette
@@ -577,14 +484,14 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
                 style={{
                   backgroundColor: "var(--bg-card)",
                   borderColor: "var(--border-color)",
-                  color: "var(--accent)",
+                  color: "var(--accent-readable, var(--accent))",
                 }}
               >
                 <Palette className="w-5 h-5" />
               </div>
               <div>
                 <h2 className="text-base font-bold tracking-tight text-[var(--text-main)] flex items-center gap-2">
-                  Temas y Atmósferas de Escritura
+                  Atmósferas de Escritura & Temas
                   <span
                     className="text-[11px] font-normal px-2 py-0.5 rounded-full border"
                     style={{
@@ -593,11 +500,11 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
                       color: "var(--text-muted)",
                     }}
                   >
-                    {THEME_CATALOG.length} disponibles
+                    {THEME_CATALOG.length} atmósferas
                   </span>
                 </h2>
                 <p className="text-xs text-[var(--text-muted)]">
-                  Personaliza el ambiente visual de tu novela según su género, tono o preferencia de lectura.
+                  Espacios cromáticos y descansados para acompañar el tono de tu historia con independencia tipográfica.
                 </p>
               </div>
             </div>
@@ -611,7 +518,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
             </button>
           </div>
 
-          {/* Controls Bar: Categories & Search */}
+          {/* Controls Bar: Categories, Scope & Search */}
           <div
             className="px-5 py-3 border-b flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0"
             style={{
@@ -636,18 +543,18 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
                     : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                 }`}
               >
-                Todos
+                Todas
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedCategory("neutral")}
+                onClick={() => setSelectedCategory("literary")}
                 className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
-                  selectedCategory === "neutral"
+                  selectedCategory === "literary"
                     ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-xs"
                     : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                 }`}
               >
-                Neutros de Enfoque
+                Atmósferas Literarias
               </button>
               <button
                 type="button"
@@ -658,23 +565,46 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
                     : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                 }`}
               >
-                Géneros Literarios
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory("mood")}
-                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
-                  selectedCategory === "mood"
-                    ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-xs"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
-                }`}
-              >
-                Atmósferas & Emoción
+                Atmósferas de Género
               </button>
             </div>
 
-            {/* Tone selector & Search */}
-            <div className="flex items-center gap-2">
+            {/* Scope selector, Tone selector & Search */}
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {/* Scope Segmented Control */}
+              <div
+                className="inline-flex items-center p-0.5 rounded-lg border text-xs"
+                style={{
+                  backgroundColor: "var(--bg-card)",
+                  borderColor: "var(--border-color)",
+                }}
+                title="Define si la atmósfera se guarda para esta novela o como preferencia global del sistema"
+              >
+                <button
+                  type="button"
+                  onClick={() => setScope("project")}
+                  className={`px-2 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer ${
+                    scope === "project"
+                      ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-xs"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                  }`}
+                >
+                  Esta Novela
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScope("global")}
+                  className={`px-2 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer ${
+                    scope === "global"
+                      ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-xs"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                  }`}
+                >
+                  Toda la App
+                </button>
+              </div>
+
+              {/* Tone selector */}
               <div
                 className="inline-flex items-center p-0.5 rounded-lg border"
                 style={{
@@ -774,6 +704,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
                       const isCurrent =
                         (!project.settings.customAccentColor && isDefault) ||
                         (localAccent || "").toLowerCase() === preset.color.toLowerCase();
+                      const contrastColor = getContrastColor(preset.color);
 
                       return (
                         <button
@@ -803,16 +734,14 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
                         >
                           {isCurrent && (
                             <Check
-                              className={`w-3.5 h-3.5 ${
-                                isWhite ? "text-zinc-900" : "text-white"
-                              } drop-shadow-xs`}
+                              className="w-3.5 h-3.5 drop-shadow-xs"
+                              style={{ color: contrastColor }}
                             />
                           )}
                           {isDefault && !isCurrent && (
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                isWhite ? "bg-zinc-800" : "bg-white/80"
-                              }`}
+                              className="w-1.5 h-1.5 rounded-full opacity-80"
+                              style={{ backgroundColor: contrastColor }}
                             />
                           )}
                         </button>
@@ -913,8 +842,8 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
                             <span
                               className="text-[10px] px-1.5 py-0.5 rounded-md border font-mono flex items-center gap-1"
                               style={{
-                                borderColor: "var(--accent)",
-                                color: "var(--accent)",
+                                borderColor: "var(--accent-readable, var(--accent))",
+                                color: "var(--accent-readable, var(--accent))",
                               }}
                               title="Color de enfoque personalizado activo"
                             >
@@ -969,7 +898,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
                             className="text-[9px] px-1.5 py-0.2 rounded-full font-mono font-medium"
                             style={{
                               backgroundColor: activeAccent,
-                              color: theme.isDark ? "#0A0A0A" : "#FFFFFF",
+                              color: getContrastColor(activeAccent),
                             }}
                           >
                             Borrador
@@ -1001,7 +930,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
                               style={{
                                 backgroundColor: palette.bgCard,
                                 borderColor: palette.border,
-                                color: activeAccent,
+                                color: getReadableAccent(activeAccent, theme.isDark),
                               }}
                             >
                               ★
@@ -1010,7 +939,7 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
                               className="px-2 py-0.5 rounded-md text-[9px] font-semibold"
                               style={{
                                 backgroundColor: activeAccent,
-                                color: theme.isDark ? "#0A0A0A" : "#FFFFFF",
+                                color: getContrastColor(activeAccent),
                               }}
                             >
                               Continuar
