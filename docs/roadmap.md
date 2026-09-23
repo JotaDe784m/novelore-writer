@@ -17,13 +17,15 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 ## Fase 1: Núcleo de Escritura, Persistencia Local & Sistema de Diseño **[EN CURSO]**
 **Objetivo**: Establecer el entorno de escritorio en Electron, implementar el gestor de proyectos en carpetas del sistema de archivos, implantar el nuevo sistema de tokens y temas atmosféricos sin bordes, y habilitar un editor de manuscrito 100% operativo basado en archivos Markdown (`.md`).
 
-### Subfase 1.1: Cascarón de Escritorio Electron & IPC Nativo
-- Configurar el proceso principal de Electron (`electron/main.ts`) y el script de precarga segura (`electron/preload.ts`) con `contextBridge`.
-- Configurar scripts de ejecución y empaquetado en desarrollo (`npm run dev:electron` / `npm run build:electron`).
-- Implementar canales IPC seguros para invocación de diálogos nativos del sistema operativo:
+### Subfase 1.1: Cascarón de Escritorio Electron & IPC Nativo [COMPLETADA]
+- [x] Configurar el proceso principal de Electron (`electron/main.ts`) y el script de precarga segura (`electron/preload.ts`) con `contextBridge`.
+- [x] Configurar scripts de ejecución y empaquetado en desarrollo (`npm run dev:electron` / `npm run build:electron`).
+- [x] Implementar canales IPC seguros para invocación de diálogos nativos del sistema operativo:
   - `dialog:openFolder`: Seleccionar una carpeta existente en disco.
   - `dialog:createProjectFolder`: Crear una nueva carpeta para una novela en la ruta seleccionada.
-- Implementar gestor de historial de proyectos recientes en almacenamiento de configuración local.
+  - `project:updateProjectMeta`: Actualizar metadatos del proyecto en disco (`project.json` y `recent-projects.json`).
+- [x] Implementar gestor de historial de proyectos recientes en almacenamiento de configuración local (`userData/recent-projects.json`).
+- [x] Inicialización de escenas en blanco (`.md`) y soporte para edición de metadatos (título, autor, sinopsis, género, metas) desde el inicio y el editor.
 
 ### Subfase 1.2: Tokens de Diseño, Temas Atmosféricos & Store Modular (Zustand)
 - Implementar el sistema de tokens semánticos en `src/index.css` (`--bg-app`, `--bg-sidebar`, `--bg-editor`, `--bg-surface-hover`, `--text-primary`, `--accent`) eliminando bordes duros por defecto.

@@ -27,6 +27,7 @@ export interface Scene {
   timelineEventId?: string;
   historicalEventIds?: string[]; // IDs of WorldEntity (category: 'event') recalled, revealed, or discussed in this scene
   order: number;
+  filePath?: string;
 }
 
 export interface Chapter {
@@ -348,3 +349,23 @@ export interface ProjectMeta {
 export type PlanningSubView = "timeline" | "corkboard" | "beats" | "matrix";
 
 export * from "./types/assets";
+
+export interface User {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL?: string | null;
+  isAnonymous?: boolean;
+}
+
+export interface RecentProjectMeta {
+  path: string;
+  title: string;
+  subtitle?: string;
+  author?: string;
+  genre?: string;
+  synopsis?: string;
+  logline?: string;
+  updatedAt: string;
+  wordCount?: number;
+}

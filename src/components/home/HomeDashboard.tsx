@@ -1,59 +1,41 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   BookOpen,
   Plus,
-  Download,
-  Upload,
   Trash2,
-  Copy,
   Search,
-  Calendar,
-  Compass,
+  FolderOpen,
   Sparkles,
   Clock,
   Target,
   FileText,
-  Check,
-  Layers,
   ChevronRight,
-  FolderPlus,
-  ArrowUpRight,
   Library,
   SlidersHorizontal,
-  FileUp,
-  Cloud,
+  X,
+  Compass,
+  AlertTriangle,
+  Pencil,
 } from "lucide-react";
-import { NovelProject, ProjectMeta, ProjectView } from "../../types";
-import {
-  listProjectsMeta,
-  loadProjectById,
-  deleteProjectById,
-  duplicateProject,
-  createNewProject,
-  createBlankProject,
-  exportProjectToNovelistFile,
-  importProjectFromNovelistOrJson,
-  resetToDemoProject,
-  updateProjectCover,
-  CreateProjectOptions,
-} from "../../utils/storage";
-import { BookCover } from "../project/BookCover";
+import { useProjectStore } from "../../stores/useProjectStore";
+import { NovelProject, ProjectView, RecentProjectMeta } from "../../types";
 
 interface HomeDashboardProps {
   currentProject: NovelProject;
   onSelectProject: (project: NovelProject) => void;
   onNavigateView: (view: ProjectView) => void;
-  onOpenCloudSync?: () => void;
 }
 
 export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   currentProject,
   onSelectProject,
   onNavigateView,
-  onOpenCloudSync,
 }) => {
-  const [projectsList, setProjectsList] = useState<ProjectMeta[]>([]);
+  const recentProjects = useProjectStore((s) => s.recentProjects);
+  const loadRecentProjects = useProjectStore((s) => s.loadRecentProjects);
+  const removeRecentProject = useProjectStore((s) => s.removeRecentProject);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "title" | "words">("recent");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -61,33 +43,27 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     text: string;
     type: "success" | "error";
   } | null>(null);
-  const [projectToDelete, setProjectToDelete] = useState<{ id: string; title: string } | null>(null);
-  const [confirmDemoReset, setConfirmDemoReset] = useState(false);
 
-  // New project form state
+  // Formulario de nueva novela
   const [newTitle, setNewTitle] = useState("");
   const [newSubtitle, setNewSubtitle] = useState("");
   const [newAuthor, setNewAuthor] = useState("");
   const [newGenre, setNewGenre] = useState("Fantasía");
   const [newLogline, setNewLogline] = useState("");
   const [newSynopsis, setNewSynopsis] = useState("");
-  const [newCoverUrl, setNewCoverUrl] = useState<string | undefined>(undefined);
-  const [newEnableWordGoals, setNewEnableWordGoals] = useState(true);
   const [newTargetWords, setNewTargetWords] = useState(50000);
-  const [newActTargetWords, setNewActTargetWords] = useState(15000);
-  const [newChapterTargetWords, setNewChapterTargetWords] = useState(4000);
-  const [newSceneTargetWords, setNewSceneTargetWords] = useState(1500);
-  const [newDialogueStyle, setNewDialogueStyle] = useState<"dash" | "guillemets" | "quotes">("dash");
-  const [newTheme, setNewTheme] = useState<"minimal" | "clean" | "sepia" | "dark">("minimal");
 
-  // Refresh project list
-  const refreshProjects = async () => {
-    const list = await listProjectsMeta();
-    setProjectsList(list);
-  };
+  // Formulario de edición de novela existente
+  const [editingProject, setEditingProject] = useState<RecentProjectMeta | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editSubtitle, setEditSubtitle] = useState("");
+  const [editAuthor, setEditAuthor] = useState("");
+  const [editGenre, setEditGenre] = useState("");
+  const [editSynopsis, setEditSynopsis] = useState("");
+  const [editTargetWords, setEditTargetWords] = useState(50000);
 
   useEffect(() => {
-    refreshProjects();
+    loadRecentProjects();
   }, [currentProject]);
 
   const showToast = (text: string, type: "success" | "error" = "success") => {
@@ -97,18 +73,146 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     }, 4000);
   };
 
-  // The most recent project is either the first in list or currentProject
-  const mostRecentMeta: ProjectMeta | null = projectsList.length > 0 ? projectsList[0] : null;
+  const handleOpenLocalFolder = async () => {
+    if (!window.electronAPI?.openProjectFolder) {
+      showToast("El selector nativo requiere ejecutar Novelore en Electron (npm run dev:electron)", "error");
+      return;
+    }
+    const openedProject = await useProjectStore.getState().openProjectFolder();
+    if (openedProject) {
+      onSelectProject(openedProject);
+      showToast(`¡Novela "${openedProject.title}" abierta desde carpeta local!`);
+      onNavigateView("manuscript");
+    } else {
+      const errorMsg = useProjectStore.getState().errorMessage;
+      if (errorMsg) {
+        showToast(errorMsg, "error");
+      }
+    }
+  };
 
-  // Filtered & sorted projects
-  const filteredProjects = projectsList
+  const handleOpenRecent = async (folderPath: string) => {
+    const loadedProject = await useProjectStore.getState().initOrLoadFromPath(folderPath);
+    if (loadedProject) {
+      onSelectProject(loadedProject);
+      showToast(`Novela "${loadedProject.title}" cargada`);
+      onNavigateView("manuscript");
+    } else {
+      const errorMsg = useProjectStore.getState().errorMessage;
+      showToast(errorMsg || "No se pudo cargar la novela seleccionada", "error");
+    }
+  };
+
+  const handleRemoveRecent = async (e: React.MouseEvent, folderPath: string) => {
+    e.stopPropagation();
+    await removeRecentProject(folderPath);
+    showToast("Novela quitada del historial reciente");
+  };
+
+  const handleStartEditProject = (e: React.MouseEvent, p: RecentProjectMeta) => {
+    e.stopPropagation();
+    setEditingProject(p);
+    setEditTitle(p.title || "");
+    setEditSubtitle(p.subtitle || "");
+    setEditAuthor(p.author || "");
+    setEditGenre(p.genre || "Ficción");
+    setEditSynopsis(p.synopsis || p.logline || "");
+    setEditTargetWords(
+      currentProject?.title === p.title ? currentProject.settings?.targetTotalWords || 50000 : 50000
+    );
+  };
+
+  const handleSaveEditProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProject) return;
+    if (!editTitle.trim()) {
+      showToast("Por favor ingresa un título para la novela", "error");
+      return;
+    }
+
+    const store = useProjectStore.getState();
+    const success = await store.updateProjectMeta(editingProject.path, {
+      title: editTitle.trim(),
+      subtitle: editSubtitle.trim(),
+      author: editAuthor.trim() || "Autor",
+      genre: editGenre.trim() || "Ficción",
+      synopsis: editSynopsis.trim(),
+      targetWords: editTargetWords || 50000,
+    });
+
+    if (success) {
+      if (currentProject?.title === editingProject.title) {
+        onSelectProject({
+          ...currentProject,
+          title: editTitle.trim(),
+          subtitle: editSubtitle.trim(),
+          author: editAuthor.trim() || "Autor",
+          genre: editGenre.trim() || "Ficción",
+          synopsis: editSynopsis.trim(),
+          settings: {
+            ...currentProject.settings,
+            targetTotalWords: editTargetWords || 50000,
+          },
+        });
+      }
+      setEditingProject(null);
+      showToast(`¡Novela "${editTitle.trim()}" actualizada con éxito!`);
+    } else {
+      showToast(store.errorMessage || "Error al actualizar los datos", "error");
+    }
+  };
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim()) {
+      showToast("Por favor ingresa un título para la novela", "error");
+      return;
+    }
+
+    if (!window.electronAPI?.createProjectFolder) {
+      showToast("La creación nativa requiere ejecutar Novelore en Electron", "error");
+      return;
+    }
+
+    const createdProject = await useProjectStore.getState().createProjectFolder({
+      title: newTitle.trim(),
+      subtitle: newSubtitle.trim(),
+      author: newAuthor.trim() || "Autor",
+      genre: newGenre.trim() || "Ficción",
+      synopsis: newSynopsis.trim(),
+      logline: newLogline.trim(),
+      targetWords: newTargetWords || 50000,
+    });
+
+    if (createdProject) {
+      onSelectProject(createdProject);
+      setIsCreateModalOpen(false);
+      // Reset form
+      setNewTitle("");
+      setNewSubtitle("");
+      setNewAuthor("");
+      setNewLogline("");
+      setNewSynopsis("");
+      showToast(`¡Novela "${createdProject.title}" creada en tu equipo!`);
+      onNavigateView("manuscript");
+    } else {
+      const errorMsg = useProjectStore.getState().errorMessage;
+      if (errorMsg) {
+        showToast(errorMsg, "error");
+      }
+    }
+  };
+
+  const filteredProjects = recentProjects
     .filter((p) => {
       const q = searchQuery.toLowerCase();
       return (
         p.title.toLowerCase().includes(q) ||
         (p.author && p.author.toLowerCase().includes(q)) ||
         (p.genre && p.genre.toLowerCase().includes(q)) ||
-        (p.synopsis && p.synopsis.toLowerCase().includes(q))
+        (p.synopsis && p.synopsis.toLowerCase().includes(q)) ||
+        (p.logline && p.logline.toLowerCase().includes(q)) ||
+        (p.path && p.path.toLowerCase().includes(q))
       );
     })
     .sort((a, b) => {
@@ -124,153 +228,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       return 0;
     });
 
-  // Total words across all projects
-  const totalAllWords = projectsList.reduce(
+  const totalAllWords = recentProjects.reduce(
     (acc, p) => acc + (p.wordCount || 0),
     0
   );
-
-  // Handlers
-  const handleOpenProject = async (id: string, targetView: ProjectView = "manuscript") => {
-    if (currentProject.id === id) {
-      onNavigateView(targetView);
-      return;
-    }
-    const loaded = await loadProjectById(id);
-    if (loaded) {
-      onSelectProject(loaded);
-      onNavigateView(targetView);
-    } else {
-      showToast("No se pudo cargar el proyecto seleccionado", "error");
-    }
-  };
-
-  const handleExportNvl = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    let target = currentProject.id === id ? currentProject : await loadProjectById(id);
-    if (target) {
-      exportProjectToNovelistFile(target);
-      showToast(`Proyecto "${target.title}" exportado en archivo propio (.nvl)`);
-    }
-  };
-
-  const handleDuplicate = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    const duplicated = await duplicateProject(id);
-    if (duplicated) {
-      await refreshProjects();
-      showToast(`Proyecto duplicado como "${duplicated.title}"`);
-    } else {
-      showToast("Error al duplicar el proyecto", "error");
-    }
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent, id: string, title: string) => {
-    e.stopPropagation();
-    setProjectToDelete({ id, title });
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!projectToDelete) return;
-    const { id, title } = projectToDelete;
-    const updatedList = await deleteProjectById(id);
-    setProjectsList(updatedList);
-    showToast(`Proyecto "${title}" eliminado`);
-    if (currentProject.id === id) {
-      if (updatedList.length > 0) {
-        const next = await loadProjectById(updatedList[0].id);
-        if (next) onSelectProject(next);
-      } else {
-        const blank = createBlankProject();
-        onSelectProject(blank);
-      }
-    }
-    setProjectToDelete(null);
-  };
-
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const content = event.target?.result as string;
-      const result = await importProjectFromNovelistOrJson(content);
-      if (result) {
-        onSelectProject(result.project);
-        await refreshProjects();
-        showToast(
-          result.isNovelistFormat
-            ? `¡Proyecto "${result.project.title}" importado con éxito desde archivo .nvl!`
-            : `¡Proyecto "${result.project.title}" importado con éxito!`
-        );
-      } else {
-        showToast("El archivo seleccionado no tiene un formato de proyecto válido (.nvl o .json)", "error");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  };
-
-  const handleResetToDemoConfirmed = async () => {
-    const demo = await resetToDemoProject();
-    onSelectProject(demo);
-    await refreshProjects();
-    showToast("Novela de muestra cargada con éxito");
-    setConfirmDemoReset(false);
-  };
-
-  const handleCoverChange = async (projectId: string, url?: string) => {
-    const updated = await updateProjectCover(projectId, url);
-    if (updated) {
-      if (currentProject.id === projectId) {
-        onSelectProject(updated);
-      }
-      await refreshProjects();
-      showToast(url ? "Portada de la novela actualizada con éxito" : "Portada eliminada");
-    } else {
-      showToast("Error al actualizar la portada", "error");
-    }
-  };
-
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) {
-      showToast("Por favor ingresa un título para la novela", "error");
-      return;
-    }
-
-    const options: CreateProjectOptions = {
-      title: newTitle.trim(),
-      subtitle: newSubtitle.trim(),
-      author: newAuthor.trim(),
-      genre: newGenre.trim(),
-      logline: newLogline.trim(),
-      synopsis: newSynopsis.trim(),
-      targetWords: newTargetWords || 50000,
-      dialogueStyle: newDialogueStyle,
-      theme: newTheme,
-      coverUrl: newCoverUrl,
-      enableWordGoals: newEnableWordGoals,
-      defaultActTargetWords: newActTargetWords,
-      defaultChapterTargetWords: newChapterTargetWords,
-      defaultSceneTargetWords: newSceneTargetWords,
-    };
-
-    const created = await createNewProject(options);
-    onSelectProject(created);
-    await refreshProjects();
-    setIsCreateModalOpen(false);
-    // Reset form
-    setNewTitle("");
-    setNewSubtitle("");
-    setNewAuthor("");
-    setNewLogline("");
-    setNewSynopsis("");
-    setNewCoverUrl(undefined);
-    showToast(`¡Novela "${created.title}" creada! Comenzando manuscrito...`);
-    onNavigateView("manuscript");
-  };
 
   const formatDate = (isoString?: string) => {
     if (!isoString) return "Recientemente";
@@ -280,8 +241,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         day: "numeric",
         month: "short",
         year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
       });
     } catch {
       return "Recientemente";
@@ -290,356 +249,129 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   return (
     <div
-      id="home-dashboard"
-      className="flex-1 min-h-0 overflow-y-scroll custom-scroll always-scroll"
-      style={{
-        backgroundColor: "var(--bg-main)",
-        color: "var(--text-main)",
-        overflowY: "scroll",
-        scrollbarGutter: "stable",
-      }}
+      id="novelore-home-dashboard"
+      className="flex-1 overflow-y-auto min-h-0 select-none p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6"
     >
       {/* Toast Feedback */}
-      {feedbackMsg && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg border flex items-center gap-2 text-xs font-medium transition-all ${
-            feedbackMsg.type === "success"
-              ? "bg-emerald-50 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200"
-              : "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-800 dark:text-red-200"
-          }`}
-        >
-          <Check className="w-4 h-4 shrink-0" />
-          <span>{feedbackMsg.text}</span>
-        </div>
-      )}
+      <AnimatePresence>
+        {feedbackMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -16, scale: 0.96 }}
+            className={`fixed top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold shadow-xl border backdrop-blur-md ${
+              feedbackMsg.type === "error"
+                ? "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30"
+                : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+            }`}
+          >
+            <span>{feedbackMsg.text}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Main Container */}
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-10">
-        {/* Header Hero Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-[var(--border-color)]">
+      {/* HEADER HERO: Título + Acciones Principales */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[var(--border-color)]">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold font-novel-display text-[var(--text-main)] flex items-center gap-2.5">
+            <Library className="w-7 h-7 text-[var(--accent)]" />
+            <span>Taller Literario</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
+            Soberanía Local-First: Tus novelas residen exclusivamente como archivos limpios en tu equipo.
+          </p>
+        </div>
+
+        {/* Action Toolbar */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Abrir Carpeta Local (Electron) */}
+          <motion.button
+            id="btn-open-local-folder"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleOpenLocalFolder}
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent)] rounded-xl shadow-2xs transition-all cursor-pointer"
+            title="Seleccionar una carpeta de novela en tu equipo"
+          >
+            <FolderOpen className="w-4 h-4 text-[var(--accent)]" />
+            <span>Abrir Carpeta Local</span>
+          </motion.button>
+
+          {/* Nueva Novela */}
+          <motion.button
+            id="btn-new-novel"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => {
+              setNewTitle("");
+              setNewSubtitle("");
+              setNewAuthor(currentProject?.author || "");
+              setNewGenre("Fantasía");
+              setNewLogline("");
+              setNewSynopsis("");
+              setNewTargetWords(50000);
+              setIsCreateModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold bg-[var(--accent)] text-[var(--accent-contrast)] rounded-xl shadow-md hover:opacity-95 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4 text-[var(--accent-contrast)]" />
+            <span>Nueva Novela</span>
+          </motion.button>
+        </div>
+      </div>
+
+      {/* SECCIÓN: PROYECTOS RECIENTES EN DISCO */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="p-1.5 rounded-lg bg-[var(--accent)] text-[var(--accent-contrast)] shadow-xs">
-                <Library className="w-5 h-5 text-[var(--accent-contrast)]" />
-              </span>
-              <h1 className="text-2xl font-bold font-novel-display tracking-tight text-[var(--text-main)]">
-                Taller de Escritura & Proyectos
-              </h1>
-            </div>
-            <p className="text-xs text-[var(--text-muted)] max-w-xl">
-              Gestiona tus novelas, continúa escribiendo donde lo dejaste o inicia nuevas narrativas.
+            <h2 className="text-base font-bold font-novel-display text-[var(--text-main)]">
+              Novelas Recientes ({recentProjects.length})
+            </h2>
+            <p className="text-[11px] text-[var(--text-muted)]">
+              Palabras acumuladas: <strong className="text-[var(--text-main)]">{totalAllWords.toLocaleString()}</strong>
             </p>
           </div>
 
-          {/* Actions Section: Prominent New Novel CTA + Organized Secondary Utility Toolbar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-            {/* Secondary Action Toolbar: Grouped seamlessly */}
-            <div className="flex items-center rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-1 shadow-xs divide-x divide-[var(--border-color)]/60 order-2 sm:order-1">
-              {/* Import .nvl */}
-              <motion.label
-                id="btn-import-novelist"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-all cursor-pointer"
-                title="Importar archivo propio .nvl o .json"
-              >
-                <FileUp className="w-4 h-4 text-[var(--accent)]" />
-                <span className="whitespace-nowrap">Importar .nvl</span>
-                <input
-                  type="file"
-                  accept=".nvl,.novelist,.json"
-                  onChange={handleImportFile}
-                  className="hidden"
-                />
-              </motion.label>
-
-              {/* Cloud Sync and backups */}
-              {onOpenCloudSync && (
-                <motion.button
-                  id="btn-cloud-sync"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={onOpenCloudSync}
-                  className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-all cursor-pointer"
-                  title="Sincronizar y respaldar en la nube"
-                >
-                  <Cloud className="w-4 h-4 text-emerald-500" />
-                  <span className="whitespace-nowrap">Nube</span>
-                </motion.button>
-              )}
-
-              {/* Load Demo Project */}
-              <motion.button
-                id="btn-load-demo"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setConfirmDemoReset(true)}
-                className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-all cursor-pointer"
-                title="Restaurar o cargar la novela de fantasía de ejemplo"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span className="whitespace-nowrap">Ejemplo</span>
-              </motion.button>
-            </div>
-
-            {/* Primary Hero Button: Nueva Novela (Prominent, High-Contrast, Largest) */}
-            <motion.button
-              id="btn-new-novel"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                setNewTitle("");
-                setNewSubtitle("");
-                setNewAuthor(currentProject.author || "");
-                setNewGenre("Fantasía");
-                setNewLogline("");
-                setNewSynopsis("");
-                setNewTargetWords(50000);
-                setIsCreateModalOpen(true);
-              }}
-              className="flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl bg-[var(--accent)] text-[var(--accent-contrast)] font-bold text-sm hover:opacity-95 shadow-md shadow-[var(--accent)]/20 ring-2 ring-[var(--accent)]/30 transition-all cursor-pointer order-1 sm:order-2"
-            >
-              <Plus className="w-5 h-5 text-[var(--accent-contrast)] stroke-[2.5]" />
-              <span className="tracking-wide whitespace-nowrap">Nueva Novela</span>
-            </motion.button>
-          </div>
-        </div>
-
-        {/* SECTION 1: PROYECTO MÁS RECIENTE (FEATURED HERO CARD) */}
-        {mostRecentMeta && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                  Proyecto Más Reciente • Continuar Escribiendo
-                </h2>
-              </div>
-              <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                Modificado: {formatDate(mostRecentMeta.updatedAt)}
-              </span>
-            </div>
-
-            <div
-              className="relative p-6 rounded-2xl border shadow-xs transition-all hover:shadow-md"
-              style={{
-                backgroundColor: "var(--bg-card)",
-                borderColor: "var(--border-color)",
-              }}
-            >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                {/* Book Cover with upload/replace capability */}
-                <div className="shrink-0 mx-auto sm:mx-0" onClick={(e) => e.stopPropagation()}>
-                  <BookCover
-                    title={mostRecentMeta.title}
-                    author={mostRecentMeta.author}
-                    genre={mostRecentMeta.genre}
-                    coverUrl={mostRecentMeta.coverUrl}
-                    size="lg"
-                    allowUpload={true}
-                    onUploadCover={(url) => handleCoverChange(mostRecentMeta.id, url)}
-                    onRemoveCover={() => handleCoverChange(mostRecentMeta.id, undefined)}
-                  />
-                </div>
-
-                {/* Left details */}
-                <div className="space-y-3 flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-muted)]">
-                      {mostRecentMeta.genre || "Ficción"}
-                    </span>
-                    {mostRecentMeta.author && (
-                      <span className="text-xs text-[var(--text-muted)]">
-                        Por <strong className="text-[var(--text-main)]">{mostRecentMeta.author}</strong>
-                      </span>
-                    )}
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-bold font-novel-display text-[var(--text-main)] mb-1">
-                      {mostRecentMeta.title}
-                    </h3>
-                    {mostRecentMeta.subtitle && (
-                      <p className="text-xs text-[var(--text-muted)] italic mb-1">
-                        {mostRecentMeta.subtitle}
-                      </p>
-                    )}
-                    {mostRecentMeta.logline ? (
-                      <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                        «{mostRecentMeta.logline}»
-                      </p>
-                    ) : mostRecentMeta.synopsis ? (
-                      <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                        {mostRecentMeta.synopsis}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  {/* Word count progress bar or free writing note */}
-                  {mostRecentMeta.enableWordGoals !== false ? (
-                    <div className="space-y-1.5 pt-1 max-w-lg">
-                      <div className="flex justify-between text-[11px] font-mono text-[var(--text-muted)]">
-                        <span>
-                          <strong className="text-[var(--text-main)]">
-                            {(mostRecentMeta.wordCount || 0).toLocaleString()}
-                          </strong>{" "}
-                          / {(mostRecentMeta.targetWords || 50000).toLocaleString()} palabras
-                        </span>
-                        <span>
-                          {Math.min(
-                            100,
-                            Math.round(
-                              ((mostRecentMeta.wordCount || 0) /
-                                (mostRecentMeta.targetWords || 50000)) *
-                                100
-                            )
-                          )}
-                          % completado
-                        </span>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-[var(--bg-input)] overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-[var(--accent)] transition-all duration-500"
-                          style={{
-                            width: `${Math.min(
-                              100,
-                              Math.round(
-                                ((mostRecentMeta.wordCount || 0) /
-                                  (mostRecentMeta.targetWords || 50000)) *
-                                  100
-                              )
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-[11px] font-mono text-[var(--text-muted)] pt-1 flex items-center gap-2">
-                      <span className="font-semibold text-[var(--text-main)]">
-                        {(mostRecentMeta.wordCount || 0).toLocaleString()}
-                      </span>{" "}
-                      palabras escritas • <span className="italic opacity-80">Modo escritura libre (sin metas)</span>
-                    </div>
-                  )}
-
-                  {/* Badges count */}
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-[var(--text-muted)] pt-1">
-                    <span>
-                      <strong className="text-[var(--text-main)]">{mostRecentMeta.actCount || 1}</strong> Actos
-                    </span>
-                    <span>•</span>
-                    <span>
-                      <strong className="text-[var(--text-main)]">{mostRecentMeta.chapterCount || 0}</strong> Capítulos
-                    </span>
-                    <span>•</span>
-                    <span>
-                      <strong className="text-[var(--text-main)]">{mostRecentMeta.sceneCount || 0}</strong> Escenas
-                    </span>
-                    <span>•</span>
-                    <span>
-                      <strong className="text-[var(--text-main)]">{mostRecentMeta.characterCount || 0}</strong> Personajes en Biblia
-                    </span>
-                  </div>
-                </div>
-
-                {/* Right Quick Actions */}
-                <div className="flex flex-col sm:flex-row lg:flex-col gap-2 shrink-0 self-center sm:self-auto">
-                  <button
-                    onClick={() => handleOpenProject(mostRecentMeta.id, "manuscript")}
-                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-semibold hover:opacity-90 shadow-xs transition-all cursor-pointer"
-                  >
-                    <BookOpen className="w-4 h-4 text-[var(--accent-contrast)]" />
-                    <span>Abrir Manuscrito</span>
-                    <ChevronRight className="w-3.5 h-3.5 opacity-80 text-[var(--accent-contrast)]" />
-                  </button>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleOpenProject(mostRecentMeta.id, "planning")}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-card)] transition-all cursor-pointer"
-                      title="Ver línea de tiempo y escaleta"
-                    >
-                      <Calendar className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                      <span>Planeación</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleOpenProject(mostRecentMeta.id, "codex")}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-card)] transition-all cursor-pointer"
-                      title="Ver personajes y mundo"
-                    >
-                      <Compass className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                      <span>Biblia</span>
-                    </button>
-
-                    <button
-                      onClick={(e) => handleExportNvl(e, mostRecentMeta.id)}
-                      className="p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-card)] transition-all cursor-pointer"
-                      title="Exportar archivo propio .nvl"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* SECTION 2: LISTADO COMPLETO Y GESTIÓN DE NOVELAS */}
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold font-novel-display text-[var(--text-main)]">
-                Todas las Novelas ({projectsList.length})
-              </h2>
-              <p className="text-[11px] text-[var(--text-muted)]">
-                Total acumulado en taller: <strong className="text-[var(--text-main)]">{totalAllWords.toLocaleString()} palabras</strong>
-              </p>
-            </div>
-
-            {/* Filter and Sort controls */}
+          {/* Buscador y Ordenador */}
+          {recentProjects.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              {/* Search input */}
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                 <input
                   type="text"
-                  placeholder="Buscar novela o autor..."
+                  placeholder="Buscar por título, autor o ruta..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 rounded-xl text-xs border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-[var(--accent)] w-48 sm:w-56"
+                  className="pl-8 pr-3 py-1.5 rounded-xl text-xs border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-[var(--accent)] w-56 sm:w-64"
                 />
               </div>
 
-              {/* Sort selector */}
               <div className="flex items-center gap-1 border border-[var(--border-color)] rounded-xl p-1 bg-[var(--bg-input)] text-xs">
                 <button
                   onClick={() => setSortBy("recent")}
-                  className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                  className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-colors ${
                     sortBy === "recent"
-                      ? "bg-[var(--bg-card)] text-[var(--text-main)] shadow-2xs font-semibold"
+                      ? "bg-[var(--bg-card)] text-[var(--text-main)] font-semibold shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                   }`}
                 >
-                  Recientes
+                  Reciente
                 </button>
                 <button
                   onClick={() => setSortBy("title")}
-                  className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                  className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-colors ${
                     sortBy === "title"
-                      ? "bg-[var(--bg-card)] text-[var(--text-main)] shadow-2xs font-semibold"
+                      ? "bg-[var(--bg-card)] text-[var(--text-main)] font-semibold shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                   }`}
                 >
-                  A-Z
+                  Título
                 </button>
                 <button
                   onClick={() => setSortBy("words")}
-                  className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                  className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-colors ${
                     sortBy === "words"
-                      ? "bg-[var(--bg-card)] text-[var(--text-main)] shadow-2xs font-semibold"
+                      ? "bg-[var(--bg-card)] text-[var(--text-main)] font-semibold shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                   }`}
                 >
@@ -647,493 +379,281 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 </button>
               </div>
             </div>
-          </div>
-
-          {/* Grid of Projects */}
-          {filteredProjects.length === 0 ? (
-            <div className="text-center py-12 border border-dashed rounded-2xl border-[var(--border-color)] p-8 space-y-3">
-              <BookOpen className="w-8 h-8 mx-auto text-[var(--text-muted)] opacity-50" />
-              <p className="text-xs text-[var(--text-muted)]">
-                {searchQuery
-                  ? "No se encontraron novelas que coincidan con la búsqueda."
-                  : "Aún no tienes novelas creadas."}
-              </p>
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-medium"
-              >
-                <Plus className="w-3.5 h-3.5 text-[var(--accent-contrast)]" />
-                <span>Crear Novela</span>
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredProjects.map((p) => {
-                const isCurrent = currentProject.id === p.id;
-                const progressPct = Math.min(
-                  100,
-                  Math.round(
-                    ((p.wordCount || 0) / (p.targetWords || 50000)) * 100
-                  )
-                );
-
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => handleOpenProject(p.id)}
-                    className={`group relative p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md ${
-                      isCurrent
-                        ? "border-[var(--accent)] ring-1 ring-[var(--accent)]/30"
-                        : "border-[var(--border-color)] hover:border-[var(--text-muted)]"
-                    }`}
-                    style={{
-                      backgroundColor: "var(--bg-card)",
-                    }}
-                  >
-                    <div className="space-y-3">
-                      {/* Top: Book Cover & Main Info */}
-                      <div className="flex items-start gap-3.5">
-                        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <BookCover
-                            title={p.title}
-                            author={p.author}
-                            genre={p.genre}
-                            coverUrl={p.coverUrl}
-                            size="sm"
-                            allowUpload={true}
-                            onUploadCover={(url) => handleCoverChange(p.id, url)}
-                            onRemoveCover={() => handleCoverChange(p.id, undefined)}
-                          />
-                        </div>
-
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[var(--bg-input)] text-[var(--text-muted)] border border-[var(--border-color)] truncate">
-                              {p.genre || "Ficción"}
-                            </span>
-                            {isCurrent && (
-                              <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
-                                Activo
-                              </span>
-                            )}
-                          </div>
-
-                          <div>
-                            <h3 className="font-bold text-base font-novel-display text-[var(--text-main)] group-hover:text-[var(--accent)] transition-colors line-clamp-1">
-                              {p.title}
-                            </h3>
-                            {p.author && (
-                              <p className="text-xs text-[var(--text-muted)] truncate">
-                                Por {p.author}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Synopsis excerpt */}
-                          {p.synopsis && (
-                            <p className="text-[11px] text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                              {p.synopsis}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Progress bar / Free writing status */}
-                      {p.enableWordGoals !== false ? (
-                        <div className="space-y-1 pt-1">
-                          <div className="flex justify-between text-[10px] font-mono text-[var(--text-muted)]">
-                            <span>
-                              {(p.wordCount || 0).toLocaleString()} / {(p.targetWords || 50000).toLocaleString()} pal.
-                            </span>
-                            <span>{progressPct}%</span>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full bg-[var(--bg-input)] overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-[var(--accent)]"
-                              style={{ width: `${progressPct}%` }}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-[10px] font-mono text-[var(--text-muted)] pt-1 flex items-center justify-between">
-                          <span>{(p.wordCount || 0).toLocaleString()} palabras</span>
-                          <span className="italic opacity-70 text-[9px]">Escritura libre</span>
-                        </div>
-                      )}
-
-                      {/* Architecture chips */}
-                      <div className="flex items-center gap-2 text-[10px] text-[var(--text-muted)] pt-1 border-t border-[var(--border-color)]">
-                        <span>{p.actCount || 1} actos</span>
-                        <span>•</span>
-                        <span>{p.sceneCount || 0} escenas</span>
-                        <span>•</span>
-                        <span>{p.characterCount || 0} pers.</span>
-                      </div>
-                    </div>
-
-                    {/* Bottom action toolbar */}
-                    <div className="mt-4 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-xs">
-                      <span className="text-[10px] text-[var(--text-muted)]">
-                        {formatDate(p.updatedAt)}
-                      </span>
-
-                      <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                        {/* Export .nvl */}
-                        <button
-                          onClick={(e) => handleExportNvl(e, p.id)}
-                          className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
-                          title="Exportar archivo propio .nvl"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Duplicate */}
-                        <button
-                          onClick={(e) => handleDuplicate(e, p.id)}
-                          className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
-                          title="Duplicar novela"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Delete */}
-                        <button
-                          onClick={(e) => handleDeleteClick(e, p.id, p.title)}
-                          className="p-1.5 rounded-lg hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 cursor-pointer"
-                          title="Eliminar novela"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Open arrow */}
-                        <button
-                          onClick={() => handleOpenProject(p.id)}
-                          className="p-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-main)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] transition-colors cursor-pointer"
-                          title="Abrir en el editor"
-                        >
-                          <ArrowUpRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           )}
         </div>
+
+        {/* LISTA O ESTADO VACÍO */}
+        {recentProjects.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[var(--border-color)] p-12 text-center bg-[var(--bg-card)]/40 flex flex-col items-center justify-center space-y-4">
+            <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 text-[var(--text-muted)]">
+              <FolderOpen className="w-8 h-8 text-[var(--accent)] opacity-80" />
+            </div>
+            <div className="space-y-1 max-w-md">
+              <h3 className="font-bold text-base text-[var(--text-main)] font-novel-display">
+                No hay novelas recientes
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                Empieza creando una nueva novela en cualquier carpeta de tu disco duro o abre una carpeta existente que ya contenga tu proyecto.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={handleOpenLocalFolder}
+                className="px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs font-semibold text-[var(--text-main)] hover:bg-[var(--bg-card)] transition-colors cursor-pointer"
+              >
+                Abrir Carpeta Local
+              </button>
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-bold hover:opacity-95 shadow-xs transition-opacity cursor-pointer"
+              >
+                + Crear Nueva Novela
+              </button>
+            </div>
+          </div>
+        ) : filteredProjects.length === 0 ? (
+          <div className="rounded-2xl border border-[var(--border-color)] p-8 text-center text-xs text-[var(--text-muted)] bg-[var(--bg-card)]/30">
+            No se encontraron novelas que coincidan con la búsqueda «{searchQuery}».
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredProjects.map((p) => {
+              const isCurrent = currentProject?.title === p.title;
+
+              return (
+                <motion.div
+                  key={p.path}
+                  whileHover={{ y: -2 }}
+                  className={`rounded-2xl border p-4.5 bg-[var(--bg-card)] shadow-xs transition-all relative flex flex-col justify-between group ${
+                    isCurrent
+                      ? "border-[var(--accent)]/50 ring-1 ring-[var(--accent)]/20"
+                      : "border-[var(--border-color)] hover:border-[var(--border-color)]/80"
+                  }`}
+                >
+                  {/* Top card info */}
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-bold text-sm text-[var(--text-main)] truncate font-serif">
+                            {p.title}
+                          </h3>
+                          {isCurrent && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold shrink-0">
+                              Activa
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-[var(--text-muted)] truncate">
+                          {p.author || "Autor desconocido"} • {p.genre || "Ficción"}
+                        </div>
+                      </div>
+
+                      {/* Botones de acción de la tarjeta */}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button
+                          onClick={(e) => handleStartEditProject(e, p)}
+                          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
+                          title="Editar datos de la novela (título, autor, sinopsis, etc.)"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleRemoveRecent(e, p.path)}
+                          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
+                          title="Quitar del historial reciente (no borra los archivos del disco)"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Descripción corta / Sinopsis de la novela */}
+                    {(p.synopsis || p.logline || p.subtitle) && (
+                      <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                        {p.synopsis || p.logline || p.subtitle}
+                      </p>
+                    )}
+
+                    {/* Ruta física en disco */}
+                    <div
+                      className="text-[10px] font-mono text-[var(--text-muted)] truncate bg-black/5 dark:bg-white/5 px-2 py-1 rounded-md"
+                      title={p.path}
+                    >
+                      {p.path}
+                    </div>
+                  </div>
+
+                  {/* Bottom metrics & button */}
+                  <div className="pt-4 border-t border-[var(--border-color)] mt-3 flex items-center justify-between gap-2 text-xs">
+                    <div className="text-[11px] text-[var(--text-muted)]">
+                      <strong className="text-[var(--text-main)]">
+                        {(p.wordCount || 0).toLocaleString()}
+                      </strong>{" "}
+                      palabras • {formatDate(p.updatedAt)}
+                    </div>
+
+                    <button
+                      onClick={() => handleOpenRecent(p.path)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-semibold hover:opacity-90 shadow-2xs transition-all cursor-pointer"
+                    >
+                      <span>Abrir</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* MODAL: CREAR NUEVA NOVELA (AMPLIADO Y ESPACIOSO) */}
+      {/* MODAL: NUEVA NOVELA (CON SELECTOR DE CARPETA NATIVO) */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 z-50 animate-in fade-in select-none">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
           <div
-            className="w-full max-w-4xl lg:max-w-5xl rounded-3xl shadow-2xl border p-6 sm:p-8 space-y-6 max-h-[92vh] overflow-y-auto"
+            className="w-full max-w-lg rounded-2xl border p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
             style={{
               backgroundColor: "var(--bg-card)",
               borderColor: "var(--border-color)",
-              color: "var(--text-main)",
             }}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b pb-4 border-[var(--border-color)]">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-[var(--accent-subtle)] text-[var(--accent)]">
-                  <FolderPlus className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg sm:text-xl font-novel-display">
-                    Crear Nueva Novela
-                  </h3>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    Configura la portada, metadatos, premisa y objetivos de palabras de tu historia.
-                  </p>
-                </div>
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
+              <div>
+                <h3 className="font-bold text-lg text-[var(--text-main)] font-novel-display">
+                  Crear Nueva Novela
+                </h3>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Se creará la estructura local en la carpeta que tú elijas.
+                </p>
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-input)] transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Form in 2 spacious columns */}
-            <form onSubmit={handleCreateSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-                {/* Left Column: Book Cover & Style (4 cols) */}
-                <div className="lg:col-span-4 flex flex-col items-center sm:items-start gap-4">
-                  <div className="w-full">
-                    <label className="font-bold block mb-2 text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
-                      Portada del Libro
-                    </label>
-                    <div className="flex flex-col items-center p-4 rounded-2xl bg-[var(--bg-input)]/50 border border-[var(--border-color)] space-y-3">
-                      <BookCover
-                        title={newTitle || "Título de la Novela"}
-                        author={newAuthor || "Nombre del Autor"}
-                        genre={newGenre}
-                        coverUrl={newCoverUrl}
-                        size="md"
-                        allowUpload={true}
-                        onUploadCover={(url) => setNewCoverUrl(url)}
-                        onRemoveCover={() => setNewCoverUrl(undefined)}
-                      />
-                      <p className="text-[11px] text-[var(--text-muted)] text-center leading-tight">
-                        Haz clic sobre la portada para subir una imagen propia (PNG/JPG/WebP) o se generará una elegante portada tipográfica automática.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="w-full space-y-3 pt-2">
-                    <div>
-                      <label className="font-bold block mb-1.5 text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
-                        Estilo de Puntuación de Diálogos
-                      </label>
-                      <select
-                        value={newDialogueStyle}
-                        onChange={(e) => setNewDialogueStyle(e.target.value as any)}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] text-xs cursor-pointer"
-                      >
-                        <option value="dash">Raya española estándar (—Hola —dijo él.)</option>
-                        <option value="guillemets">Comillas angulares («Hola», dijo.)</option>
-                        <option value="quotes">Comillas inglesas (“Hello,” he said.)</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Column: Information & Details (8 cols) */}
-                <div className="lg:col-span-8 space-y-4">
-                  {/* Title & Subtitle */}
-                  <div className="space-y-3">
-                    <div>
-                      <label className="font-bold block mb-1.5 text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
-                        Título de la Obra *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Ej: El Susurro del Cristal de Sombras"
-                        value={newTitle}
-                        onChange={(e) => setNewTitle(e.target.value)}
-                        className="w-full p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-base font-semibold focus:outline-hidden focus:border-[var(--accent)] text-[var(--text-main)]"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      <div>
-                        <label className="font-bold block mb-1.5 text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
-                          Subtítulo o Lema
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Ej: Libro Primero de las Crónicas"
-                          value={newSubtitle}
-                          onChange={(e) => setNewSubtitle(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs focus:outline-hidden focus:border-[var(--accent)] text-[var(--text-main)]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="font-bold block mb-1.5 text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
-                          Autor / Seudónimo
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Tu nombre o seudónimo"
-                          value={newAuthor}
-                          onChange={(e) => setNewAuthor(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs focus:outline-hidden focus:border-[var(--accent)] text-[var(--text-main)]"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="font-bold block mb-1.5 text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
-                        Género Literario
-                      </label>
-                      <select
-                        value={newGenre}
-                        onChange={(e) => setNewGenre(e.target.value)}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] text-xs focus:outline-hidden focus:border-[var(--accent)] cursor-pointer"
-                      >
-                        <option value="Fantasía Épica">Fantasía Épica</option>
-                        <option value="Ciencia Ficción">Ciencia Ficción</option>
-                        <option value="Thriller / Novela Negra">Thriller / Novela Negra</option>
-                        <option value="Novela Histórica">Novela Histórica</option>
-                        <option value="Terror / Horror">Terror / Horror</option>
-                        <option value="Romance">Romance</option>
-                        <option value="Ficción Contemporánea">Ficción Contemporánea</option>
-                        <option value="Distopía">Distopía</option>
-                        <option value="Misterio">Misterio</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Logline / Premise */}
-                  <div>
-                    <label className="font-bold block mb-1.5 text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
-                      Premisa / Logline (Resumen en una frase)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="¿De qué trata el conflicto central en una o dos líneas?"
-                      value={newLogline}
-                      onChange={(e) => setNewLogline(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs focus:outline-hidden focus:border-[var(--accent)] text-[var(--text-main)]"
-                    />
-                  </div>
-
-                  {/* Synopsis */}
-                  <div>
-                    <label className="font-bold block mb-1.5 text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
-                      Sinopsis Inicial
-                    </label>
-                    <textarea
-                      rows={3}
-                      placeholder="Detalla el punto de partida, los protagonistas y el detonante de la trama..."
-                      value={newSynopsis}
-                      onChange={(e) => setNewSynopsis(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs focus:outline-hidden focus:border-[var(--accent)] resize-none text-[var(--text-main)] leading-relaxed"
-                    />
-                  </div>
-                </div>
+            <form onSubmit={handleCreateSubmit} className="space-y-4">
+              {/* Título */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] block">
+                  Título de la Obra *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Crónica del Viento de Obsidiana"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-sm text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)] font-serif"
+                  autoFocus
+                />
               </div>
 
-              {/* Word Goals Section (Granular and Disablable) */}
-              <div className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-input)]/40 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border-color)]/60 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <Target className="w-4 h-4 text-[var(--accent)]" />
-                    <div>
-                      <h4 className="font-bold text-xs sm:text-sm text-[var(--text-main)]">
-                        Metas y Objetivos de Palabras
-                      </h4>
-                      <p className="text-[11px] text-[var(--text-muted)]">
-                        Configura el ritmo de escritura para la novela completa, arcos, capítulos y escenas.
-                      </p>
-                    </div>
-                  </div>
-
-                  <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-[var(--text-main)]">
-                    <input
-                      type="checkbox"
-                      checked={newEnableWordGoals}
-                      onChange={(e) => setNewEnableWordGoals(e.target.checked)}
-                      className="w-4 h-4 rounded accent-[var(--accent)] cursor-pointer"
-                    />
-                    <span>Habilitar metas de palabras</span>
+              {/* Subtítulo & Autor */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
+                    Subtítulo (Opcional)
                   </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Libro Primero de las Sombras"
+                    value={newSubtitle}
+                    onChange={(e) => setNewSubtitle(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
+                  />
                 </div>
-
-                {newEnableWordGoals ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
-                    {/* Meta Total */}
-                    <div className="space-y-1.5">
-                      <label className="font-bold block text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-                        Meta Total Novela
-                      </label>
-                      <input
-                        type="number"
-                        min={1000}
-                        step={1000}
-                        value={newTargetWords}
-                        onChange={(e) => setNewTargetWords(parseInt(e.target.value) || 0)}
-                        className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-mono font-bold text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-                      />
-                      <div className="flex gap-1">
-                        {[30000, 50000, 80000, 120000].map((num) => (
-                          <button
-                            type="button"
-                            key={num}
-                            onClick={() => setNewTargetWords(num)}
-                            className={`flex-1 py-1 rounded text-[9px] font-mono transition-colors cursor-pointer ${
-                              newTargetWords === num
-                                ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-bold"
-                                : "bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-[var(--text-main)]"
-                            }`}
-                          >
-                            {num / 1000}k
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Meta por Arco / Acto */}
-                    <div className="space-y-1.5">
-                      <label className="font-bold block text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-                        Meta por Arco / Acto
-                      </label>
-                      <input
-                        type="number"
-                        min={500}
-                        step={500}
-                        value={newActTargetWords}
-                        onChange={(e) => setNewActTargetWords(parseInt(e.target.value) || 0)}
-                        className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-mono font-bold text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-                      />
-                      <span className="text-[10px] text-[var(--text-muted)] block">
-                        Recomendado: 15.000 palabras
-                      </span>
-                    </div>
-
-                    {/* Meta por Capítulo */}
-                    <div className="space-y-1.5">
-                      <label className="font-bold block text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-                        Meta por Capítulo
-                      </label>
-                      <input
-                        type="number"
-                        min={500}
-                        step={250}
-                        value={newChapterTargetWords}
-                        onChange={(e) => setNewChapterTargetWords(parseInt(e.target.value) || 0)}
-                        className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-mono font-bold text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-                      />
-                      <span className="text-[10px] text-[var(--text-muted)] block">
-                        Recomendado: 3.000 - 5.000 pal.
-                      </span>
-                    </div>
-
-                    {/* Meta por Escena */}
-                    <div className="space-y-1.5">
-                      <label className="font-bold block text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-                        Meta por Escena
-                      </label>
-                      <input
-                        type="number"
-                        min={100}
-                        step={100}
-                        value={newSceneTargetWords}
-                        onChange={(e) => setNewSceneTargetWords(parseInt(e.target.value) || 0)}
-                        className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-mono font-bold text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-                      />
-                      <span className="text-[10px] text-[var(--text-muted)] block">
-                        Recomendado: 1.000 - 2.000 pal.
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-xs text-[var(--text-muted)] italic bg-[var(--bg-card)]/50 p-3 rounded-xl border border-[var(--border-color)]/60">
-                    Modo libre activado: La aplicación no mostrará barras de progreso ni metas pendientes, permitiéndote escribir sin ninguna presión métrica. Podrás activar las metas en cualquier momento desde el menú superior.
-                  </div>
-                )}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
+                    Nombre del Autor
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Tu nombre o seudónimo"
+                    value={newAuthor}
+                    onChange={(e) => setNewAuthor(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
+                  />
+                </div>
               </div>
 
-              {/* Footer Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
+              {/* Género & Meta de Palabras */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
+                    Género Literario
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Fantasía, Ciencia Ficción, Thriller..."
+                    value={newGenre}
+                    onChange={(e) => setNewGenre(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
+                    Meta de Palabras Global
+                  </label>
+                  <input
+                    type="number"
+                    min={1000}
+                    step={1000}
+                    value={newTargetWords}
+                    onChange={(e) => setNewTargetWords(parseInt(e.target.value) || 0)}
+                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs font-mono text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
+                  />
+                </div>
+              </div>
+
+              {/* Sinopsis */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
+                  Premisa / Sinopsis Breve
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="¿De qué trata la historia? (puedes cambiarla después)"
+                  value={newSynopsis}
+                  onChange={(e) => setNewSynopsis(e.target.value)}
+                  className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)] resize-none"
+                />
+              </div>
+
+              {/* Advertencia explícita sobre modificación de la carpeta - Alto Contraste y Totalmente Legible */}
+              <div className="p-3.5 rounded-xl border border-amber-500/40 bg-[var(--bg-input)] space-y-1.5 shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+                  <span className="font-semibold text-xs text-[var(--text-main)]">
+                    Aviso: Se modificará la carpeta seleccionada
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-main)] leading-relaxed">
+                  Novelore <strong>creará y escribirá archivos</strong> dentro del directorio que elijas (inicializando la estructura <code>project.json</code>, capítulos y escenas <code>.md</code> en <code>manuscript/</code>, y subcarpetas en <code>assets/</code>).
+                </p>
+                <p className="text-xs text-[var(--text-muted)] font-medium">
+                  👉 Te recomendamos seleccionar una <strong>carpeta vacía o una carpeta dedicada</strong> exclusivamente para esta novela.
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--border-color)]">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] font-medium text-xs transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] font-bold text-xs hover:opacity-95 shadow-md shadow-[var(--accent)]/20 transition-all cursor-pointer flex items-center gap-2"
+                  className="px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-bold hover:opacity-95 shadow-xs transition-opacity cursor-pointer flex items-center gap-2"
                 >
-                  <BookOpen className="w-4 h-4 text-[var(--accent-contrast)]" />
-                  <span>Crear y Empezar a Escribir</span>
+                  <FolderOpen className="w-4 h-4 text-[var(--accent-contrast)]" />
+                  <span>Elegir Carpeta y Crear</span>
                 </button>
               </div>
             </form>
@@ -1141,99 +661,144 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       )}
 
-      {/* In-app Modal: Confirm Delete Project */}
-      {projectToDelete && (
+      {/* MODAL: EDITAR DATOS DE NOVELA EXISTENTE */}
+      {editingProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
           <div
-            className="w-full max-w-md rounded-2xl border p-6 shadow-2xl space-y-4"
+            className="w-full max-w-lg rounded-2xl border p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
             style={{
               backgroundColor: "var(--bg-card)",
               borderColor: "var(--border-color)",
             }}
           >
-            <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20">
-                <Trash2 className="w-5 h-5" />
-              </span>
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
               <div>
-                <h3 className="font-bold text-base text-[var(--text-main)]">
-                  ¿Eliminar novela?
+                <h3 className="font-bold text-lg text-[var(--text-main)] font-novel-display flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-[var(--accent)]" />
+                  <span>Editar Datos de la Novela</span>
                 </h3>
                 <p className="text-xs text-[var(--text-muted)]">
-                  Esta acción no se puede deshacer.
+                  Modifica los metadatos de tu obra guardados en su archivo project.json.
                 </p>
               </div>
-            </div>
-
-            <p className="text-sm text-[var(--text-main)] leading-relaxed">
-              ¿Estás seguro de que deseas eliminar permanentemente la novela{" "}
-              <strong className="font-bold">«{projectToDelete.title}»</strong>? Todos sus capítulos, escenas y entradas de la biblia de mundo serán borrados del almacenamiento local.
-            </p>
-
-            <div className="flex justify-end gap-2.5 pt-2">
               <button
-                type="button"
-                onClick={() => setProjectToDelete(null)}
-                className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                onClick={() => setEditingProject(null)}
+                className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5"
               >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 shadow-xs transition-colors"
-              >
-                Sí, eliminar novela
+                <X className="w-4 h-4" />
               </button>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* In-app Modal: Confirm Demo Reset */}
-      {confirmDemoReset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div
-            className="w-full max-w-md rounded-2xl border p-6 shadow-2xl space-y-4"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              borderColor: "var(--border-color)",
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20">
-                <Sparkles className="w-5 h-5" />
-              </span>
-              <div>
-                <h3 className="font-bold text-base text-[var(--text-main)]">
-                  Cargar novela de muestra
-                </h3>
-                <p className="text-xs text-[var(--text-muted)]">
-                  Novela demo «El Susurro del Cristal de Sombras»
-                </p>
+            <form onSubmit={handleSaveEditProject} className="space-y-4">
+              {/* Ruta física en disco (solo lectura) */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
+                  Ubicación física en disco
+                </label>
+                <div className="p-2 rounded-xl bg-black/5 dark:bg-white/5 text-[11px] font-mono text-[var(--text-muted)] truncate select-all">
+                  {editingProject.path}
+                </div>
               </div>
-            </div>
 
-            <p className="text-sm text-[var(--text-main)] leading-relaxed">
-              ¿Deseas cargar la novela de muestra <strong>«El Susurro del Cristal de Sombras»</strong> con manuscrito, personajes, mapa de relaciones, hitos narrativos y locaciones ya estructuradas?
-            </p>
+              {/* Título */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] block">
+                  Título de la Obra *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-sm text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)] font-serif"
+                  autoFocus
+                />
+              </div>
 
-            <div className="flex justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmDemoReset(false)}
-                className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleResetToDemoConfirmed}
-                className="px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-bold hover:opacity-90 shadow-xs transition-opacity"
-              >
-                Cargar Novela Demo
-              </button>
-            </div>
+              {/* Subtítulo & Autor */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
+                    Subtítulo (Opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={editSubtitle}
+                    onChange={(e) => setEditSubtitle(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
+                    Nombre del Autor
+                  </label>
+                  <input
+                    type="text"
+                    value={editAuthor}
+                    onChange={(e) => setEditAuthor(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
+                  />
+                </div>
+              </div>
+
+              {/* Género & Meta de Palabras */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
+                    Género Literario
+                  </label>
+                  <input
+                    type="text"
+                    value={editGenre}
+                    onChange={(e) => setEditGenre(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
+                    Meta de Palabras Global
+                  </label>
+                  <input
+                    type="number"
+                    min={1000}
+                    step={1000}
+                    value={editTargetWords}
+                    onChange={(e) => setEditTargetWords(parseInt(e.target.value) || 0)}
+                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs font-mono text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
+                  />
+                </div>
+              </div>
+
+              {/* Sinopsis / Descripción corta */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
+                  Descripción Corta / Sinopsis
+                </label>
+                <textarea
+                  rows={3}
+                  value={editSynopsis}
+                  onChange={(e) => setEditSynopsis(e.target.value)}
+                  className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)] resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--border-color)]">
+                <button
+                  type="button"
+                  onClick={() => setEditingProject(null)}
+                  className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-bold hover:opacity-95 shadow-xs transition-opacity cursor-pointer"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
