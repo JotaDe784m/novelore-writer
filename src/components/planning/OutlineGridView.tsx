@@ -113,11 +113,11 @@ export const OutlineGridView: React.FC<OutlineGridViewProps> = ({
             className="text-xs p-1.5 rounded-md border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] focus:outline-none"
           >
             <option value="all">Todos los estados</option>
-            <option value="idea">💡 Idea</option>
-            <option value="draft">📝 Borrador</option>
-            <option value="revised">🔍 En Revisión</option>
-            <option value="polished">✨ Pulido</option>
-            <option value="final">🏆 Final</option>
+            <option value="idea">Idea</option>
+            <option value="draft">Borrador</option>
+            <option value="revised">En Revisión</option>
+            <option value="polished">Pulido</option>
+            <option value="final">Final</option>
           </select>
         </div>
       </div>
@@ -174,11 +174,11 @@ export const OutlineGridView: React.FC<OutlineGridViewProps> = ({
                         }
                         className="text-[11px] font-semibold px-2 py-1 rounded-md border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] focus:outline-none"
                       >
-                        <option value="idea">💡 Idea</option>
-                        <option value="draft">📝 Borrador</option>
-                        <option value="revised">🔍 Revisión</option>
-                        <option value="polished">✨ Pulido</option>
-                        <option value="final">🏆 Final</option>
+                        <option value="idea">Idea</option>
+                        <option value="draft">Borrador</option>
+                        <option value="revised">En Revisión</option>
+                        <option value="polished">Pulido</option>
+                        <option value="final">Final</option>
                       </select>
                     </td>
 

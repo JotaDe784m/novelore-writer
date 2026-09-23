@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Maximize2,
   Minimize2,
@@ -9,13 +10,14 @@ import {
   Outdent,
   BookOpen,
   Clock,
-  Wand2,
   Upload,
   Trash2,
   Plus,
   Minus,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   CaseSensitive,
   FileText,
@@ -24,13 +26,17 @@ import {
   Redo2,
   ScrollText,
   Focus,
+  Lightbulb,
+  PenLine,
+  Search,
+  Sparkles,
+  Award,
 } from "lucide-react";
 import { NovelProject, Scene, SceneStatus } from "../../types";
 import {
   countCharacters,
   countWords,
   calculateReadingTimeMinutes,
-  formatSpanishDialogue,
   insertEmDashAtCursor,
 } from "../../utils/formatters";
 import {
@@ -39,6 +45,11 @@ import {
   calculateFocusMaskGradient,
   getOptimalReadingColumnWidth,
 } from "../../utils/editorErgonomics";
+import {
+  indentLines,
+  outdentLines,
+  handleSmartEnter,
+} from "../../utils/indentation";
 
 interface RichTextEditorProps {
   scene: Scene | null;
@@ -82,6 +93,20 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [showFontMenu, setShowFontMenu] = useState(false);
   const [showSpacingMenu, setShowSpacingMenu] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
+
+  // Ribbon drag-to-scroll & overflow scroll tracking
+  const [canScrollRibbonLeft, setCanScrollRibbonLeft] = useState(false);
+  const [canScrollRibbonRight, setCanScrollRibbonRight] = useState(false);
+  const [isRibbonOverflowing, setIsRibbonOverflowing] = useState(false);
+  const [isDraggingRibbon, setIsDraggingRibbon] = useState(false);
+  const isDraggingRibbonRef = useRef(false);
+  const ribbonStartXRef = useRef(0);
+  const ribbonScrollLeftRef = useRef(0);
+  const ribbonHasMovedRef = useRef(false);
+
+  // Floating portal positions for font & spacing dropdowns
+  const [fontMenuPos, setFontMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [spacingMenuPos, setSpacingMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   // Undo / Redo history state
   const [history, setHistory] = useState<string[]>(() => [scene?.content || ""]);
@@ -238,19 +263,181 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [handleUndo, handleRedo, isZenMode, setIsZenMode, project.settings.typewriterMode, project.settings.focusMode, onUpdateProjectSettings]);
 
+  // Ribbon horizontal scroll detection for responsive views
+  const checkRibbonScroll = useCallback(() => {
+    if (!ribbonRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = ribbonRef.current;
+    const maxScroll = scrollWidth - clientWidth;
+    const hasOverflow = maxScroll > 4;
+    setIsRibbonOverflowing(hasOverflow);
+    setCanScrollRibbonLeft(hasOverflow && scrollLeft > 6);
+    setCanScrollRibbonRight(hasOverflow && scrollLeft < maxScroll - 6);
+  }, []);
+
+  const scrollRibbon = (direction: "left" | "right") => {
+    if (!ribbonRef.current) return;
+    const scrollAmount = Math.max(160, Math.floor(ribbonRef.current.clientWidth * 0.5));
+    ribbonRef.current.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
+    setTimeout(checkRibbonScroll, 80);
+    setTimeout(checkRibbonScroll, 250);
+  };
+
+  // Drag-to-scroll handlers for the ribbon toolbar
+  const handleRibbonMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    // Don't drag if interactive input
+    if (target.closest("input") || target.closest("select")) {
+      return;
+    }
+    if (!ribbonRef.current) return;
+    isDraggingRibbonRef.current = true;
+    ribbonStartXRef.current = e.pageX;
+    ribbonScrollLeftRef.current = ribbonRef.current.scrollLeft;
+    ribbonHasMovedRef.current = false;
+  };
+
+  // Convert mouse wheel on ribbon to horizontal scroll and handle window-level drag
+  useEffect(() => {
+    const el = ribbonRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (el.scrollWidth > el.clientWidth) {
+        if (Math.abs(e.deltaY) >= Math.abs(e.deltaX) && e.deltaY !== 0) {
+          e.preventDefault();
+          el.scrollLeft += e.deltaY;
+          checkRibbonScroll();
+        }
+      }
+    };
+
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRibbonRef.current || !ribbonRef.current) return;
+      const delta = e.pageX - ribbonStartXRef.current;
+      if (Math.abs(delta) > 3) {
+        ribbonHasMovedRef.current = true;
+        setIsDraggingRibbon(true);
+        ribbonRef.current.scrollLeft = ribbonScrollLeftRef.current - delta;
+        checkRibbonScroll();
+      }
+    };
+
+    const handleWindowMouseUp = () => {
+      if (isDraggingRibbonRef.current) {
+        if (ribbonHasMovedRef.current) {
+          // Suppress any click on child elements triggered by releasing the drag
+          const suppressClick = (clickEvt: MouseEvent) => {
+            clickEvt.stopPropagation();
+            clickEvt.preventDefault();
+            window.removeEventListener("click", suppressClick, true);
+          };
+          window.addEventListener("click", suppressClick, true);
+          setTimeout(() => window.removeEventListener("click", suppressClick, true), 100);
+        }
+        isDraggingRibbonRef.current = false;
+        setIsDraggingRibbon(false);
+        ribbonHasMovedRef.current = false;
+      }
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    el.addEventListener("scroll", checkRibbonScroll, { passive: true });
+    window.addEventListener("mousemove", handleWindowMouseMove);
+    window.addEventListener("mouseup", handleWindowMouseUp);
+
+    const ro = new ResizeObserver(() => checkRibbonScroll());
+    ro.observe(el);
+    window.addEventListener("resize", checkRibbonScroll);
+
+    checkRibbonScroll();
+    const t = setTimeout(checkRibbonScroll, 120);
+
+    return () => {
+      el.removeEventListener("wheel", handleWheel);
+      el.removeEventListener("scroll", checkRibbonScroll);
+      window.removeEventListener("mousemove", handleWindowMouseMove);
+      window.removeEventListener("mouseup", handleWindowMouseUp);
+      ro.disconnect();
+      window.removeEventListener("resize", checkRibbonScroll);
+      clearTimeout(t);
+    };
+  }, [checkRibbonScroll]);
+
+  // Close floating menus if ribbon is scrolled or window resized
+  useEffect(() => {
+    if (!showFontMenu && !showSpacingMenu) return;
+    const handleClose = () => {
+      setShowFontMenu(false);
+      setShowSpacingMenu(false);
+    };
+    window.addEventListener("resize", handleClose);
+    const el = ribbonRef.current;
+    if (el) el.addEventListener("scroll", handleClose);
+    return () => {
+      window.removeEventListener("resize", handleClose);
+      if (el) el.removeEventListener("scroll", handleClose);
+    };
+  }, [showFontMenu, showSpacingMenu]);
+
+  // Open font menu positioned cleanly via portal
+  const handleOpenFontMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (showFontMenu) {
+      setShowFontMenu(false);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setFontMenuPos({
+      top: rect.bottom + 6,
+      left: Math.max(12, Math.min(window.innerWidth - 272, rect.left)),
+    });
+    setShowFontMenu(true);
+    setShowSpacingMenu(false);
+    setShowStatusMenu(false);
+  };
+
+  // Open spacing menu positioned cleanly via portal
+  const handleOpenSpacingMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (showSpacingMenu) {
+      setShowSpacingMenu(false);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setSpacingMenuPos({
+      top: rect.bottom + 6,
+      left: Math.max(12, Math.min(window.innerWidth - 210, rect.left)),
+    });
+    setShowSpacingMenu(true);
+    setShowFontMenu(false);
+    setShowStatusMenu(false);
+  };
+
   // Close menus on pointer down outside
   useEffect(() => {
     if (!showFontMenu && !showSpacingMenu && !showStatusMenu) return;
     const handlePointerDownOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (showFontMenu && fontMenuRef.current && !fontMenuRef.current.contains(target)) {
-        setShowFontMenu(false);
+      const target = e.target as HTMLElement;
+      if (showFontMenu) {
+        if (!fontMenuRef.current?.contains(target) && !target.closest("#ribbon-font-selector")) {
+          setShowFontMenu(false);
+        }
       }
-      if (showSpacingMenu && spacingMenuRef.current && !spacingMenuRef.current.contains(target)) {
-        setShowSpacingMenu(false);
+      if (showSpacingMenu) {
+        if (!spacingMenuRef.current?.contains(target) && !target.closest("#ribbon-line-spacing-btn")) {
+          setShowSpacingMenu(false);
+        }
       }
-      if (showStatusMenu && statusMenuRef.current && !statusMenuRef.current.contains(target)) {
-        setShowStatusMenu(false);
+      if (showStatusMenu) {
+        if (!statusMenuRef.current?.contains(target) && !target.closest("#scene-status-button")) {
+          setShowStatusMenu(false);
+        }
       }
     };
     document.addEventListener("mousedown", handlePointerDownOutside);
@@ -449,18 +636,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     showToast("Guion largo '—' insertado");
   };
 
-  const handleFormatAllDialogues = () => {
-    if (!scene || !scene.content) return;
-    const formatted = formatSpanishDialogue(scene.content);
-    onUpdateScene(scene.id, {
-      content: formatted,
-      wordCount: countWords(formatted),
-    });
-    pushToHistory(formatted);
-    setTimeout(() => updateErgonomics(false), 10);
-    showToast("Diálogos formateados según la norma RAE");
-  };
-
   const handleInsertBreak = () => {
     if (!textareaRef.current || !scene) return;
     const textarea = textareaRef.current;
@@ -540,85 +715,38 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     showToast("Contenido de la escena copiado al portapapeles");
   };
 
-  const handleIndentOrOutdent = (isOutdent: boolean = false, forceParagraph: boolean = false) => {
-    if (!textareaRef.current || !scene) return;
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const originalText = textarea.value || "";
-
-    if (start === end && !isOutdent && !forceParagraph) {
-      const newText = originalText.substring(0, start) + "\t" + originalText.substring(end);
-      onUpdateScene(scene.id, {
-        content: newText,
-        wordCount: countWords(newText),
-      });
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(start + 1, start + 1);
-        updateErgonomics(true);
-      }, 0);
-      return;
-    }
-
-    const lineStart = originalText.lastIndexOf("\n", start - 1) + 1;
-    const nextNewline = originalText.indexOf("\n", end);
-    const lineEnd = nextNewline === -1 ? originalText.length : nextNewline;
-
-    const targetBlock = originalText.substring(lineStart, lineEnd);
-    const lines = targetBlock.split("\n");
-
-    let firstLineShift = 0;
-    let totalShift = 0;
-
-    const processedLines = lines.map((line, idx) => {
-      if (isOutdent) {
-        if (line.startsWith("\t")) {
-          if (idx === 0) firstLineShift = -1;
-          totalShift -= 1;
-          return line.substring(1);
-        } else if (line.startsWith("    ")) {
-          if (idx === 0) firstLineShift = -4;
-          totalShift -= 4;
-          return line.substring(4);
-        } else {
-          const match = line.match(/^ +/);
-          if (match) {
-            const len = Math.min(match[0].length, 4);
-            if (idx === 0) firstLineShift = -len;
-            totalShift -= len;
-            return line.substring(len);
-          }
-          return line;
-        }
-      } else {
-        if (idx === 0) firstLineShift = 1;
-        totalShift += 1;
-        return "\t" + line;
-      }
-    });
-
-    const newBlock = processedLines.join("\n");
-    const newText = originalText.substring(0, lineStart) + newBlock + originalText.substring(lineEnd);
-
-    onUpdateScene(scene.id, {
-      content: newText,
-      wordCount: countWords(newText),
-    });
-
-    setTimeout(() => {
-      textarea.focus();
-      const newStart = Math.max(lineStart, start + firstLineShift);
-      const newEnd = Math.max(newStart, end + totalShift);
-      textarea.setSelectionRange(newStart, newEnd);
-      updateErgonomics(true);
-    }, 0);
-  };
-
   const handleIndentButtonClick = () => {
     if (!textareaRef.current || !scene) return;
-    handleIndentOrOutdent(false, true);
+    const textarea = textareaRef.current;
+    const res = indentLines(scene.content || "", textarea.selectionStart, textarea.selectionEnd, true);
+    onUpdateScene(scene.id, {
+      content: res.newText,
+      wordCount: countWords(res.newText),
+    });
+    pushToHistory(res.newText);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(res.newStart, res.newEnd);
+      updateErgonomics(true);
+    }, 0);
     showToast("Sangría añadida al párrafo (Tab)");
+  };
+
+  const handleOutdentButtonClick = () => {
+    if (!textareaRef.current || !scene) return;
+    const textarea = textareaRef.current;
+    const res = outdentLines(scene.content || "", textarea.selectionStart, textarea.selectionEnd);
+    onUpdateScene(scene.id, {
+      content: res.newText,
+      wordCount: countWords(res.newText),
+    });
+    pushToHistory(res.newText);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(res.newStart, res.newEnd);
+      updateErgonomics(true);
+    }, 0);
+    showToast("Sangría reducida (Shift+Tab)");
   };
 
   // Keyboard shortcut listener for em-dash (Ctrl+Shift+M or Alt+-)
@@ -717,12 +845,48 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       ? (project.settings.customFontName?.replace(/^Custom_/, "") || "Fuente Propia")
       : fontOptions.find((f) => f.id === project.settings.fontFamily)?.label || "Merriweather (Serif)";
 
-  const statusOptions: { value: SceneStatus; label: string; badgeClass: string }[] = [
-    { value: "idea", label: "💡 Idea", badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-    { value: "draft", label: "📝 Borrador", badgeClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
-    { value: "revised", label: "🔍 En Revisión", badgeClass: "bg-purple-500/15 text-purple-600 dark:text-purple-400" },
-    { value: "polished", label: "✨ Pulido", badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
-    { value: "final", label: "🏆 Final", badgeClass: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" },
+  const statusOptions: {
+    value: SceneStatus;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badgeClass: string;
+    iconColor: string;
+  }[] = [
+    {
+      value: "idea",
+      label: "Idea",
+      icon: Lightbulb,
+      badgeClass: "bg-purple-500/15 text-purple-600 dark:text-purple-400 hover:bg-purple-500/25",
+      iconColor: "text-purple-500",
+    },
+    {
+      value: "draft",
+      label: "Borrador",
+      icon: PenLine,
+      badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25",
+      iconColor: "text-amber-500",
+    },
+    {
+      value: "revised",
+      label: "En Revisión",
+      icon: Search,
+      badgeClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25",
+      iconColor: "text-blue-500",
+    },
+    {
+      value: "polished",
+      label: "Pulido",
+      icon: Sparkles,
+      badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25",
+      iconColor: "text-emerald-500",
+    },
+    {
+      value: "final",
+      label: "Final",
+      icon: Award,
+      badgeClass: "bg-teal-500/15 text-teal-600 dark:text-teal-400 hover:bg-teal-500/25",
+      iconColor: "text-teal-500",
+    },
   ];
 
   const currentStatusObj =
@@ -772,7 +936,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       {!isZenMode && (
         <header
           id="editor-scene-header"
-          className="h-11 px-3 sm:px-5 flex items-center justify-between shrink-0 select-none min-w-0 border-b border-[var(--border-subtle)]"
+          className="h-11 px-3 sm:px-5 flex items-center justify-between shrink-0 select-none min-w-0 border-b border-[var(--border-subtle)] relative z-50"
           style={{
             backgroundColor: "var(--bg-sidebar)",
           }}
@@ -802,13 +966,14 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer shrink-0 ${currentStatusObj.badgeClass}`}
                 title="Cambiar estado de la escena"
               >
+                <currentStatusObj.icon className="w-3.5 h-3.5 shrink-0" />
                 <span>{currentStatusObj.label}</span>
-                <ChevronDown className="w-3 h-3 opacity-60" />
+                <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
               </button>
 
               {showStatusMenu && (
                 <div
-                  className="absolute right-0 top-full mt-1.5 w-40 rounded-xl shadow-xl p-1 z-50 border border-[var(--border-subtle)]"
+                  className="absolute right-0 top-full mt-1.5 w-44 rounded-xl shadow-xl p-1 z-50 border border-[var(--border-subtle)]"
                   style={{
                     backgroundColor: "var(--bg-editor)",
                   }}
@@ -816,23 +981,33 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-1">
                     Estado de Escena
                   </div>
-                  {statusOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => {
-                        onUpdateScene(scene.id, { status: opt.value });
-                        setShowStatusMenu(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                        scene.status === opt.value
-                          ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
-                          : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
-                      }`}
-                    >
-                      <span>{opt.label}</span>
-                      {scene.status === opt.value && <Check className="w-3.5 h-3.5" />}
-                    </button>
-                  ))}
+                  {statusOptions.map((opt) => {
+                    const OptIcon = opt.icon;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => {
+                          onUpdateScene(scene.id, { status: opt.value });
+                          setShowStatusMenu(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                          scene.status === opt.value
+                            ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
+                            : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <OptIcon
+                            className={`w-3.5 h-3.5 shrink-0 ${
+                              scene.status === opt.value ? "text-current" : opt.iconColor
+                            }`}
+                          />
+                          <span>{opt.label}</span>
+                        </div>
+                        {scene.status === opt.value && <Check className="w-3.5 h-3.5 shrink-0" />}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -888,467 +1063,349 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </header>
       )}
 
-      {/* FILA 2: Cinta de Herramientas Ergonomía y Formato (Toolbar / Ribbon) */}
+      {/* FILA 2: Cinta de Herramientas Ergonomía y Formato (Toolbar / Ribbon) Centrada y Arrastrable */}
       {!isZenMode && (
-        <div
-          ref={ribbonRef}
-          id="editor-word-processor-ribbon"
-          className="min-h-[42px] px-3 sm:px-5 py-1 flex items-center gap-1 sm:gap-2 shrink-0 relative z-30 select-none flex-wrap border-b border-[var(--border-subtle)]"
-          style={{
-            backgroundColor: "var(--bg-sidebar)",
-          }}
-        >
-          {/* GRUPO 0: DESHACER & REHACER (UNDO / REDO) */}
-          <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)] shrink-0">
+        <div className="relative shrink-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--bg-sidebar)]">
+          {/* Botón sutil de desplazamiento hacia la izquierda */}
+          {canScrollRibbonLeft && (
             <button
               type="button"
-              id="ribbon-undo-btn"
-              disabled={!canUndo}
-              onClick={handleUndo}
-              className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              title="Deshacer última acción (Ctrl+Z / ⌘Z)"
+              onClick={() => scrollRibbon("left")}
+              className="absolute left-0 top-0 bottom-0 z-40 px-1 bg-gradient-to-r from-[var(--bg-sidebar)] via-[var(--bg-sidebar)] to-transparent flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              title="Desplazar herramientas a la izquierda"
             >
-              <Undo2 className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              id="ribbon-redo-btn"
-              disabled={!canRedo}
-              onClick={handleRedo}
-              className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              title="Rehacer acción deshecha (Ctrl+Y / ⌘Shift+Z)"
+          )}
+
+          {/* Contenedor arrastrable horizontalmente */}
+          <div
+            ref={ribbonRef}
+            id="editor-word-processor-ribbon"
+            onMouseDown={handleRibbonMouseDown}
+            className={`min-h-[44px] px-3 sm:px-6 py-1.5 flex items-center overflow-x-auto no-scrollbar select-none ${
+              isRibbonOverflowing ? (isDraggingRibbon ? "cursor-grabbing" : "cursor-grab") : ""
+            }`}
+            style={{
+              justifyContent: isRibbonOverflowing ? "flex-start" : "center",
+            }}
+          >
+            <div
+              className={`flex items-center gap-1 sm:gap-1.5 flex-nowrap shrink-0 min-w-max ${
+                isRibbonOverflowing ? "" : "mx-auto"
+              } ${isDraggingRibbon ? "pointer-events-none" : ""}`}
             >
-              <Redo2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
-
-          {/* GRUPO 1: TIPOGRAFÍA & FUENTE */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Font Family Dropdown */}
-            <div ref={fontMenuRef} className="relative z-50">
-              <button
-                type="button"
-                id="ribbon-font-selector"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setShowFontMenu((prev) => !prev);
-                  setShowSpacingMenu(false);
-                  setShowStatusMenu(false);
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer max-w-[170px] truncate"
-                title="Cambiar tipografía del manuscrito"
-              >
-                <Type className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
-                <span className="truncate">{currentFontLabel}</span>
-                <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
-              </button>
-
-              {showFontMenu && (
-                <div
-                  onMouseDown={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full mt-1.5 w-64 rounded-xl shadow-2xl p-2 z-[100] space-y-1 border border-[var(--border-subtle)]"
-                  style={{
-                    backgroundColor: "var(--bg-editor)",
-                  }}
+              {/* GRUPO 0: DESHACER & REHACER (UNDO / REDO) */}
+              <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)] shrink-0">
+                <button
+                  type="button"
+                  id="ribbon-undo-btn"
+                  disabled={!canUndo}
+                  onClick={handleUndo}
+                  className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  title="Deshacer última acción (Ctrl+Z / ⌘Z)"
                 >
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-0.5">
-                    Tipografías Literarias
-                  </div>
-
-                  {fontOptions.map((font) => (
-                    <button
-                      key={font.id}
-                      onClick={() => {
-                        onUpdateProjectSettings({ fontFamily: font.id as any });
-                        setShowFontMenu(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-left transition-colors cursor-pointer ${
-                        project.settings.fontFamily === font.id
-                          ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
-                          : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
-                      }`}
-                    >
-                      <span className={font.previewClass}>{font.label}</span>
-                      {project.settings.fontFamily === font.id && (
-                        <Check className="w-3.5 h-3.5 shrink-0" />
-                      )}
-                    </button>
-                  ))}
-
-                  <div className="pt-2 border-t border-[var(--border-subtle)] mt-1">
-                    <input
-                      ref={customFontInputRef}
-                      type="file"
-                      accept=".ttf,.otf,.woff,.woff2"
-                      onChange={handleCustomFontUpload}
-                      className="hidden"
-                    />
-
-                    {project.settings.customFontData && project.settings.customFontName ? (
-                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-[var(--bg-surface-hover)] mb-1">
-                        <div className="truncate flex-1 pr-1">
-                          <p className="text-xs font-bold text-[var(--text-primary)] truncate">
-                            {project.settings.customFontName.replace(/^Custom_/, "")}
-                          </p>
-                          <span className="text-[10px] text-[var(--accent)] font-medium">
-                            {project.settings.fontFamily === "custom" ? "✓ En uso" : "Cargada"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {project.settings.fontFamily !== "custom" && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onUpdateProjectSettings({ fontFamily: "custom" });
-                                setShowFontMenu(false);
-                              }}
-                              className="px-2 py-0.5 rounded bg-[var(--accent)] text-[var(--accent-contrast)] text-[10px] font-semibold"
-                            >
-                              Usar
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={handleRemoveCustomFont}
-                            className="p-1 text-red-500 hover:bg-red-500/15 rounded cursor-pointer"
-                            title="Eliminar fuente propia"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <button
-                      type="button"
-                      onClick={() => customFontInputRef.current?.click()}
-                      className="w-full flex items-center justify-center gap-1.5 py-1 px-2 rounded-lg border border-dashed border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)]/10 text-xs font-medium transition-colors cursor-pointer"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{project.settings.customFontData ? "Cargar otra fuente (.ttf/.otf)" : "Subir mi propia fuente (.ttf/.otf)"}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Font Size Step Controls (- / Size / +) */}
-            <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
-              <button
-                type="button"
-                id="font-size-decrease-btn"
-                onClick={() =>
-                  onUpdateProjectSettings({
-                    fontSize: Math.max(10, (project.settings.fontSize || 18) - 1),
-                  })
-                }
-                className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
-                title="Reducir tamaño de letra"
-              >
-                <Minus className="w-3 h-3" />
-              </button>
-              <span
-                className="px-1.5 text-xs font-mono font-bold text-[var(--text-primary)] min-w-[28px] text-center select-none"
-                title="Tamaño actual de letra"
-              >
-                {project.settings.fontSize || 18}
-              </span>
-              <button
-                type="button"
-                id="font-size-increase-btn"
-                onClick={() =>
-                  onUpdateProjectSettings({
-                    fontSize: Math.min(36, (project.settings.fontSize || 18) + 1),
-                  })
-                }
-                className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
-                title="Aumentar tamaño de letra"
-              >
-                <Plus className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-
-          <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
-
-          {/* GRUPO 2: PÁRRAFO, INTERLINEADO & ALINEACIÓN */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Line Spacing Dropdown */}
-            <div ref={spacingMenuRef} className="relative z-50">
-              <button
-                type="button"
-                id="ribbon-line-spacing-btn"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setShowSpacingMenu((prev) => !prev);
-                  setShowFontMenu(false);
-                  setShowStatusMenu(false);
-                }}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
-                title="Ajustar interlineado del manuscrito"
-              >
-                <span className="font-mono text-xs text-[var(--accent)] font-bold">↕</span>
-                <span className="hidden sm:inline">{getLineSpacingLabel()}</span>
-                <ChevronDown className="w-3 h-3 opacity-60" />
-              </button>
-
-              {showSpacingMenu && (
-                <div
-                  onMouseDown={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full mt-1.5 w-48 rounded-xl shadow-2xl p-1 z-[100] space-y-0.5 border border-[var(--border-subtle)]"
-                  style={{
-                    backgroundColor: "var(--bg-editor)",
-                  }}
+                  <Undo2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  id="ribbon-redo-btn"
+                  disabled={!canRedo}
+                  onClick={handleRedo}
+                  className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  title="Rehacer acción deshecha (Ctrl+Y / ⌘Shift+Z)"
                 >
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-1">
-                    Interlineado
-                  </div>
-                  {lineSpacingOptions.map((opt) => (
-                    <button
-                      key={opt.id}
-                      onClick={() => {
-                        onUpdateProjectSettings({ lineSpacing: opt.id as any });
-                        setShowSpacingMenu(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                        project.settings.lineSpacing === opt.id || project.settings.lineSpacing === opt.val
-                          ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
-                          : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
-                      }`}
-                    >
-                      <span>{opt.label}</span>
-                      {(project.settings.lineSpacing === opt.id || project.settings.lineSpacing === opt.val) && (
-                        <Check className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  ))}
+                  <Redo2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
+
+              {/* GRUPO 1: TIPOGRAFÍA & FUENTE */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  id="ribbon-font-selector"
+                  onClick={handleOpenFontMenu}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer max-w-[130px] sm:max-w-[155px] truncate"
+                  title="Cambiar tipografía del manuscrito"
+                >
+                  <Type className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
+                  <span className="truncate">{currentFontLabel}</span>
+                  <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
+                </button>
+
+                {/* Font Size Step Controls (- / Size / +) */}
+                <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
+                  <button
+                    type="button"
+                    id="font-size-decrease-btn"
+                    onClick={() =>
+                      onUpdateProjectSettings({
+                        fontSize: Math.max(10, (project.settings.fontSize || 18) - 1),
+                      })
+                    }
+                    className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
+                    title="Reducir tamaño de letra"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <span
+                    className="px-1.5 text-xs font-mono font-bold text-[var(--text-primary)] min-w-[24px] text-center select-none"
+                    title="Tamaño actual de letra"
+                  >
+                    {project.settings.fontSize || 18}
+                  </span>
+                  <button
+                    type="button"
+                    id="font-size-increase-btn"
+                    onClick={() =>
+                      onUpdateProjectSettings({
+                        fontSize: Math.min(36, (project.settings.fontSize || 18) + 1),
+                      })
+                    }
+                    className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
+                    title="Aumentar tamaño de letra"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
                 </div>
-              )}
+              </div>
+
+              <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
+
+              {/* GRUPO 2: PÁRRAFO, INTERLINEADO & ALINEACIÓN */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  id="ribbon-line-spacing-btn"
+                  onClick={handleOpenSpacingMenu}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
+                  title="Ajustar interlineado del manuscrito"
+                >
+                  <span className="font-mono text-xs text-[var(--accent)] font-bold">↕</span>
+                  <span className="hidden xl:inline">{getLineSpacingLabel()}</span>
+                  <ChevronDown className="w-3 h-3 opacity-60" />
+                </button>
+
+                {/* Alignment: Left vs Justify */}
+                <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
+                  <button
+                    type="button"
+                    id="align-left-btn"
+                    onClick={() => onUpdateProjectSettings({ textAlign: "left" })}
+                    className={`p-1 rounded-md transition-colors cursor-pointer ${
+                      (project.settings.textAlign || "left") === "left"
+                        ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
+                    }`}
+                    title="Alinear texto a la izquierda"
+                  >
+                    <AlignLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    id="align-justify-btn"
+                    onClick={() => onUpdateProjectSettings({ textAlign: "justify" })}
+                    className={`p-1 rounded-md transition-colors cursor-pointer ${
+                      project.settings.textAlign === "justify"
+                        ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
+                    }`}
+                    title="Justificar texto (formato editorial)"
+                  >
+                    <AlignJustify className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Sangría & 1ª Línea Inteligente */}
+                <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
+                  <button
+                    id="apply-indent-btn"
+                    type="button"
+                    onClick={handleIndentButtonClick}
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] transition-colors cursor-pointer"
+                    title="Añadir sangría al párrafo seleccionado (Tab)"
+                  >
+                    <Indent className="w-3.5 h-3.5 text-[var(--accent)]" />
+                    <span className="hidden xl:inline">Sangría</span>
+                  </button>
+
+                  <button
+                    id="outdent-btn"
+                    type="button"
+                    onClick={handleOutdentButtonClick}
+                    className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] transition-colors cursor-pointer"
+                    title="Reducir sangría en el párrafo seleccionado (Shift+Tab)"
+                  >
+                    <Outdent className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    id="toggle-first-line-indent-btn"
+                    type="button"
+                    onClick={() => {
+                      const nextState = !project.settings.paragraphIndent;
+                      onUpdateProjectSettings({ paragraphIndent: nextState });
+                      showToast(
+                        nextState
+                          ? "Sangría de 1.ª línea activada (párrafos automáticos con Tab)"
+                          : "Sangría de 1.ª línea desactivada"
+                      );
+                    }}
+                    className={`px-2 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0 ${
+                      project.settings.paragraphIndent
+                        ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-bold shadow-xs"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
+                    }`}
+                    title="Activar sangría de 1.ª línea automática (cada nuevo párrafo al pulsar Enter comenzará sangrado)"
+                  >
+                    <span className="hidden sm:inline">1.ª Línea</span>
+                    <span className="sm:hidden">1.ª Lín.</span>
+                    {project.settings.paragraphIndent ? " ✓" : ""}
+                  </button>
+                </div>
+              </div>
+
+              <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
+
+              {/* GRUPO 3: ELEMENTOS DE NOVELA & DIÁLOGOS (Sin botón Diálogos RAE) */}
+              <div className="flex items-center gap-1 shrink-0">
+                {/* Guion Largo Dialogo (—) */}
+                <button
+                  id="insert-em-dash-btn"
+                  type="button"
+                  onClick={handleInsertDash}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[var(--text-primary)] bg-[var(--accent-subtle)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] transition-colors cursor-pointer"
+                  title="Insertar Guion Largo de Diálogo (—) [Ctrl+Shift+M o Alt+-]"
+                >
+                  <span className="text-base leading-none font-bold text-[var(--accent)]">—</span>
+                  <span className="hidden xl:inline">Guion</span>
+                </button>
+
+                {/* Comillas Latinas (« ») */}
+                <button
+                  id="insert-guillemets-btn"
+                  type="button"
+                  onClick={handleInsertGuillemets}
+                  className="px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
+                  title="Insertar Comillas Latinas (« »)"
+                >
+                  « »
+                </button>
+
+                {/* Separador de Escena (* * *) */}
+                <button
+                  id="insert-break-btn"
+                  type="button"
+                  onClick={handleInsertBreak}
+                  className="px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
+                  title="Insertar Separador de Escena (* * *)"
+                >
+                  * * *
+                </button>
+              </div>
+
+              <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
+
+              {/* GRUPO 4: ERGONOMÍA LITERARIA (TOGGLEABLE TYPEWRITER & FOCUS MODE) */}
+              <div className="flex items-center gap-1 shrink-0">
+                {/* Typewriter Scroll Toggle */}
+                <button
+                  id="toggle-typewriter-mode-btn"
+                  type="button"
+                  onClick={() => {
+                    const nextVal = !isTypewriterActive;
+                    onUpdateProjectSettings({ typewriterMode: nextVal });
+                    showToast(
+                      nextVal
+                        ? "Scroll de máquina de escribir activado (línea centrada)"
+                        : "Scroll de máquina de escribir desactivado"
+                    );
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                    isTypewriterActive
+                      ? "bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold shadow-2xs"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]"
+                  }`}
+                  title="Scroll de Máquina de Escribir (Mantiene la línea activa en el centro) [Alt+T]"
+                >
+                  <ScrollText className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden xl:inline">Máquina</span>
+                  {isTypewriterActive && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" />}
+                </button>
+
+                {/* Paragraph Focus Mode Toggle */}
+                <button
+                  id="toggle-focus-mode-btn"
+                  type="button"
+                  onClick={() => {
+                    const nextVal = !isFocusActive;
+                    onUpdateProjectSettings({ focusMode: nextVal });
+                    showToast(
+                      nextVal
+                        ? "Modo foco por párrafo activado (atenúa párrafos adyacentes)"
+                        : "Modo foco desactivado"
+                    );
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                    isFocusActive
+                      ? "bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold shadow-2xs"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]"
+                  }`}
+                  title="Modo Foco por Párrafo (Atenúa los párrafos circundantes) [Alt+F]"
+                >
+                  <Focus className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden xl:inline">Foco</span>
+                  {isFocusActive && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" />}
+                </button>
+              </div>
+
+              <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
+
+              {/* GRUPO 5: UTILIDADES */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  id="toggle-case-btn"
+                  onClick={handleToggleCase}
+                  className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
+                  title="Alternar MAYÚSCULAS / minúsculas / Título en la selección"
+                >
+                  <CaseSensitive className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  id="copy-content-btn"
+                  onClick={handleCopyContent}
+                  className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
+                  title="Copiar texto de la escena al portapapeles"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
-
-            {/* Alignment: Left vs Justify */}
-            <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
-              <button
-                type="button"
-                id="align-left-btn"
-                onClick={() => onUpdateProjectSettings({ textAlign: "left" })}
-                className={`p-1 rounded-md transition-colors cursor-pointer ${
-                  (project.settings.textAlign || "left") === "left"
-                    ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
-                }`}
-                title="Alinear texto a la izquierda"
-              >
-                <AlignLeft className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                id="align-justify-btn"
-                onClick={() => onUpdateProjectSettings({ textAlign: "justify" })}
-                className={`p-1 rounded-md transition-colors cursor-pointer ${
-                  project.settings.textAlign === "justify"
-                    ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
-                }`}
-                title="Justificar texto (formato editorial)"
-              >
-                <AlignJustify className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Sangría & 1ª Línea */}
-            <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
-              <button
-                id="apply-indent-btn"
-                type="button"
-                onClick={handleIndentButtonClick}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] transition-colors cursor-pointer"
-                title="Añadir sangría al párrafo seleccionado (Tab)"
-              >
-                <Indent className="w-3.5 h-3.5 text-[var(--accent)]" />
-                <span className="hidden sm:inline">Sangría</span>
-              </button>
-
-              <button
-                id="outdent-btn"
-                type="button"
-                onClick={() => {
-                  handleIndentOrOutdent(true, true);
-                  showToast("Sangría reducida (Shift+Tab)");
-                }}
-                className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] transition-colors cursor-pointer"
-                title="Reducir sangría en el párrafo seleccionado (Shift+Tab)"
-              >
-                <Outdent className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                id="toggle-first-line-indent-btn"
-                type="button"
-                onClick={() => {
-                  const nextState = !project.settings.paragraphIndent;
-                  onUpdateProjectSettings({ paragraphIndent: nextState });
-                  showToast(
-                    nextState
-                      ? "Sangría de 1.ª línea (1.5em) activada"
-                      : "Sangría de 1.ª línea desactivada"
-                  );
-                }}
-                className={`px-2 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                  project.settings.paragraphIndent
-                    ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-bold shadow-xs"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
-                }`}
-                title="Activar/Desactivar sangría de primera línea automática (1.5em)"
-              >
-                1.ª Línea {project.settings.paragraphIndent ? "✓" : ""}
-              </button>
-            </div>
           </div>
 
-          <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
-
-          {/* GRUPO 3: ELEMENTOS DE NOVELA & DIÁLOGOS */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Guion Largo Dialogo (—) */}
-            <button
-              id="insert-em-dash-btn"
-              type="button"
-              onClick={handleInsertDash}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[var(--text-primary)] bg-[var(--accent-subtle)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] transition-colors cursor-pointer"
-              title="Insertar Guion Largo de Diálogo (—) [Ctrl+Shift+M o Alt+-]"
-            >
-              <span className="text-base leading-none font-bold text-[var(--accent)]">—</span>
-              <span className="hidden sm:inline">Guion</span>
-            </button>
-
-            {/* Comillas Latinas (« ») */}
-            <button
-              id="insert-guillemets-btn"
-              type="button"
-              onClick={handleInsertGuillemets}
-              className="px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
-              title="Insertar Comillas Latinas (« »)"
-            >
-              « »
-            </button>
-
-            {/* Separador de Escena (* * *) */}
-            <button
-              id="insert-break-btn"
-              type="button"
-              onClick={handleInsertBreak}
-              className="px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
-              title="Insertar Separador de Escena (* * *)"
-            >
-              * * *
-            </button>
-
-            {/* Pulir Diálogos RAE */}
-            <button
-              id="format-dialogue-btn"
-              type="button"
-              onClick={handleFormatAllDialogues}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
-              title="Escanear y corregir puntuación y rayas de diálogo según la norma RAE"
-            >
-              <Wand2 className="w-3.5 h-3.5 text-[var(--accent)]" />
-              <span className="hidden lg:inline">Diálogos RAE</span>
-            </button>
-          </div>
-
-          <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
-
-          {/* GRUPO 4: ERGONOMÍA LITERARIA (TOGGLEABLE TYPEWRITER & FOCUS MODE) */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Typewriter Scroll Toggle */}
-            <button
-              id="toggle-typewriter-mode-btn"
-              type="button"
-              onClick={() => {
-                const nextVal = !isTypewriterActive;
-                onUpdateProjectSettings({ typewriterMode: nextVal });
-                showToast(
-                  nextVal
-                    ? "Scroll de máquina de escribir activado (línea centrada)"
-                    : "Scroll de máquina de escribir desactivado"
-                );
-              }}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                isTypewriterActive
-                  ? "bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold shadow-2xs"
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]"
-              }`}
-              title="Scroll de Máquina de Escribir (Mantiene la línea activa en el centro) [Alt+T]"
-            >
-              <ScrollText className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">Máquina</span>
-              {isTypewriterActive && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" />}
-            </button>
-
-            {/* Paragraph Focus Mode Toggle */}
-            <button
-              id="toggle-focus-mode-btn"
-              type="button"
-              onClick={() => {
-                const nextVal = !isFocusActive;
-                onUpdateProjectSettings({ focusMode: nextVal });
-                showToast(
-                  nextVal
-                    ? "Modo foco por párrafo activado (atenúa párrafos adyacentes)"
-                    : "Modo foco desactivado"
-                );
-              }}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                isFocusActive
-                  ? "bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold shadow-2xs"
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]"
-              }`}
-              title="Modo Foco por Párrafo (Atenúa los párrafos circundantes) [Alt+F]"
-            >
-              <Focus className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">Foco</span>
-              {isFocusActive && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" />}
-            </button>
-          </div>
-
-          <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
-
-          {/* GRUPO 5: UTILIDADES */}
-          <div className="flex items-center gap-1 shrink-0">
+          {/* Botón sutil de desplazamiento hacia la derecha */}
+          {canScrollRibbonRight && (
             <button
               type="button"
-              id="toggle-case-btn"
-              onClick={handleToggleCase}
-              className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
-              title="Alternar MAYÚSCULAS / minúsculas / Título en la selección"
+              onClick={() => scrollRibbon("right")}
+              className="absolute right-0 top-0 bottom-0 z-40 px-1 bg-gradient-to-l from-[var(--bg-sidebar)] via-[var(--bg-sidebar)] to-transparent flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              title="Desplazar herramientas a la derecha"
             >
-              <CaseSensitive className="w-3.5 h-3.5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
-
-            <button
-              type="button"
-              id="copy-content-btn"
-              onClick={handleCopyContent}
-              className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
-              title="Copiar texto de la escena al portapapeles"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          )}
         </div>
       )}
 
       {/* Main Text Writing Canvas with Native Scrollbar on Far Right Edge */}
       <div
         id="editor-scroll-container"
-        className="flex-1 min-h-0 relative w-full h-full flex flex-col overflow-hidden"
+        className="flex-1 min-h-0 relative z-10 w-full h-full flex flex-col overflow-hidden"
       >
         {/* Zen mode floating badge with quick toggles */}
         {isZenMode && (
@@ -1434,9 +1491,45 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               }
             }
 
+            if (e.key === "Enter") {
+              if (project.settings.paragraphIndent && textareaRef.current && scene) {
+                e.preventDefault();
+                const res = handleSmartEnter(
+                  scene.content || "",
+                  textareaRef.current.selectionStart,
+                  textareaRef.current.selectionEnd,
+                  true
+                );
+                onUpdateScene(scene.id, {
+                  content: res.newText,
+                  wordCount: countWords(res.newText),
+                });
+                pushToHistory(res.newText);
+                setTimeout(() => {
+                  textareaRef.current?.focus();
+                  textareaRef.current?.setSelectionRange(res.newCursor, res.newCursor);
+                  updateErgonomics(true);
+                }, 0);
+                return;
+              }
+            }
+
             if (e.key === "Tab") {
               e.preventDefault();
-              handleIndentOrOutdent(e.shiftKey);
+              if (!textareaRef.current || !scene) return;
+              const res = e.shiftKey
+                ? outdentLines(scene.content || "", textareaRef.current.selectionStart, textareaRef.current.selectionEnd)
+                : indentLines(scene.content || "", textareaRef.current.selectionStart, textareaRef.current.selectionEnd);
+              onUpdateScene(scene.id, {
+                content: res.newText,
+                wordCount: countWords(res.newText),
+              });
+              pushToHistory(res.newText);
+              setTimeout(() => {
+                textareaRef.current?.focus();
+                textareaRef.current?.setSelectionRange(res.newStart, res.newEnd);
+                updateErgonomics(true);
+              }, 0);
             }
           }}
           placeholder="Comienza a escribir tu escena aquí... Usa Tab para sangrar párrafos, y Ctrl+Shift+M para diálogos (—)."
@@ -1444,7 +1537,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             fontSize: `${project.settings.fontSize || 18}px`,
             lineHeight: getNumericLineHeight(),
             textAlign: project.settings.textAlign || "left",
-            textIndent: project.settings.paragraphIndent ? "1.5em" : undefined,
             tabSize: 4,
             MozTabSize: 4,
             whiteSpace: "pre-wrap",
@@ -1524,6 +1616,140 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           )}
         </footer>
       )}
+
+      {/* Portales de Desplegables de Ribbon (Nunca se cortan por overflow ni quedan bajo el manuscrito) */}
+      {showFontMenu &&
+        createPortal(
+          <div
+            ref={fontMenuRef}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="fixed rounded-xl shadow-2xl p-2 z-[9999] space-y-1 border border-[var(--border-subtle)] animate-in fade-in zoom-in-95 duration-100"
+            style={{
+              top: `${fontMenuPos.top}px`,
+              left: `${fontMenuPos.left}px`,
+              width: "16rem",
+              backgroundColor: "var(--bg-editor)",
+            }}
+          >
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-0.5">
+              Tipografías Literarias
+            </div>
+
+            {fontOptions.map((font) => (
+              <button
+                key={font.id}
+                onClick={() => {
+                  onUpdateProjectSettings({ fontFamily: font.id as any });
+                  setShowFontMenu(false);
+                }}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-left transition-colors cursor-pointer ${
+                  project.settings.fontFamily === font.id
+                    ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
+                    : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
+                }`}
+              >
+                <span className={font.previewClass}>{font.label}</span>
+                {project.settings.fontFamily === font.id && (
+                  <Check className="w-3.5 h-3.5 shrink-0" />
+                )}
+              </button>
+            ))}
+
+            <div className="pt-2 border-t border-[var(--border-subtle)] mt-1">
+              <input
+                ref={customFontInputRef}
+                type="file"
+                accept=".ttf,.otf,.woff,.woff2"
+                onChange={handleCustomFontUpload}
+                className="hidden"
+              />
+
+              {project.settings.customFontData && project.settings.customFontName ? (
+                <div className="flex items-center justify-between p-1.5 rounded-lg bg-[var(--bg-surface-hover)] mb-1">
+                  <div className="truncate flex-1 pr-1">
+                    <p className="text-xs font-bold text-[var(--text-primary)] truncate">
+                      {project.settings.customFontName.replace(/^Custom_/, "")}
+                    </p>
+                    <span className="text-[10px] text-[var(--accent)] font-medium">
+                      {project.settings.fontFamily === "custom" ? "✓ En uso" : "Cargada"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {project.settings.fontFamily !== "custom" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onUpdateProjectSettings({ fontFamily: "custom" });
+                          setShowFontMenu(false);
+                        }}
+                        className="px-2 py-0.5 rounded bg-[var(--accent)] text-[var(--accent-contrast)] text-[10px] font-semibold"
+                      >
+                        Usar
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleRemoveCustomFont}
+                      className="p-1 text-red-500 hover:bg-red-500/15 rounded cursor-pointer"
+                      title="Eliminar fuente propia"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => customFontInputRef.current?.click()}
+                className="w-full flex items-center justify-center gap-1.5 py-1 px-2 rounded-lg border border-dashed border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)]/10 text-xs font-medium transition-colors cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>{project.settings.customFontData ? "Cargar otra fuente (.ttf/.otf)" : "Subir mi propia fuente (.ttf/.otf)"}</span>
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {showSpacingMenu &&
+        createPortal(
+          <div
+            ref={spacingMenuRef}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="fixed rounded-xl shadow-2xl p-1 z-[9999] space-y-0.5 border border-[var(--border-subtle)] animate-in fade-in zoom-in-95 duration-100"
+            style={{
+              top: `${spacingMenuPos.top}px`,
+              left: `${spacingMenuPos.left}px`,
+              width: "12rem",
+              backgroundColor: "var(--bg-editor)",
+            }}
+          >
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-1">
+              Interlineado
+            </div>
+            {lineSpacingOptions.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => {
+                  onUpdateProjectSettings({ lineSpacing: opt.id as any });
+                  setShowSpacingMenu(false);
+                }}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                  project.settings.lineSpacing === opt.id || project.settings.lineSpacing === opt.val
+                    ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
+                    : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
+                }`}
+              >
+                <span>{opt.label}</span>
+                {(project.settings.lineSpacing === opt.id || project.settings.lineSpacing === opt.val) && (
+                  <Check className="w-3.5 h-3.5" />
+                )}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
     </main>
   );
 };

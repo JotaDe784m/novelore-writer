@@ -51,9 +51,10 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Lectura y guardado de prosa limpia en archivos `.md` con persistencia incremental.
 - [x] Formateador tipográfico avanzado para lengua española:
   - [x] Inserción y reemplazo ágil de la raya de diálogo canónica (`—`, atajo `Ctrl+Shift+M` o `Alt+-`).
-  - [x] Algoritmo de formateo automático de diálogos según reglas RAE (apertura, incisos con verbos de habla y puntuación).
+  - [x] Sistema de sangría literaria inteligente (`Tab`, `Shift+Tab`, auto-sangría con `Enter` y sangría de 1.ª línea).
   - [x] Inserción de comillas latinas (`« »`) y marcas de corte de escena (`* * *`).
 - [x] Pila de historial Deshacer / Rehacer (*Undo/Redo*) con atajos estándar (`Ctrl+Z`, `Ctrl+Y`).
+- [x] Barra de herramientas (Ribbon) en fila única fluida con arrastre horizontal (drag-to-scroll), centrado responsivo y menús portaleados sin recortes.
 
 ### Subfase 1.5: Inspector de Escenas Básico
 - Rediseñar `SceneInspector.tsx` con arquitectura colapsable al 100% hacia el borde derecho (`Ctrl+I` / `Cmd+I`), sin marcos de panel:

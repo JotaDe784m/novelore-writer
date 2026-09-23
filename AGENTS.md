@@ -63,3 +63,13 @@ El desarrollo debe seguir de forma estricta el **Plan de Desarrollo por Fases** 
 1. **Una fase a la vez**: Queda prohibido avanzar a una fase posterior sin haber completado, integrado y verificado la fase actual.
 2. **Refactorización Limpia y Progresiva**: Cada módulo añadido o refactorizado debe adoptar el sistema de diseño (`docs/design-system.md`) y Zustand, libre de deuda técnica de la versión web anterior.
 3. **Verificación Continua**: Al completar cada subfase, se deben verificar la compilación de TypeScript (`npm run lint` / `tsc --noEmit`), el empaquetado y el correcto guardado y lectura de archivos en disco.
+
+---
+
+## 6. Prohibición Estricta de Commits Autónomos No Autorizados
+
+Queda **estrictamente prohibido ejecutar `git commit`** de forma autónoma o anticipada sin una orden o autorización directa y explícita del usuario en la conversación.
+
+1. **Revisión Previa Obligatoria**: Antes de consolidar cualquier cambio con un commit, el usuario debe tener la oportunidad de revisar los archivos, probar la interfaz y manifestar su conformidad.
+2. **Autorización Explícita**: El agente solo ejecutará comandos de commit cuando el usuario indique explícitamente frases como *"haz el commit"*, *"procede a commitear"* o equivalentes directos.
+
