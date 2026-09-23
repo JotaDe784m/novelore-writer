@@ -60,3 +60,16 @@ Este documento registra las decisiones arquitectónicas y técnicas fundamentale
   - El autor gestiona su privacidad y almacenamiento con los servicios en los que ya confía.
   - La arquitectura de archivos atómicos (`.md`) está optimizada de forma natural para este flujo.
   - En fases posteriores se podrán añadir conectores OAuth de escritorio para facilitar la vinculación directa con cuentas personales.
+
+---
+
+## 7. Sistema de Diseño UI/UX: Libertad Creativa y Espacio Respirable
+
+- **Decisión**: Adopción formal del Sistema de Diseño definido en `docs/design-system.md`:
+  - Eliminación sistemática de marcos y líneas duras (`border border-[...]`) en favor de contraste tonal suave entre superficies (`--bg-sidebar` vs `--bg-editor`).
+  - Botones fantasma sin contorno (*ghost buttons*) y espacios respirables.
+  - Layout de 3 columnas fluidas con capacidad de colapso total hacia los bordes (estilo Obsidian/Scrivener).
+  - Editor central ergonómico con columna de lectura óptima fija de **~720px (65-75 caracteres por línea)**, márgenes automáticos generosos y modo máquina de escribir (estilo Ulysses/iA Writer).
+  - Redefinición de los temas como **Atmósferas Visuales** con paletas de superficie y acentos personalizables, independientes de la configuración tipográfica del autor.
+- **Justificación**:
+  - La escritura de novelas requiere sesiones prolongadas de concentración profunda. Las interfaces cargadas de cajas, tablas densas y marcos rígidos fatigan la vista y distraen el flujo narrativo.

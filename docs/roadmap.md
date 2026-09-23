@@ -1,21 +1,21 @@
 # Novelore — Roadmap Técnico (Local-First Desktop)
 
-Este documento establece la evolución estructurada y modular de **Novelore** como aplicación de escritorio local-first. Cada fase y subfase está diseñada para entregar valor funcional concreto sin generar regresiones en el sistema.
+Este documento establece la evolución estructurada y modular de **Novelore** como aplicación de escritorio local-first. Cada fase y subfase está diseñada para entregar valor funcional concreto adoptando las directrices del **Sistema de Diseño (docs/design-system.md)** sin generar regresiones en el sistema.
 
 ---
 
 ## Estado Actual del Proyecto: **FASE 1 (EN PROCESO)**
 
 ```text
-[FASE 1: NÚCLEO DE ESCRITURA] ──► [FASE 2: CÓDICE] ──► [FASE 3: PLANIFICACIÓN] ──► [FASE 4: PIZARRAS] ──► [FASE 5: MOTOR EDITORIAL]
-          ▲
-     (EN CURSO)
+[FASE 1: NÚCLEO DE ESCRITURA & UI] ──► [FASE 2: CÓDICE] ──► [FASE 3: PLANIFICACIÓN] ──► [FASE 4: PIZARRAS] ──► [FASE 5: MOTOR EDITORIAL]
+               ▲
+          (EN CURSO)
 ```
 
 ---
 
-## Fase 1: Núcleo de Escritura & Persistencia Local **[EN CURSO]**
-**Objetivo**: Establecer el entorno de escritorio en Electron, implementar el gestor de proyectos en carpetas del sistema de archivos y habilitar un editor de manuscrito 100% operativo basado en archivos Markdown (`.md`).
+## Fase 1: Núcleo de Escritura, Persistencia Local & Sistema de Diseño **[EN CURSO]**
+**Objetivo**: Establecer el entorno de escritorio en Electron, implementar el gestor de proyectos en carpetas del sistema de archivos, implantar el nuevo sistema de tokens y temas atmosféricos sin bordes, y habilitar un editor de manuscrito 100% operativo basado en archivos Markdown (`.md`).
 
 ### Subfase 1.1: Cascarón de Escritorio Electron & IPC Nativo
 - Configurar el proceso principal de Electron (`electron/main.ts`) y el script de precarga segura (`electron/preload.ts`) con `contextBridge`.
@@ -25,53 +25,56 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
   - `dialog:createProjectFolder`: Crear una nueva carpeta para una novela en la ruta seleccionada.
 - Implementar gestor de historial de proyectos recientes en almacenamiento de configuración local.
 
-### Subfase 1.2: Estructura de Proyecto en Disco & Store Modular (Zustand)
+### Subfase 1.2: Tokens de Diseño, Temas Atmosféricos & Store Modular (Zustand)
+- Implementar el sistema de tokens semánticos en `src/index.css` (`--bg-app`, `--bg-sidebar`, `--bg-editor`, `--bg-surface-hover`, `--text-primary`, `--accent`) eliminando bordes duros por defecto.
+- Refactorizar el catálogo de temas como **Atmósferas Visuales** (Claro Editorial, Carbón Nocturno, Pergamino Fantasía, Bosque Brumoso, Medianoche, Noir) con acento personalizable y guardado dual (preferencia global o por proyecto).
 - Implementar `useProjectStore` y `useManuscriptStore` en Zustand, eliminando el estado monolítico centralizado.
-- Implementar adaptadores de lectura y escritura en disco mediante `node:fs/promises`:
-  - Creación de la estructura base del proyecto: `project.json`, `manuscript.json`, carpetas `manuscript/` y `assets/`.
-  - Lectura e inicialización de proyectos existentes desde disco.
-- Implementar estrategia de **guardado atómico por archivo con debounce de 500 ms**:
-  - Escritura a través de archivos temporales (`.tmp`) con reemplazo atómico para evitar corrupción en cortes abruptos.
+- Implementar adaptadores de lectura y escritura atómica en disco (`node:fs/promises`) con debounce de 500 ms.
 
-### Subfase 1.3: Árbol del Manuscrito & Gestión de Archivos Markdown
-- Conectar `ManuscriptSidebar.tsx` al `useManuscriptStore`.
-- Operaciones completas del árbol de navegación reflejadas directamente en el sistema de archivos:
-  - Crear Actos, Capítulos y Escenas $\rightarrow$ genera subcarpetas `manuscript/act-X/chap-Y/` y archivos `esc-Z.md`.
-  - Reordenación ordinal y renombramiento de capítulos y escenas.
-  - Eliminación segura de escenas y capítulos.
+### Subfase 1.3: Árbol del Manuscrito & Navegación (Estilo Obsidian / Scrivener)
+- Rediseñar `ManuscriptSidebar.tsx` bajo las reglas de `docs/design-system.md`:
+  - Fondo tonal suave (`--bg-sidebar`) sin líneas divisorias rígidas.
+  - Botones fantasma (*ghost buttons*) y colapso total hacia el borde izquierdo con atajo `Ctrl+\` / `Cmd+\`.
+  - Ancho redimensionable manualmente con persistencia de dimensiones en preferencias.
+- Conectar operaciones de Actos, Capítulos y Escenas directamente con el sistema de archivos (`manuscript/act-X/chap-Y/esc-Z.md`).
 - Conteo de palabras en tiempo real por escena, capítulo y acto.
 
-### Subfase 1.4: Editor Literario & Herramientas de Prosa RAE
-- Adaptar `RichTextEditor.tsx` para leer y escribir prosa limpia en los archivos `.md` de la escena activa.
-- Modo Zen (pantalla completa sin distracciones) y modo máquina de escribir (*typewriter scrolling*).
+### Subfase 1.4: Editor Literario & Ergonomía de Lectura (Estilo Ulysses / iA Writer)
+- Rediseñar `RichTextEditor.tsx`:
+  - Columna de lectura centrada con ancho ergonómico óptimo de **~720px (65-75 caracteres por línea)** y márgenes respirables.
+  - Desplazamiento suave de máquina de escribir (*typewriter scrolling*).
+  - Modo Foco opcional (resaltado del párrafo activo y atenuación suave del resto).
+  - Modo Zen a pantalla completa con desvanecimiento de controles.
+- Lectura y guardado de prosa limpia en archivos `.md`.
 - Formateador tipográfico avanzado para lengua española:
   - Inserción y reemplazo ágil de la raya de diálogo canónica (`—`).
-  - Algoritmo de formateo automático de diálogos según reglas de la Real Academia Española (espaciado, pegado e incisos con verbos *dicendi* vs. verbos de acción).
-  - Inserción de comillas latinas/angulares (`« »`) y marcas de corte de escena (`* * *`).
+  - Algoritmo de formateo automático de diálogos según reglas RAE.
+  - Inserción de comillas latinas (`« »`) y marcas de corte de escena (`* * *`).
 - Pila de historial Deshacer / Rehacer (*Undo/Redo*) con atajos estándar (`Ctrl+Z`, `Ctrl+Y`).
 
 ### Subfase 1.5: Inspector de Escenas Básico
-- Conectar `SceneInspector.tsx` para editar y persistir los metadatos narrativos en `manuscript.json`:
+- Rediseñar `SceneInspector.tsx` con arquitectura colapsable al 100% hacia el borde derecho (`Ctrl+I` / `Cmd+I`), sin marcos de panel:
   - Triunvirato dramático: Objetivo, Conflicto y Resultado de la escena.
   - Estado de la escena: Idea, Borrador, Revisión, Pulido, Final.
   - Metas individuales de palabras por escena y barra de progreso.
 
 ---
 
-## Fase 2: Worldbuilding & Códice Local **[PLANIFICADA]**
-**Objetivo**: Construir la enciclopedia del universo ficticio integrada con el sistema de archivos local y el texto del manuscrito.
+## Fase 2: Worldbuilding & Códice Local (Estilo Heptabase) **[PLANIFICADA]**
+**Objetivo**: Construir la enciclopedia del universo ficticio integrada con el sistema de archivos local y el texto del manuscrito, con tarjetas fluidas y sin rigidez administrativa.
 
 ### Subfase 2.1: Persistencia del Códice (`codex.json`)
 - Implementar `useCodexStore` para gestionar las 6 categorías de entidades: Personajes, Lugares, Facciones, Objetos, Conceptos y Eventos Históricos.
 - Serialización estructurada y guardado desacoplado en `codex.json`.
 
 ### Subfase 2.2: Dossiers y Atributos Dinámicos
-- Adaptar `EntityModal.tsx` con plantillas predefinidas de atributos dinámicos (Rol, Motivación, Miedos, Clima, Poder, etc.) y campos personalizados.
-- Gestión de etiquetas, notas de trasfondo y alias/variantes del nombre.
+- Adaptar `EntityModal.tsx` con estética limpia de tarjeta de conocimiento (sin líneas de tabla densas).
+- Plantillas de atributos dinámicos (Rol, Motivación, Miedos, Clima, etc.) y campos personalizados.
+- Gestión de etiquetas sutiles, notas de trasfondo y alias/variantes del nombre.
 
 ### Subfase 2.3: Gestión Local de Multimedia (`assets/gallery/`)
 - Implementar canal IPC para copiar físicamente imágenes locales a `assets/gallery/`.
-- Almacenamiento de rutas relativas limpias en las entidades en lugar de cadenas Base64 en memoria.
+- Almacenamiento de rutas relativas limpias en las entidades en lugar de Base64.
 - Visor *Lightbox* a pantalla completa para las galerías de cada entidad.
 
 ### Subfase 2.4: Contador Automático de Menciones en el Manuscrito
@@ -79,8 +82,7 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - Desglose cuantitativo de apariciones por escena, capítulo y acto.
 
 ### Subfase 2.5: Grafo Visual de Relaciones
-- Adaptar `RelationshipMapView.tsx` para lectura y guardado de nodos, posiciones y curvas Bezier manuales en `codex.json`.
-- Definición de tipos de vínculo (alianza, enemistad, familia, romance, etc.) y valencia emocional.
+- Adaptar `RelationshipMapView.tsx` con curvas Bezier orgánicas, nodos redondos limpios y sentimientos emocionales.
 
 ---
 
@@ -91,12 +93,12 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - Implementar `usePlanningStore` para persistir pistas cronológicas, eventos temporales y arcos narrativos.
 
 ### Subfase 3.2: Línea Temporal Multilínea (Timeline)
-- Pistas paralelas configurables (Trama principal, subtramas de personajes, historia previa/lore).
+- Pistas paralelas configurables (Trama principal, subtramas de personajes, historia previa/lore) con diseño horizontal espaciado.
 - Clasificación de eventos por importancia dramática: Menor, Clave, Punto de Giro, Clímax.
 - Vinculación bidireccional entre eventos cronológicos y escenas del manuscrito con navegación en 1 clic.
 
 ### Subfase 3.3: Tablón de Corcho (Corkboard)
-- Visualización de tarjetas de escena organizadas por columnas de actos y capítulos (estilo Scrivener).
+- Visualización de tarjetas de escena organizadas por columnas de actos y capítulos (estilo Scrivener) con elevaciones suaves y sin bordes toscos.
 - Edición ágil de sinopsis y reordenación de escenas mediante tarjetas indexables.
 
 ### Subfase 3.4: Arcos Narrativos (Story Beats) & Matriz de Esquema
@@ -106,17 +108,17 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 
 ---
 
-## Fase 4: Pizarras Visuales & Recursos Locales **[PLANIFICADA]**
+## Fase 4: Pizarras Visuales & Recursos Locales (Estilo Milanote) **[PLANIFICADA]**
 **Objetivo**: Habilitar espacios de diseño espacial infinito para notas, mapas conceptuales e inspiración multimedia.
 
 ### Subfase 4.1: Persistencia del Lienzo Infinito (`boards/`)
 - Implementar `useBoardStore` para persistir el tablero general en `boards/main.json` y tableros dedicados en `boards/entities/`.
-- Motor de zoom, paneo, centrado y ajuste magnético a rejilla.
+- Motor de zoom, paneo, centrado y ajuste magnético suave a rejilla.
 
 ### Subfase 4.2: Herramientas de Dibujo y Composición
-- Notas adhesivas con paletas cromáticas temáticas.
+- Notas adhesivas con paletas cromáticas tonales sutiles.
 - Bloques de texto enriquecido con selección de 10 fuentes literarias.
-- Formas geométricas y conectores/flechas direccionales con anclajes magnéticos.
+- Formas geométricas y conectores/flechas direccionales con anclajes magnéticos y curvas fluidas.
 
 ### Subfase 4.3: Recursos Multimedia y Documentos Locales
 - Reproductores integrados de Spotify y YouTube para ambientación musical y visual.
@@ -141,4 +143,4 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - Vista de impresión directa / PDF.
 
 ### Subfase 5.4: Conectores Opcionales para Nube Personal
-- Implementación de conectores opcionales para enlazar la carpeta del proyecto a cuentas personales del usuario (Google Drive, Dropbox, OneDrive/Outlook) mediante autenticación OAuth local de escritorio, permitiendo copias de seguridad remotas gestionadas 100% por el autor.
+- Implementación de conectores opcionales para enlazar la carpeta del proyecto a cuentas personales del usuario (Google Drive, Dropbox, OneDrive/Outlook) mediante autenticación OAuth local de escritorio.

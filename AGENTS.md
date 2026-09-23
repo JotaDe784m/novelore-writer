@@ -38,11 +38,28 @@ La sincronización entre dispositivos no se realiza mediante servidores de Novel
 
 ---
 
-## 4. Regla de Trabajo Modular por Fases
+## 4. Principio de Diseño UI/UX: Libertad Creativa y Espacio Respirable
+
+Todo agente debe cumplir estrictamente las especificaciones del sistema de diseño recogidas en `docs/design-system.md`:
+
+1. **Prohibición de Interfaces Tipo "Dashboard / Panel Administrativo"**:
+   - Queda estrictamente prohibido rodear componentes con marcos pesados o líneas divisorias rígidas (`border border-[...]`).
+   - La delimitación visual entre paneles y tarjetas debe lograrse mediante **contraste tonal suave de superficies** y **márgenes generosos**.
+   - Los botones deben ser limpios y sin contorno (*ghost/flat*), reaccionando con un fondo suave (*hover tint*).
+2. **Arquitectura de 3 Columnas Fluidas con Colapso Total**:
+   - La barra izquierda (manuscrito) y el inspector derecho deben ser capaces de replegarse al 100% hacia los bordes, dejando el editor en aislamiento absoluto.
+3. **Ergonomía Literaria Central (Ulysses / iA Writer)**:
+   - El editor debe mantener una columna de lectura óptima centrada de **~720px (65-75 caracteres por línea)** con márgenes laterales respirables.
+   - Debe soportar desplazamiento de máquina de escribir (*typewriter scrolling*) y modo de foco por párrafo.
+4. **Atmósferas Visuales Desacopladas**:
+   - Los temas cromáticos definen paletas de superficie y acentos personalizables, sin imponer ni forzar la tipografía o el tamaño de letra elegido por el autor.
+
+---
+
+## 5. Regla de Trabajo Modular por Fases
 
 El desarrollo debe seguir de forma estricta el **Plan de Desarrollo por Fases** definido en `docs/roadmap.md`.
 
 1. **Una fase a la vez**: Queda prohibido avanzar a una fase posterior sin haber completado, integrado y verificado la fase actual.
-2. **Preservación Visual y de UX**: La interfaz de usuario, temas cromáticos, estilos tipográficos, utilidades RAE y componentes ya maquetados en `src/components/` deben conservarse y adaptarse limpiamente a Zustand y Electron, evitando rediseños destructivos innecesarios.
-3. **Refactorización Limpia**: Cada módulo añadido debe ser modular, tipado en TypeScript y libre de deuda técnica de la versión web anterior.
-4. **Verificación Continua**: Al completar cada subfase, se deben verificar la compilación de TypeScript (`npm run lint` / `tsc --noEmit`), el empaquetado y el correcto guardado y lectura de archivos en disco.
+2. **Refactorización Limpia y Progresiva**: Cada módulo añadido o refactorizado debe adoptar el sistema de diseño (`docs/design-system.md`) y Zustand, libre de deuda técnica de la versión web anterior.
+3. **Verificación Continua**: Al completar cada subfase, se deben verificar la compilación de TypeScript (`npm run lint` / `tsc --noEmit`), el empaquetado y el correcto guardado y lectura de archivos en disco.
