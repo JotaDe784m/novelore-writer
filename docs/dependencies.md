@@ -1,75 +1,52 @@
-# Dependencies
+# Inventario de Dependencias — Novelore Desktop
 
-This document provides a categorized inventory of all external packages utilized in **Novelore**, based directly on `package.json`. No dependencies were added, updated, or removed in Phase 0.
-
----
-
-## Core
-
-| Package | Version | Purpose |
-| :--- | :--- | :--- |
-| **react** | `^19.0.1` | Declarative UI library powering components, state, and rendering. |
-| **react-dom** | `^19.0.1` | DOM renderer for React web components. |
-| **typescript** | `~5.8.2` | Static typing system ensuring structural safety across narrative data models. |
-| **vite** | `^6.2.3` | Modern frontend build tool, asset bundler, and dev server middleware. |
-| **@vitejs/plugin-react** | `^5.0.4` | Vite plugin providing Fast Refresh and JSX compilation for React. |
-| **tsx** | `^4.21.0` | TypeScript execution engine running `server.ts` seamlessly in development. |
-| **esbuild** | `^0.25.0` | Fast bundler compiling `server.ts` into standalone `dist/server.cjs` for production. |
+Este documento detalla el inventario categorizado de paquetes y bibliotecas que conforman **Novelore**. Toda dependencia externa se justifica por su aportación a la experiencia literaria, la solidez del sistema de escritorio o el rendimiento de la interfaz.
 
 ---
 
-## UI & Styling
+## 1. Entorno de Escritorio y Compilación
 
-| Package | Version | Purpose |
-| :--- | :--- | :--- |
-| **tailwindcss** | `^4.1.14` | Utility-first CSS framework defining layout, colors, and responsive rules. |
-| **@tailwindcss/vite** | `^4.1.14` | Direct Vite integration plugin for Tailwind CSS v4. |
-| **autoprefixer** | `^10.4.21` | PostCSS plugin parsing CSS and adding vendor prefixes. |
-| **motion** | `^12.23.24` | Production-ready motion library powering modals, accordion transitions, and layout animations. |
-| **lucide-react** | `^0.546.0` | Comprehensive icon library for editors, toolbars, and dashboard controls. |
-
----
-
-## Editor & Markdown
-
-| Package | Version | Purpose |
-| :--- | :--- | :--- |
-| **react-markdown** | `^10.1.0` | Secure component for parsing and rendering Markdown in notes, boards, and synopses. |
+| Paquete | Propósito |
+| :--- | :--- |
+| **electron** | Entorno de ejecución de escritorio multiplataforma (Linux, Windows, macOS) que proporciona acceso seguro al sistema de archivos local (`node:fs/promises`) e IPC. |
+| **vite** | Herramienta de compilación ultrarrápida y servidor de desarrollo con Hot Module Replacement (HMR). |
+| **@vitejs/plugin-react** | Plugin oficial de Vite para soporte JSX y Fast Refresh en React. |
+| **typescript** | Tipado estático estricto que asegura la coherencia del modelo de datos narrativo y evita errores de ejecución. |
 
 ---
 
-## Cloud & Persistence
+## 2. Capa de Presentación e Interfaz de Usuario
 
-| Package | Version | Purpose |
-| :--- | :--- | :--- |
-| **firebase** | `^12.18.0` | Google Cloud SDK supplying Firebase Authentication (Google Sign-In) and Firestore document storage with persistent local cache. |
-
----
-
-## Export & Documents
-
-| Package | Version | Purpose |
-| :--- | :--- | :--- |
-| **docx** | `^9.7.1` | Pure JavaScript library for generating formatted Microsoft Word `.docx` documents from manuscript acts and scenes. |
-| **pdfjs-dist** | `^6.3.289` | PDF parsing and rendering library used for embedding and previewing research documents on Visual Boards. |
+| Paquete | Propósito |
+| :--- | :--- |
+| **react** | Biblioteca declarativa de interfaz de usuario basada en componentes y hooks. |
+| **react-dom** | Renderizador DOM para la interfaz de React. |
+| **tailwindcss** | Framework de utilidades CSS para diseño responsivo, tipografía y paletas cromáticas personalizadas. |
+| **@tailwindcss/vite** | Integración nativa de Tailwind CSS v4 en el pipeline de Vite. |
+| **motion** | Motor de animaciones fluidas para transiciones de modales, acordeones y estados visuales. |
+| **lucide-react** | Catálogo coherente de iconografía vectorial para herramientas de edición, códex y navegación. |
 
 ---
 
-## Server
+## 3. Estado Local y Manejo de Prosa
 
-| Package | Version | Purpose |
-| :--- | :--- | :--- |
-| **express** | `^4.21.2` | Minimalist web framework hosting API routes, health checks, and Vite middleware. |
-| **dotenv** | `^17.2.3` | Zero-dependency module loading environment variables from `.env` into `process.env`. |
-| **@types/express** | `^4.17.21` | TypeScript type declarations for Express request and response objects. |
-| **@types/node** | `^22.14.0` | TypeScript type definitions for Node.js runtime globals and built-in modules (`path`, `process`, `fs`). |
+| Paquete | Propósito |
+| :--- | :--- |
+| **zustand** | Gestor de estado reactivo, ligero y modular para desacoplar el estado de la novela y posibilitar el guardado granular por archivo. |
+| **react-markdown** | Renderizado seguro de contenido en formato Markdown para notas de escena y sinopsis. |
 
 ---
 
-## AI (Experimental)
+## 4. Documentos, Medios y Maquetación Editorial
 
-| Package | Version | Purpose |
-| :--- | :--- | :--- |
-| **@google/genai** | `^2.4.0` | Official Google Gen AI SDK for interacting with Gemini models server-side in `server.ts`. |
+| Paquete | Propósito |
+| :--- | :--- |
+| **docx** | Generación de documentos Microsoft Word (`.docx`) profesionales con encabezados, notas al pie y estilos de párrafo tipográficos. |
+| **pdfjs-dist** | Procesamiento y visualización embebida de documentos PDF de investigación en las pizarras visuales. |
 
-*Note: The AI integration is experimental and strictly isolated to server-side assistance; it is not modified or expanded in Phase 0.*
+---
+
+## 5. Prohibiciones de Dependencias
+
+- **Prohibido**: Paquetes de servidores en la nube propietarios (`firebase`, `@firebase/*`, `supabase`, etc.).
+- **Prohibido**: Bases de datos remotas o middleware de autenticación cerrado.

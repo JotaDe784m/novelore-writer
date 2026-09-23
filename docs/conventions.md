@@ -1,70 +1,52 @@
-# Development Conventions
+# Convenciones de Desarrollo — Novelore Desktop
 
-This document establishes the code, structural, and architectural conventions for all future phases of **Novelore**. These conventions maintain consistency with the existing codebase without requiring disruptive mass rewrites.
-
----
-
-## 1. Naming Conventions
-
-- **Components**: Use `PascalCase` for React component files and functions (e.g., `ManuscriptSidebar.tsx`, `RichTextEditor.tsx`, `EntityModal.tsx`).
-- **Utilities & Helpers**: Use `camelCase` for module files and helper functions (e.g., `storage.ts`, `docxExport.ts`, `calculateTotalWords`).
-- **Interfaces & Types**: Use `PascalCase` for types and interfaces in `src/types.ts` (e.g., `NovelProject`, `WorldEntity`, `TimelineTrack`).
-- **Constants**: Use `UPPER_SNAKE_CASE` for global constants or persistent storage keys (e.g., `CURRENT_PROJECT_KEY`, `DEMO_DISMISSED_KEY`).
-- **CSS Classes**: Follow standard Tailwind CSS utility naming directly in JSX `className` props.
+Este documento establece las convenciones de código, diseño estructural y arquitectura que deben mantenerse en el desarrollo de **Novelore**. Estas reglas aseguran coherencia técnica, legibilidad y facilidad de mantenimiento.
 
 ---
 
-## 2. Components
+## 1. Convenciones de Nomenclatura
 
-- **Focused Scope**: Strive for components with a single clear purpose (e.g., presentation, input handling, or modal dialogs).
-- **Avoid Giant Monoliths**: When adding new functionality, create specialized sub-components rather than appending hundreds of lines to existing views.
-- **De-nesting**: Avoid deeply nested inline JSX structures. Extract repeated row items, cards, or list entries into separate component files.
-- **Prop Interface**: Define explicit TypeScript props for every component (`interface MyComponentProps { ... }`). Avoid `any`.
-
----
-
-## 3. Custom Hooks
-
-- **Purpose**: Extract complex or reusable stateful logic (e.g., keyboard shortcuts, word count metrics, debounced timers, or drag-and-drop mechanics) into dedicated hooks named with the `use` prefix.
-- **No Artificial Abstractions**: Do not create hooks that merely forward a single `useState` or wrap trivial one-line logic. Only introduce a custom hook when it encapsulates cohesive domain behavior.
+- **Componentes React**: Usar `PascalCase` para archivos y funciones de componentes (ej. `ManuscriptSidebar.tsx`, `RichTextEditor.tsx`, `EntityModal.tsx`).
+- **Utilidades y Helpers**: Usar `camelCase` para archivos de utilidades y funciones auxiliares (ej. `docxExport.ts`, `formatSpanishDialogue.ts`, `calculateTotalWords`).
+- **Interfaces y Tipos**: Usar `PascalCase` para tipos e interfaces en `src/types.ts` o archivos `*.ts` de dominio (ej. `NovelProject`, `WorldEntity`, `TimelineTrack`).
+- **Almacenes de Estado (Zustand)**: Usar prefijo `use` y sufijo `Store` en `camelCase` (ej. `useProjectStore`, `useManuscriptStore`, `useCodexStore`).
+- **Clases CSS**: Seguir las clases utilitarias de Tailwind CSS directamente en la propiedad `className` de los elementos JSX.
 
 ---
 
-## 4. Types & Data Models
+## 2. Componentes
 
-- **Single Source of Truth**: All domain entities must be imported from `src/types.ts`.
-- **No Duplication**: Never declare duplicate or local variants of `Scene`, `Chapter`, `Act`, `WorldEntity`, or `NovelProject` in individual component files.
-- **Strict Typing**: Avoid `any` and type assertions (`as unknown as ...`) whenever possible. Use optional chaining (`?.`) and safe default values.
-
----
-
-## 5. State Management
-
-- **Single Source of Truth**: Avoid maintaining duplicate pieces of state that represent the same underlying data (e.g., caching a scene's text in multiple disconnected state variables).
-- **Immutable Updates**: Always update nested project structures immutably using functional state updaters (`setProject(prev => ({ ...prev, ... }))`).
-- **Derivation Over Storage**: Calculate derived metrics (such as total manuscript word counts, scene completion percentages, or character mention counts) using `useMemo` instead of storing them as redundant state variables.
+- **Responsabilidad Clara**: Los componentes deben tener una única responsabilidad (presentación pura, manejo de formulario o diálogo modal).
+- **Evitar Monolitos Gigantes**: Al implementar nueva funcionalidad, extraer subcomponentes cohesivos en lugar de añadir cientos de líneas a vistas existentes.
+- **Interfaces de Propiedades Explícitas**: Definir tipos claros con TypeScript para los props (`interface MyComponentProps { ... }`). Evitar el uso de `any`.
 
 ---
 
-## 6. Persistence
+## 3. Tipos y Modelos de Datos
 
-- **Separation of Concerns**: Isolate persistence operations within `src/utils/storage.ts` (for `localStorage`) and `src/lib/firebase.ts` (for Firestore).
-- **No Direct Storage in Presentation**: UI components should never invoke `localStorage.setItem` or direct Firestore SDK calls inline; they should call established adapter functions or trigger state update handlers passed down from parent controllers.
-
----
-
-## 7. Refactoring Strategy
-
-- **Never Refactor by Size Alone**: Do not split or rewrite a component merely because it has many lines of code. First understand all its responsibilities, dependencies, event lifecycles, and side effects.
-- **Incremental & Tested**: Refactor incrementally, one module at a time, verifying that compilation, type checking, and functional behaviors remain intact after each step.
-- **Preserve Existing Behavior**: Any refactoring must strictly maintain current UX, styling, data contracts, and keyboard interactions.
+- **Fuente Única de Verdad**: Todas las entidades del dominio narrativo deben residir o reexportarse desde `src/types.ts`.
+- **Sin Duplicación de Modelos**: No declarar variantes locales de `Scene`, `Chapter`, `Act`, `WorldEntity` o `NovelProject` en componentes individuales.
+- **Tipado Estricto**: Evitar aserciones ciegas de tipo (`as unknown as ...`). Usar encadenamiento opcional (`?.`) y valores predeterminados seguros.
 
 ---
 
-## 8. Introducing New Features
+## 4. Gestión del Estado (Zustand)
 
-Before adding any new feature:
-1. **Review the existing data model**: Verify whether `src/types.ts` already supports the required fields or if an existing property can be leveraged.
-2. **Review related components**: Check if an existing UI element (e.g., modal, sidebar, inspector tab) is the natural location for the feature before creating a new view.
-3. **Reuse existing infrastructure**: Use the existing theme tokens, icon set (`lucide-react`), animation utilities (`motion`), and storage handlers.
-4. **Avoid duplicating functionality**: Ensure the feature does not overlap or conflict with existing tools (such as Corkboard vs. Outline Matrix, or Timeline vs. Story Beats).
+- **Desacoplamiento por Dominios**: Mantener stores separados para Proyecto, Manuscrito, Códice, Planificación y Pizarras.
+- **Mutaciones Inmutables**: Realizar siempre actualizaciones inmutables en los stores.
+- **Cálculo Derivado**: Calcular métricas derivadas (palabras totales, porcentajes de avance, menciones de personajes) mediante `useMemo` o selectores de Zustand en lugar de duplicar variables redundantes de estado.
+
+---
+
+## 5. Persistencia y Acceso al Sistema de Archivos
+
+- **Aislamiento de la Persistencia**: La comunicación con el sistema de archivos local se realiza exclusivamente a través de los adaptadores y puentes IPC de Electron expuestos en `window.electronAPI`.
+- **Sin Operaciones de Disco en la Vista**: Los componentes de la interfaz de usuario nunca deben realizar operaciones de entrada/salida de archivos directamente; deben invocar acciones de los stores de Zustand, los cuales coordinan el guardado granular.
+- **Guardado Atómico y con Debounce**: Las escrituras de texto en disco deben implementar un *debounce* mínimo (ej. 500 ms tras dejar de escribir) para proteger la fluidez del hilo de renderizado.
+
+---
+
+## 6. Estrategia de Refactorización
+
+- **Preservación Estricta de la UX**: Cualquier refactorización de código debe mantener intactos el diseño visual, las paletas temáticas, las fuentes y los atajos de teclado ya existentes.
+- **Progreso Modular e Incremental**: Refactorizar un módulo a la vez, comprobando la estabilidad del sistema y la ausencia de errores de tipos (`npm run lint`) en cada iteración.

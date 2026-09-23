@@ -1,114 +1,62 @@
-# Development Guide
+# Guía de Desarrollo — Novelore Desktop
 
-This guide outlines the development environment, execution procedures, project structure, and architectural principles for contributing to **Novelore**.
-
----
-
-## Requirements
-
-- **Node.js**: Version 18.x or 20.x or higher.
-- **Package Manager**: `npm` (v9+ or v10+).
-- **Modern Web Browser**: Chrome, Firefox, Safari, or Edge with modern ES modules and Canvas support.
+Esta guía describe el entorno de desarrollo, procedimientos de ejecución, estructura del proyecto y principios de trabajo para contribuir en **Novelore**.
 
 ---
 
-## Installation
+## 1. Requisitos del Entorno
 
-Clone the repository and install all dependencies:
-
-```bash
-git clone <repository-url>
-cd novelore
-npm install
-```
+- **Node.js**: Versión 20.x o superior recomendada (o runtime Bun compatible).
+- **Gestor de Paquetes**: `npm` (v10+) o `bun`.
+- **Sistema Operativo**: Linux, Windows o macOS.
 
 ---
 
-## Environment Variables
+## 2. Instalación y Configuración Inicial
 
-Environment variables are defined in `.env` (refer to `.env.example` for the template):
+1. Clona el repositorio e ingresa al directorio del proyecto:
+   ```bash
+   git clone <url-del-repositorio>
+   cd novelore
+   ```
 
-```env
-# Optional: API key for server-side Gemini writing assistant calls
-GEMINI_API_KEY="your_api_key_here"
-
-# Optional: Host URL for the app instance
-APP_URL="http://localhost:3000"
-```
-
-Firebase credentials are provided in `firebase-applet-config.json` for client configuration. Never hardcode or commit secret credentials.
+2. Instala las dependencias del proyecto:
+   ```bash
+   npm install
+   ```
 
 ---
 
-## Running Locally
+## 3. Comandos de Ejecución y Desarrollo
 
-To start the development server:
-
-```bash
-npm run dev
-```
-
-- This command runs `tsx server.ts`.
-- The Express server starts on `http://0.0.0.0:3000`.
-- Vite runs as middleware within the Express server, providing live reload and on-demand bundling for all frontend modules.
-- Verification and linting:
+- **Modo Desarrollo (Interfaz Web con Vite)**:
   ```bash
-  npm run lint    # Runs TypeScript type check (tsc --noEmit)
-  npm run build   # Produces production bundle and dist/server.cjs
+  npm run dev
   ```
+  Inicia el servidor de desarrollo rápido de Vite con recarga en caliente (*Hot Module Replacement*).
+
+- **Modo Desarrollo de Escritorio (Electron)**:
+  ```bash
+  npm run dev:electron
+  ```
+  Inicia la aplicación de escritorio cargando la ventana nativa de Electron conectada al servidor local de desarrollo.
+
+- **Comprobación de Tipos y Calidad de Código**:
+  ```bash
+  npm run lint
+  ```
+  Ejecuta la verificación estática de TypeScript (`tsc --noEmit`) para garantizar que no existan errores de tipado en ningún componente o modelo.
+
+- **Compilación de Producción**:
+  ```bash
+  npm run build
+  ```
+  Genera el paquete optimizado de la interfaz en la carpeta `dist/`.
 
 ---
 
-## Project Structure
+## 4. Reglas de Contribución
 
-```
-novelore/
-├── docs/                 # Project documentation and architectural records
-├── server.ts             # Node Express server and API endpoints
-├── firestore.rules       # Cloud Firestore security rules
-├── firebase-blueprint.json # Firestore document structure blueprint
-├── package.json          # Project manifest and scripts
-├── src/
-│   ├── main.tsx          # React application entry point
-│   ├── App.tsx           # Global state orchestrator and active view switcher
-│   ├── types.ts          # Core domain models (Project, Scene, Entity, etc.)
-│   ├── components/
-│   │   ├── editor/       # Manuscript text editor, sidebar, and scene inspector
-│   │   ├── planning/     # Timeline, corkboard, story arcs, and outline matrix
-│   │   ├── codex/        # Worldbuilding entities, dossiers, and relationship map
-│   │   ├── board/        # Visual moodboards, canvas items, and resource modals
-│   │   ├── export/       # Export settings and preview views
-│   │   ├── home/         # Dashboard for project creation and selection
-│   │   └── project/      # Settings, word goals, and version history modals
-│   ├── data/             # Demo project template
-│   ├── lib/              # Firebase Auth and Firestore adapter
-│   └── utils/            # Local storage, word counting, and DOCX generation
-```
-
----
-
-## Development Principles
-
-To ensure software quality, prevent regression bugs, and maintain architectural clarity, all future changes must follow these ten development principles:
-
-1. **Prefer small, focused components**: Break down large visual surfaces into small, single-purpose components whenever introducing new features or refactoring.
-2. **Avoid unnecessary abstractions**: Do not invent generic helper frameworks or wrapper layers when a direct, readable solution is sufficient.
-3. **Keep domain logic separate from UI when practical**: Extract complex narrative calculations, formatting routines, and validation logic into utility functions or custom hooks.
-4. **Do not duplicate data models**: Always import domain interfaces from `src/types.ts`. Never declare parallel or conflicting definitions of `Scene`, `WorldEntity`, or `NovelProject`.
-5. **Reuse existing types**: Leverage existing interfaces, optional fields, and union types before adding new properties to core schemas.
-6. **Preserve backward compatibility when possible**: When extending storage schemas, ensure existing local projects and saved Firestore documents continue to load seamlessly with safe fallbacks.
-7. **Avoid unnecessary dependency additions**: Rely on existing libraries (`motion`, `lucide-react`, `docx`, `pdfjs-dist`, `react-markdown`) before considering new npm packages.
-8. **Keep components focused on one responsibility**: Separate presentation logic from storage access, remote synchronization, or modal controls.
-9. **Do not mix persistence logic unnecessarily with UI logic**: Isolate direct `localStorage` and Firestore read/write operations behind designated storage adapters.
-10. **Test existing behavior after structural changes**: Always verify that existing features (editing, planning, codex, boards, export) continue functioning properly after any modifications.
-
----
-
-## Code Style
-
-- **Language**: TypeScript with explicit typings for public function signatures and domain entities.
-- **Component Pattern**: React functional components with standard React hooks (`useState`, `useEffect`, `useMemo`, `useRef`).
-- **Styling**: Tailwind CSS utility classes. Avoid inline style objects except for dynamic mathematical positions (such as canvas pan/zoom coordinates and connector curves).
-- **Icons**: Standardized on `lucide-react`.
-- **Animations**: Standardized on `motion` (imported from `motion/react`).
-- **Consistency**: Maintain existing naming conventions and patterns. Do not introduce alternative UI component libraries or competing CSS-in-JS frameworks.
+1. **Cumplimiento Estricto de AGENTS.md**: Ningún cambio debe introducir dependencias remotas propietarias ni violar el modelo de persistencia física en disco.
+2. **Desarrollo Modular por Fases**: Respeta el roadmap en `docs/roadmap.md`. Solo se trabaja en la fase o subfase activa, verificando su estabilidad antes de avanzar.
+3. **Preservación de la Experiencia de Usuario**: Todo cambio debe conservar y respetar los componentes de diseño, paletas cromáticas, temas y herramientas tipográficas ya maquetadas.
