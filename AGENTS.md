@@ -73,3 +73,23 @@ Queda **estrictamente prohibido ejecutar `git commit`** de forma autónoma o ant
 1. **Revisión Previa Obligatoria**: Antes de consolidar cualquier cambio con un commit, el usuario debe tener la oportunidad de revisar los archivos, probar la interfaz y manifestar su conformidad.
 2. **Autorización Explícita**: El agente solo ejecutará comandos de commit cuando el usuario indique explícitamente frases como *"haz el commit"*, *"procede a commitear"* o equivalentes directos.
 
+---
+
+## 7. Reglas de Arquitectura y Modularidad
+
+1. **Modularidad**: Ningún archivo de componente debe superar ~250 líneas. Separa barras de herramientas, modales y lógica en submódulos.
+2. **Separación de capas**: Los componentes React solo manejan UI; la lógica pura va a `src/utils/` y el estado a stores modulares de Zustand.
+
+---
+
+## 8. Fase de Auditoría antes de Commits
+
+Antes de proponer o solicitar autorización para un commit, se debe ejecutar obligatoriamente esta auditoría preventiva:
+
+1. **Revisar archivos modificados**: ¿Hay variables, funciones o imports que hayan quedado sin uso tras los cambios? Elimínalos.
+2. **Unificar lógica auxiliar**: ¿Se duplicó alguna lógica auxiliar que ya existiera en `src/utils/` o en los stores de Zustand? Si es así, unifícala.
+3. **Control de dependencias**: Verifica que no se hayan instalado dependencias nuevas en `package.json` sin justificación.
+4. **Compilación y verificación de tipos**: Ejecuta la compilación de TypeScript (`npm run lint` / `tsc --noEmit`) y asegúrate de que no haya advertencias ni errores de tipos.
+5. **Auditoría de código muerto**: Ejecuta `npm run audit` (`knip`) para asegurar la limpieza del proyecto.
+
+

@@ -1,55 +1,26 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import { createPortal } from "react-dom";
-import {
-  Maximize2,
-  Minimize2,
-  Type,
-  AlignLeft,
-  AlignJustify,
-  Indent,
-  Outdent,
-  BookOpen,
-  Clock,
-  Upload,
-  Trash2,
-  Plus,
-  Minus,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  CaseSensitive,
-  FileText,
-  PanelRight,
-  Undo2,
-  Redo2,
-  ScrollText,
-  Focus,
-  Lightbulb,
-  PenLine,
-  Search,
-  Sparkles,
-  Award,
-} from "lucide-react";
-import { NovelProject, Scene, SceneStatus } from "../../types";
+import { NovelProject, Scene } from "../../types";
 import {
   countCharacters,
   countWords,
   calculateReadingTimeMinutes,
-  insertEmDashAtCursor,
 } from "../../utils/formatters";
-import {
-  getParagraphBounds,
-  calculateTypewriterScrollTop,
-  calculateFocusMaskGradient,
-  getOptimalReadingColumnWidth,
-} from "../../utils/editorErgonomics";
-import {
-  indentLines,
-  outdentLines,
-  handleSmartEnter,
-} from "../../utils/indentation";
+import { getOptimalReadingColumnWidth } from "../../utils/editorErgonomics";
+import { FONT_OPTIONS } from "./editorConstants";
+import { useEditorHistory } from "./useEditorHistory";
+import { useRibbonScroll } from "./useRibbonScroll";
+import { useCustomFonts } from "./useCustomFonts";
+import { useEditorErgonomics } from "./useEditorErgonomics";
+import { useEditorTextActions } from "./useEditorTextActions";
+import { useEditorHotkeys } from "./useEditorHotkeys";
+import { useFloatingMenus } from "./useFloatingMenus";
+import { EditorEmptyState } from "./EditorEmptyState";
+import { EditorCanvas } from "./EditorCanvas";
+import { EditorHeader } from "./EditorHeader";
+import { EditorRibbon } from "./EditorRibbon";
+import { EditorFontMenuPortal } from "./EditorFontMenuPortal";
+import { EditorSpacingMenuPortal } from "./EditorSpacingMenuPortal";
+import { EditorFooter } from "./EditorFooter";
 
 interface RichTextEditorProps {
   scene: Scene | null;
@@ -60,15 +31,6 @@ interface RichTextEditorProps {
   setIsZenMode: (val: boolean) => void;
   onOpenInspector: () => void;
   isInspectorOpen: boolean;
-}
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
 
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -82,1674 +44,186 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   isInspectorOpen,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const mirrorRef = useRef<HTMLDivElement>(null);
-  const customFontInputRef = useRef<HTMLInputElement>(null);
-  const ribbonRef = useRef<HTMLDivElement>(null);
-  const statusMenuRef = useRef<HTMLDivElement>(null);
-  const fontMenuRef = useRef<HTMLDivElement>(null);
-  const spacingMenuRef = useRef<HTMLDivElement>(null);
-
   const [notification, setNotification] = useState<string | null>(null);
-  const [showFontMenu, setShowFontMenu] = useState(false);
-  const [showSpacingMenu, setShowSpacingMenu] = useState(false);
-  const [showStatusMenu, setShowStatusMenu] = useState(false);
 
-  // Ribbon drag-to-scroll & overflow scroll tracking
-  const [canScrollRibbonLeft, setCanScrollRibbonLeft] = useState(false);
-  const [canScrollRibbonRight, setCanScrollRibbonRight] = useState(false);
-  const [isRibbonOverflowing, setIsRibbonOverflowing] = useState(false);
-  const [isDraggingRibbon, setIsDraggingRibbon] = useState(false);
-  const isDraggingRibbonRef = useRef(false);
-  const ribbonStartXRef = useRef(0);
-  const ribbonScrollLeftRef = useRef(0);
-  const ribbonHasMovedRef = useRef(false);
-
-  // Floating portal positions for font & spacing dropdowns
-  const [fontMenuPos, setFontMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-  const [spacingMenuPos, setSpacingMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-
-  // Undo / Redo history state
-  const [history, setHistory] = useState<string[]>(() => [scene?.content || ""]);
-  const [historyIndex, setHistoryIndex] = useState(0);
-  const lastRecordedContentRef = useRef(scene?.content || "");
-  const historyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isUndoRedoActionRef = useRef(false);
-
-  // Sync undo history when switching scenes
-  useEffect(() => {
-    if (scene) {
-      setHistory([scene.content || ""]);
-      setHistoryIndex(0);
-      lastRecordedContentRef.current = scene.content || "";
-    }
-  }, [scene?.id]);
-
-  const pushToHistory = (newContent: string) => {
-    if (newContent === lastRecordedContentRef.current) return;
-    setHistory((prev) => {
-      const truncated = prev.slice(0, historyIndex + 1);
-      const updated = [...truncated, newContent];
-      if (updated.length > 60) {
-        updated.shift();
-      }
-      return updated;
-    });
-    setHistoryIndex((prev) => Math.min(prev + 1, 59));
-    lastRecordedContentRef.current = newContent;
-  };
-
-  const handleUndo = useCallback(() => {
-    if (!scene) return;
-    if (historyTimeoutRef.current) {
-      clearTimeout(historyTimeoutRef.current);
-      historyTimeoutRef.current = null;
-    }
-
-    let currentIdx = historyIndex;
-    let currentHist = history;
-
-    if (scene.content !== lastRecordedContentRef.current) {
-      currentHist = [...history.slice(0, historyIndex + 1), scene.content || ""];
-      currentIdx = currentHist.length - 1;
-      setHistory(currentHist);
-      setHistoryIndex(currentIdx);
-      lastRecordedContentRef.current = scene.content || "";
-    }
-
-    if (currentIdx <= 0) return;
-
-    const targetIndex = currentIdx - 1;
-    const targetContent = currentHist[targetIndex] ?? "";
-    isUndoRedoActionRef.current = true;
-    setHistoryIndex(targetIndex);
-    lastRecordedContentRef.current = targetContent;
-    onUpdateScene(scene.id, {
-      content: targetContent,
-      wordCount: countWords(targetContent),
-    });
-    setTimeout(() => {
-      isUndoRedoActionRef.current = false;
-      textareaRef.current?.focus();
-    }, 20);
-  }, [scene, history, historyIndex, onUpdateScene]);
-
-  const handleRedo = useCallback(() => {
-    if (!scene) return;
-    if (historyTimeoutRef.current) {
-      clearTimeout(historyTimeoutRef.current);
-      historyTimeoutRef.current = null;
-    }
-
-    if (historyIndex >= history.length - 1) return;
-
-    const targetIndex = historyIndex + 1;
-    const targetContent = history[targetIndex] ?? "";
-    isUndoRedoActionRef.current = true;
-    setHistoryIndex(targetIndex);
-    lastRecordedContentRef.current = targetContent;
-    onUpdateScene(scene.id, {
-      content: targetContent,
-      wordCount: countWords(targetContent),
-    });
-    setTimeout(() => {
-      isUndoRedoActionRef.current = false;
-      textareaRef.current?.focus();
-    }, 20);
-  }, [scene, history, historyIndex, onUpdateScene]);
-
-  const canUndo = historyIndex > 0 || (scene ? scene.content !== lastRecordedContentRef.current : false);
-  const canRedo = historyIndex < history.length - 1;
-
-  // Global keyboard shortcuts (Undo, Redo, Typewriter, Focus, Zen)
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const isOtherInput = target && target.id !== "novel-manuscript-textarea" && (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
-      if (isOtherInput) return;
-
-      const isMac = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-      const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
-
-      // Undo / Redo outside textarea
-      if (target?.id !== "novel-manuscript-textarea" && isCmdOrCtrl && !e.altKey) {
-        if (e.key.toLowerCase() === "z" && !e.shiftKey) {
-          e.preventDefault();
-          handleUndo();
-          return;
-        }
-        if (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey)) {
-          e.preventDefault();
-          handleRedo();
-          return;
-        }
-      }
-
-      // Alt+T: Toggle Typewriter Mode
-      if (e.altKey && e.key.toLowerCase() === "t") {
-        e.preventDefault();
-        const nextVal = !(project.settings.typewriterMode ?? false);
-        onUpdateProjectSettings({ typewriterMode: nextVal });
-        showToast(nextVal ? "Scroll de máquina de escribir activado" : "Scroll de máquina de escribir desactivado");
-        return;
-      }
-
-      // Alt+F: Toggle Focus Mode
-      if (e.altKey && e.key.toLowerCase() === "f") {
-        e.preventDefault();
-        const nextVal = !(project.settings.focusMode ?? false);
-        onUpdateProjectSettings({ focusMode: nextVal });
-        showToast(nextVal ? "Modo foco por párrafo activado" : "Modo foco desactivado");
-        return;
-      }
-
-      // Alt+Z: Toggle Zen Mode
-      if (e.altKey && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        setIsZenMode(!isZenMode);
-        showToast(!isZenMode ? "Modo Zen activado (Esc para salir)" : "Modo Zen desactivado");
-        return;
-      }
-
-      // Esc: Exit Zen Mode
-      if (e.key === "Escape" && isZenMode) {
-        e.preventDefault();
-        setIsZenMode(false);
-        showToast("Modo Zen desactivado");
-        return;
-      }
-    };
-
-    window.addEventListener("keydown", handleGlobalKeyDown);
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [handleUndo, handleRedo, isZenMode, setIsZenMode, project.settings.typewriterMode, project.settings.focusMode, onUpdateProjectSettings]);
-
-  // Ribbon horizontal scroll detection for responsive views
-  const checkRibbonScroll = useCallback(() => {
-    if (!ribbonRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = ribbonRef.current;
-    const maxScroll = scrollWidth - clientWidth;
-    const hasOverflow = maxScroll > 4;
-    setIsRibbonOverflowing(hasOverflow);
-    setCanScrollRibbonLeft(hasOverflow && scrollLeft > 6);
-    setCanScrollRibbonRight(hasOverflow && scrollLeft < maxScroll - 6);
-  }, []);
-
-  const scrollRibbon = (direction: "left" | "right") => {
-    if (!ribbonRef.current) return;
-    const scrollAmount = Math.max(160, Math.floor(ribbonRef.current.clientWidth * 0.5));
-    ribbonRef.current.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth",
-    });
-    setTimeout(checkRibbonScroll, 80);
-    setTimeout(checkRibbonScroll, 250);
-  };
-
-  // Drag-to-scroll handlers for the ribbon toolbar
-  const handleRibbonMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    const target = e.target as HTMLElement;
-    // Don't drag if interactive input
-    if (target.closest("input") || target.closest("select")) {
-      return;
-    }
-    if (!ribbonRef.current) return;
-    isDraggingRibbonRef.current = true;
-    ribbonStartXRef.current = e.pageX;
-    ribbonScrollLeftRef.current = ribbonRef.current.scrollLeft;
-    ribbonHasMovedRef.current = false;
-  };
-
-  // Convert mouse wheel on ribbon to horizontal scroll and handle window-level drag
-  useEffect(() => {
-    const el = ribbonRef.current;
-    if (!el) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (el.scrollWidth > el.clientWidth) {
-        if (Math.abs(e.deltaY) >= Math.abs(e.deltaX) && e.deltaY !== 0) {
-          e.preventDefault();
-          el.scrollLeft += e.deltaY;
-          checkRibbonScroll();
-        }
-      }
-    };
-
-    const handleWindowMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRibbonRef.current || !ribbonRef.current) return;
-      const delta = e.pageX - ribbonStartXRef.current;
-      if (Math.abs(delta) > 3) {
-        ribbonHasMovedRef.current = true;
-        setIsDraggingRibbon(true);
-        ribbonRef.current.scrollLeft = ribbonScrollLeftRef.current - delta;
-        checkRibbonScroll();
-      }
-    };
-
-    const handleWindowMouseUp = () => {
-      if (isDraggingRibbonRef.current) {
-        if (ribbonHasMovedRef.current) {
-          // Suppress any click on child elements triggered by releasing the drag
-          const suppressClick = (clickEvt: MouseEvent) => {
-            clickEvt.stopPropagation();
-            clickEvt.preventDefault();
-            window.removeEventListener("click", suppressClick, true);
-          };
-          window.addEventListener("click", suppressClick, true);
-          setTimeout(() => window.removeEventListener("click", suppressClick, true), 100);
-        }
-        isDraggingRibbonRef.current = false;
-        setIsDraggingRibbon(false);
-        ribbonHasMovedRef.current = false;
-      }
-    };
-
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    el.addEventListener("scroll", checkRibbonScroll, { passive: true });
-    window.addEventListener("mousemove", handleWindowMouseMove);
-    window.addEventListener("mouseup", handleWindowMouseUp);
-
-    const ro = new ResizeObserver(() => checkRibbonScroll());
-    ro.observe(el);
-    window.addEventListener("resize", checkRibbonScroll);
-
-    checkRibbonScroll();
-    const t = setTimeout(checkRibbonScroll, 120);
-
-    return () => {
-      el.removeEventListener("wheel", handleWheel);
-      el.removeEventListener("scroll", checkRibbonScroll);
-      window.removeEventListener("mousemove", handleWindowMouseMove);
-      window.removeEventListener("mouseup", handleWindowMouseUp);
-      ro.disconnect();
-      window.removeEventListener("resize", checkRibbonScroll);
-      clearTimeout(t);
-    };
-  }, [checkRibbonScroll]);
-
-  // Close floating menus if ribbon is scrolled or window resized
-  useEffect(() => {
-    if (!showFontMenu && !showSpacingMenu) return;
-    const handleClose = () => {
-      setShowFontMenu(false);
-      setShowSpacingMenu(false);
-    };
-    window.addEventListener("resize", handleClose);
-    const el = ribbonRef.current;
-    if (el) el.addEventListener("scroll", handleClose);
-    return () => {
-      window.removeEventListener("resize", handleClose);
-      if (el) el.removeEventListener("scroll", handleClose);
-    };
-  }, [showFontMenu, showSpacingMenu]);
-
-  // Open font menu positioned cleanly via portal
-  const handleOpenFontMenu = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (showFontMenu) {
-      setShowFontMenu(false);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    setFontMenuPos({
-      top: rect.bottom + 6,
-      left: Math.max(12, Math.min(window.innerWidth - 272, rect.left)),
-    });
-    setShowFontMenu(true);
-    setShowSpacingMenu(false);
-    setShowStatusMenu(false);
-  };
-
-  // Open spacing menu positioned cleanly via portal
-  const handleOpenSpacingMenu = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (showSpacingMenu) {
-      setShowSpacingMenu(false);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    setSpacingMenuPos({
-      top: rect.bottom + 6,
-      left: Math.max(12, Math.min(window.innerWidth - 210, rect.left)),
-    });
-    setShowSpacingMenu(true);
-    setShowFontMenu(false);
-    setShowStatusMenu(false);
-  };
-
-  // Close menus on pointer down outside
-  useEffect(() => {
-    if (!showFontMenu && !showSpacingMenu && !showStatusMenu) return;
-    const handlePointerDownOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (showFontMenu) {
-        if (!fontMenuRef.current?.contains(target) && !target.closest("#ribbon-font-selector")) {
-          setShowFontMenu(false);
-        }
-      }
-      if (showSpacingMenu) {
-        if (!spacingMenuRef.current?.contains(target) && !target.closest("#ribbon-line-spacing-btn")) {
-          setShowSpacingMenu(false);
-        }
-      }
-      if (showStatusMenu) {
-        if (!statusMenuRef.current?.contains(target) && !target.closest("#scene-status-button")) {
-          setShowStatusMenu(false);
-        }
-      }
-    };
-    document.addEventListener("mousedown", handlePointerDownOutside);
-    return () => document.removeEventListener("mousedown", handlePointerDownOutside);
-  }, [showFontMenu, showSpacingMenu, showStatusMenu]);
-
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 2500);
-  };
+  }, []);
 
-  // Inject custom font @font-face dynamically if present
+  const {
+    showFontMenu,
+    setShowFontMenu,
+    showSpacingMenu,
+    setShowSpacingMenu,
+    fontMenuPos,
+    spacingMenuPos,
+    closeFloatingMenus,
+    handleOpenFontMenu,
+    handleOpenSpacingMenu,
+  } = useFloatingMenus();
+
+  const { customFontInputRef, handleCustomFontUpload, handleRemoveCustomFont } =
+    useCustomFonts(project, onUpdateProjectSettings, showToast);
+
+  const { pushToHistory, undo, redo, canUndo, canRedo, resetHistory, isUndoRedoActionRef } =
+    useEditorHistory(scene?.content || "");
+
   useEffect(() => {
-    if (project.settings.customFontData && project.settings.customFontName) {
-      const styleId = "novelore-custom-font-face";
-      let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
-      if (!styleEl) {
-        styleEl = document.createElement("style");
-        styleEl.id = styleId;
-        document.head.appendChild(styleEl);
-      }
-      styleEl.textContent = `
-        @font-face {
-          font-family: "${project.settings.customFontName}";
-          src: url("${project.settings.customFontData}");
-          font-display: swap;
-        }
-      `;
-    }
-  }, [project.settings.customFontData, project.settings.customFontName]);
+    if (scene) resetHistory(scene.content || "");
+  }, [scene?.id, resetHistory]);
 
-  const handleCustomFontUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const ribbonScroll = useRibbonScroll(closeFloatingMenus);
 
-    const rawName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-    const safeFontName = `Custom_${rawName.replace(/\s+/g, "_")}`;
+  const isTypewriterActive = project.settings.typewriterMode ?? false;
+  const isFocusActive = project.settings.focusMode ?? false;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        onUpdateProjectSettings({
-          fontFamily: "custom",
-          customFontName: safeFontName,
-          customFontData: dataUrl,
-        });
-        showToast(`Fuente propia "${rawName}" cargada y aplicada`);
-      }
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-    setShowFontMenu(false);
-  };
-
-  const handleRemoveCustomFont = () => {
-    onUpdateProjectSettings({
-      fontFamily: "serif",
-      customFontName: undefined,
-      customFontData: undefined,
-    });
-    showToast("Fuente propia eliminada. Restaurado a Serif Clásica");
-  };
-
-  /**
-   * Literary Ergonomics: Typewriter Scrolling & Focus Mode Caret Synchronization
-   */
-  const updateErgonomics = useCallback(
-    (isTyping = false) => {
-      if (!textareaRef.current || !mirrorRef.current || !scene) return;
-      if (typeof window === "undefined" || !window.getComputedStyle) return;
-
-      const textarea = textareaRef.current;
-      const mirror = mirrorRef.current;
-      const content = textarea.value || "";
-      const caretPos = textarea.selectionStart;
-
-      const isTypewriter = project.settings.typewriterMode ?? false;
-      const isFocus = project.settings.focusMode ?? false;
-
-      if (!isTypewriter && !isFocus) {
-        textarea.style.webkitMaskImage = "none";
-        textarea.style.maskImage = "none";
-        return;
-      }
-
-      const bounds = getParagraphBounds(content, caretPos);
-
-      // Mirror computed typography styles
-      const computed = window.getComputedStyle(textarea);
-      mirror.style.fontFamily = computed.fontFamily;
-      mirror.style.fontSize = computed.fontSize;
-      mirror.style.lineHeight = computed.lineHeight;
-      mirror.style.letterSpacing = computed.letterSpacing;
-      mirror.style.wordSpacing = computed.wordSpacing;
-      mirror.style.textAlign = computed.textAlign;
-      mirror.style.textIndent = computed.textIndent;
-      mirror.style.whiteSpace = "pre-wrap";
-      mirror.style.wordBreak = "break-word";
-      mirror.style.boxSizing = "border-box";
-      mirror.style.width = `${textarea.clientWidth}px`;
-      mirror.style.paddingLeft = computed.paddingLeft;
-      mirror.style.paddingRight = computed.paddingRight;
-      mirror.style.paddingTop = computed.paddingTop;
-
-      const beforePara = escapeHtml(content.substring(0, bounds.start));
-      const paraBeforeCaret = escapeHtml(content.substring(bounds.start, caretPos));
-      const paraAfterCaret = escapeHtml(content.substring(caretPos, bounds.end));
-      const afterPara = escapeHtml(content.substring(bounds.end));
-
-      mirror.innerHTML = `<span>${beforePara}</span><span id="mirror-active-para">${paraBeforeCaret}<span id="mirror-caret-anchor">|</span>${paraAfterCaret}</span><span>${afterPara}</span>`;
-
-      const caretAnchor = mirror.querySelector("#mirror-caret-anchor") as HTMLElement | null;
-      const activeParaSpan = mirror.querySelector("#mirror-active-para") as HTMLElement | null;
-
-      // Typewriter scrolling adjustment
-      if (isTypewriter && caretAnchor) {
-        const caretTop = caretAnchor.offsetTop;
-        const targetScroll = calculateTypewriterScrollTop(caretTop, textarea.clientHeight, 0.45);
-        if (isTyping) {
-          textarea.scrollTop = targetScroll;
-        } else if (Math.abs(textarea.scrollTop - targetScroll) > 12) {
-          textarea.scrollTo({ top: targetScroll, behavior: "smooth" });
-        }
-      }
-
-      // Paragraph Focus gradient mask
-      if (isFocus && activeParaSpan) {
-        const paraTop = activeParaSpan.offsetTop;
-        const paraHeight = activeParaSpan.offsetHeight;
-        const mask = calculateFocusMaskGradient(paraTop, paraHeight, textarea.scrollTop, 28);
-        textarea.style.webkitMaskImage = mask;
-        textarea.style.maskImage = mask;
-      } else {
-        textarea.style.webkitMaskImage = "none";
-        textarea.style.maskImage = "none";
-      }
-    },
-    [scene, project.settings.typewriterMode, project.settings.focusMode]
+  const { mirrorRef, updateErgonomics } = useEditorErgonomics(
+    textareaRef,
+    scene,
+    isTypewriterActive,
+    isFocusActive,
+    project.settings.fontSize,
+    project.settings.lineSpacing
   );
 
-  // Recalculate focus mask on manual scroll
-  const handleScroll = () => {
-    if (project.settings.focusMode && mirrorRef.current && textareaRef.current) {
-      const activeParaSpan = mirrorRef.current.querySelector("#mirror-active-para") as HTMLElement | null;
-      if (activeParaSpan) {
-        const paraTop = activeParaSpan.offsetTop;
-        const paraHeight = activeParaSpan.offsetHeight;
-        const mask = calculateFocusMaskGradient(paraTop, paraHeight, textareaRef.current.scrollTop, 28);
-        textareaRef.current.style.webkitMaskImage = mask;
-        textareaRef.current.style.maskImage = mask;
-      }
-    }
-  };
+  const textActions = useEditorTextActions({
+    textareaRef,
+    scene,
+    project,
+    onUpdateScene,
+    pushToHistory,
+    undo,
+    redo,
+    isUndoRedoActionRef,
+    updateErgonomics,
+    showToast,
+  });
 
-  // Sync ergonomics when mode toggles change or scene switches
-  useEffect(() => {
-    updateErgonomics(false);
-  }, [updateErgonomics, project.settings.typewriterMode, project.settings.focusMode, scene?.id]);
+  useEditorHotkeys({
+    isTypewriterActive,
+    isFocusActive,
+    isZenMode,
+    onUpdateProjectSettings,
+    setIsZenMode,
+    showToast,
+  });
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (!scene) return;
-    const newContent = e.target.value;
-    const newWordCount = countWords(newContent);
-    onUpdateScene(scene.id, {
-      content: newContent,
-      wordCount: newWordCount,
-    });
-
-    updateErgonomics(true);
-
-    if (isUndoRedoActionRef.current) return;
-
-    if (historyTimeoutRef.current) {
-      clearTimeout(historyTimeoutRef.current);
-    }
-    const isMajor =
-      Math.abs(newContent.length - lastRecordedContentRef.current.length) > 1 ||
-      newContent.endsWith(" ") ||
-      newContent.endsWith("\n");
-    historyTimeoutRef.current = setTimeout(() => {
-      pushToHistory(newContent);
-    }, isMajor ? 200 : 450);
-  };
-
-  const handleInsertDash = () => {
-    if (!textareaRef.current || !scene) return;
-    insertEmDashAtCursor(textareaRef.current, (newText) => {
-      onUpdateScene(scene.id, {
-        content: newText,
-        wordCount: countWords(newText),
-      });
-      pushToHistory(newText);
-      setTimeout(() => updateErgonomics(true), 10);
-    });
-    showToast("Guion largo '—' insertado");
-  };
-
-  const handleInsertBreak = () => {
-    if (!textareaRef.current || !scene) return;
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const originalText = textarea.value;
-    const breakText = "\n\n* * *\n\n";
-
-    const newText = originalText.substring(0, start) + breakText + originalText.substring(end);
-    onUpdateScene(scene.id, {
-      content: newText,
-      wordCount: countWords(newText),
-    });
-    pushToHistory(newText);
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + breakText.length, start + breakText.length);
-      updateErgonomics(true);
-    }, 0);
-  };
-
-  const handleInsertGuillemets = () => {
-    if (!textareaRef.current || !scene) return;
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const originalText = textarea.value;
-    const selected = originalText.substring(start, end);
-    const replacement = `«${selected || "texto"}»`;
-
-    const newText = originalText.substring(0, start) + replacement + originalText.substring(end);
-    onUpdateScene(scene.id, {
-      content: newText,
-      wordCount: countWords(newText),
-    });
-    pushToHistory(newText);
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + 1, start + 1 + (selected ? selected.length : 5));
-      updateErgonomics(true);
-    }, 0);
-  };
-
-  const handleToggleCase = () => {
-    if (!textareaRef.current || !scene) return;
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    if (start === end) return;
-    const original = textarea.value;
-    const selected = original.substring(start, end);
-
-    let transformed = selected;
-    if (selected === selected.toUpperCase()) {
-      transformed = selected.toLowerCase();
-    } else if (selected === selected.toLowerCase()) {
-      transformed = selected.replace(/\b\w/g, (c) => c.toUpperCase());
-    } else {
-      transformed = selected.toUpperCase();
-    }
-
-    const newText = original.substring(0, start) + transformed + original.substring(end);
-    onUpdateScene(scene.id, { content: newText, wordCount: countWords(newText) });
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start, start + transformed.length);
-      updateErgonomics(false);
-    }, 0);
-    showToast("Formato de mayúsculas/minúsculas alternado");
-  };
-
-  const handleCopyContent = () => {
-    if (!scene?.content) return;
-    navigator.clipboard.writeText(scene.content);
-    showToast("Contenido de la escena copiado al portapapeles");
-  };
-
-  const handleIndentButtonClick = () => {
-    if (!textareaRef.current || !scene) return;
-    const textarea = textareaRef.current;
-    const res = indentLines(scene.content || "", textarea.selectionStart, textarea.selectionEnd, true);
-    onUpdateScene(scene.id, {
-      content: res.newText,
-      wordCount: countWords(res.newText),
-    });
-    pushToHistory(res.newText);
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(res.newStart, res.newEnd);
-      updateErgonomics(true);
-    }, 0);
-    showToast("Sangría añadida al párrafo (Tab)");
-  };
-
-  const handleOutdentButtonClick = () => {
-    if (!textareaRef.current || !scene) return;
-    const textarea = textareaRef.current;
-    const res = outdentLines(scene.content || "", textarea.selectionStart, textarea.selectionEnd);
-    onUpdateScene(scene.id, {
-      content: res.newText,
-      wordCount: countWords(res.newText),
-    });
-    pushToHistory(res.newText);
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(res.newStart, res.newEnd);
-      updateErgonomics(true);
-    }, 0);
-    showToast("Sangría reducida (Shift+Tab)");
-  };
-
-  // Keyboard shortcut listener for em-dash (Ctrl+Shift+M or Alt+-)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "m") || (e.altKey && e.key === "-")) {
-        e.preventDefault();
-        handleInsertDash();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [scene]);
-
-  if (!scene) {
-    return (
-      <div
-        id="editor-empty-state"
-        className="flex-1 flex flex-col items-center justify-center p-8 text-center"
-        style={{
-          backgroundColor: "var(--bg-editor)",
-          color: "var(--text-muted)",
-        }}
-      >
-        <BookOpen className="w-12 h-12 mb-3 opacity-40 text-[var(--accent)]" />
-        <h3 className="text-lg font-bold font-novel-display text-[var(--text-primary)] mb-1">
-          Ninguna escena seleccionada
-        </h3>
-        <p className="text-sm max-w-sm">
-          Selecciona una escena en el panel izquierdo o crea una nueva para comenzar a escribir.
-        </p>
-      </div>
-    );
-  }
+  if (!scene) return <EditorEmptyState />;
 
   const wordCount = scene.wordCount || countWords(scene.content || "");
   const charCount = countCharacters(scene.content || "");
   const readingTime = calculateReadingTimeMinutes(wordCount);
   const targetWords = scene.targetWordCount || 1500;
   const progressPercent = Math.min(100, Math.round((wordCount / targetWords) * 100));
-
-  const isTypewriterActive = project.settings.typewriterMode ?? false;
-  const isFocusActive = project.settings.focusMode ?? false;
-
-  const getNumericLineHeight = (): number => {
-    const sp = String(project.settings.lineSpacing);
-    switch (sp) {
-      case "compact":
-      case "1.15":
-        return 1.35;
-      case "loose":
-      case "double":
-      case "2.0":
-        return 2.2;
-      case "relaxed":
-      case "1.8":
-        return 1.85;
-      case "normal":
-      case "1.5":
-      default:
-        return 1.6;
-    }
-  };
-
-  const getLineSpacingLabel = (): string => {
-    const sp = String(project.settings.lineSpacing);
-    switch (sp) {
-      case "compact":
-      case "1.15":
-        return "1.15 Compacto";
-      case "loose":
-      case "double":
-      case "2.0":
-        return "2.0 Doble";
-      case "relaxed":
-      case "1.8":
-        return "1.8 Editorial";
-      case "normal":
-      case "1.5":
-      default:
-        return "1.5 Estándar";
-    }
-  };
-
-  const fontOptions = [
-    { id: "serif", label: "Merriweather (Serif Clásica)", previewClass: "font-novel-serif" },
-    { id: "garamond", label: "EB Garamond (Literaria Clásica)", previewClass: "font-novel-garamond" },
-    { id: "lora", label: "Lora (Elegante Editorial)", previewClass: "font-novel-lora" },
-    { id: "serif-display", label: "Playfair Display (Titular)", previewClass: "font-novel-display" },
-    { id: "sans", label: "Plus Jakarta (Moderna Sans)", previewClass: "font-novel-sans" },
-    { id: "mono", label: "JetBrains Mono (Máquina)", previewClass: "font-novel-mono" },
-  ];
+  const columnConfig = getOptimalReadingColumnWidth(isZenMode);
 
   const currentFontLabel =
     project.settings.fontFamily === "custom"
       ? (project.settings.customFontName?.replace(/^Custom_/, "") || "Fuente Propia")
-      : fontOptions.find((f) => f.id === project.settings.fontFamily)?.label || "Merriweather (Serif)";
-
-  const statusOptions: {
-    value: SceneStatus;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-    badgeClass: string;
-    iconColor: string;
-  }[] = [
-    {
-      value: "idea",
-      label: "Idea",
-      icon: Lightbulb,
-      badgeClass: "bg-purple-500/15 text-purple-600 dark:text-purple-400 hover:bg-purple-500/25",
-      iconColor: "text-purple-500",
-    },
-    {
-      value: "draft",
-      label: "Borrador",
-      icon: PenLine,
-      badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25",
-      iconColor: "text-amber-500",
-    },
-    {
-      value: "revised",
-      label: "En Revisión",
-      icon: Search,
-      badgeClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25",
-      iconColor: "text-blue-500",
-    },
-    {
-      value: "polished",
-      label: "Pulido",
-      icon: Sparkles,
-      badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25",
-      iconColor: "text-emerald-500",
-    },
-    {
-      value: "final",
-      label: "Final",
-      icon: Award,
-      badgeClass: "bg-teal-500/15 text-teal-600 dark:text-teal-400 hover:bg-teal-500/25",
-      iconColor: "text-teal-500",
-    },
-  ];
-
-  const currentStatusObj =
-    statusOptions.find((s) => s.value === (scene.status || "draft")) || statusOptions[1];
-
-  const lineSpacingOptions = [
-    { id: "compact", val: "1.15", label: "1.15 Compacto" },
-    { id: "normal", val: "1.5", label: "1.5 Estándar" },
-    { id: "relaxed", val: "1.8", label: "1.8 Editorial" },
-    { id: "loose", val: "2.0", label: "2.0 Doble Manuscrito" },
-  ];
-
-  const columnConfig = getOptimalReadingColumnWidth(isZenMode);
+      : FONT_OPTIONS.find((f) => f.id === project.settings.fontFamily)?.label || "Merriweather (Serif)";
 
   return (
     <main
       id="rich-text-editor-container"
       className="flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-hidden relative"
-      style={{
-        backgroundColor: "var(--bg-editor)",
-        color: "var(--text-primary)",
-      }}
+      style={{ backgroundColor: "var(--bg-editor)", color: "var(--text-primary)" }}
     >
-      {/* Toast Notification */}
       {notification && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-[var(--text-primary)] text-[var(--bg-editor)] text-xs font-semibold px-4 py-2 rounded-full shadow-lg z-50 animate-in fade-in slide-in-from-top-2">
           {notification}
         </div>
       )}
 
-      {/* Hidden Mirror Div for Caret & Paragraph Measurement */}
       <div
         ref={mirrorRef}
         id="editor-caret-mirror"
         aria-hidden="true"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          visibility: "hidden",
-          pointerEvents: "none",
-          zIndex: -100,
-        }}
+        style={{ position: "absolute", top: 0, left: 0, visibility: "hidden", pointerEvents: "none", zIndex: -100 }}
       />
 
-      {/* FILA 1: Barra de Información de la Escena (Scene Header) */}
       {!isZenMode && (
-        <header
-          id="editor-scene-header"
-          className="h-11 px-3 sm:px-5 flex items-center justify-between shrink-0 select-none min-w-0 border-b border-[var(--border-subtle)] relative z-50"
-          style={{
-            backgroundColor: "var(--bg-sidebar)",
+        <EditorHeader
+          scene={scene}
+          project={project}
+          wordCount={wordCount}
+          targetWords={targetWords}
+          isInspectorOpen={isInspectorOpen}
+          onUpdateScene={onUpdateScene}
+          onOpenInspector={onOpenInspector}
+          onActivateZen={() => {
+            setIsZenMode(true);
+            showToast("Modo Zen activado (Pulsa Esc para salir)");
           }}
-        >
-          {/* Left: Scene Title Input */}
-          <div className="flex-1 min-w-0 flex items-center gap-2 mr-3">
-            <FileText className="w-4 h-4 text-[var(--accent)] shrink-0 opacity-70" />
-            <input
-              type="text"
-              id="scene-title-input"
-              value={scene.title}
-              onChange={(e) => onUpdateScene(scene.id, { title: e.target.value })}
-              className="w-full min-w-0 text-sm font-semibold font-novel-display bg-transparent border-b border-transparent hover:border-[var(--border-subtle)] focus:border-[var(--accent)] focus:outline-none py-0.5 text-[var(--text-primary)] transition-colors placeholder-[var(--text-muted)] truncate focus:truncate-none"
-              placeholder="Escribe el nombre de esta escena..."
-              title="Haz clic para editar el nombre de la escena"
-            />
-          </div>
-
-          {/* Right: Meta Badges, Scene Status Selector, Inspector & Zen */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Status Dropdown */}
-            <div ref={statusMenuRef} className="relative">
-              <button
-                type="button"
-                id="scene-status-button"
-                onClick={() => setShowStatusMenu(!showStatusMenu)}
-                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer shrink-0 ${currentStatusObj.badgeClass}`}
-                title="Cambiar estado de la escena"
-              >
-                <currentStatusObj.icon className="w-3.5 h-3.5 shrink-0" />
-                <span>{currentStatusObj.label}</span>
-                <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
-              </button>
-
-              {showStatusMenu && (
-                <div
-                  className="absolute right-0 top-full mt-1.5 w-44 rounded-xl shadow-xl p-1 z-50 border border-[var(--border-subtle)]"
-                  style={{
-                    backgroundColor: "var(--bg-editor)",
-                  }}
-                >
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-1">
-                    Estado de Escena
-                  </div>
-                  {statusOptions.map((opt) => {
-                    const OptIcon = opt.icon;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => {
-                          onUpdateScene(scene.id, { status: opt.value });
-                          setShowStatusMenu(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                          scene.status === opt.value
-                            ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
-                            : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <OptIcon
-                            className={`w-3.5 h-3.5 shrink-0 ${
-                              scene.status === opt.value ? "text-current" : opt.iconColor
-                            }`}
-                          />
-                          <span>{opt.label}</span>
-                        </div>
-                        {scene.status === opt.value && <Check className="w-3.5 h-3.5 shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Quick Word counter pill */}
-            <div
-              className="hidden lg:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono shrink-0 bg-[var(--bg-surface-hover)]"
-              style={{
-                color: "var(--text-muted)",
-              }}
-              title={
-                project.settings.enableWordGoals !== false
-                  ? `Meta de escena: ${wordCount} de ${targetWords} palabras`
-                  : `${wordCount} palabras escritas en esta escena`
-              }
-            >
-              <span className="font-semibold text-[var(--text-primary)]">{wordCount}</span>
-              {project.settings.enableWordGoals !== false ? (
-                <span>/ {targetWords} pal.</span>
-              ) : (
-                <span>palabras</span>
-              )}
-            </div>
-
-            {/* Inspector Toggle */}
-            <button
-              id="inspector-toggle-btn"
-              onClick={onOpenInspector}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0 ${
-                isInspectorOpen
-                  ? "bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]"
-              }`}
-              title="Inspector de Escena (Ctrl+I)"
-            >
-              <PanelRight className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden xl:inline">Inspector</span>
-            </button>
-
-            {/* Zen Mode Button */}
-            <button
-              id="zen-mode-btn"
-              onClick={() => {
-                setIsZenMode(true);
-                showToast("Modo Zen activado (Pulsa Esc para salir)");
-              }}
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer shrink-0"
-              title="Modo Zen (Sin distracciones - Alt+Z / Esc)"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </header>
-      )}
-
-      {/* FILA 2: Cinta de Herramientas Ergonomía y Formato (Toolbar / Ribbon) Centrada y Arrastrable */}
-      {!isZenMode && (
-        <div className="relative shrink-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--bg-sidebar)]">
-          {/* Botón sutil de desplazamiento hacia la izquierda */}
-          {canScrollRibbonLeft && (
-            <button
-              type="button"
-              onClick={() => scrollRibbon("left")}
-              className="absolute left-0 top-0 bottom-0 z-40 px-1 bg-gradient-to-r from-[var(--bg-sidebar)] via-[var(--bg-sidebar)] to-transparent flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-              title="Desplazar herramientas a la izquierda"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-          )}
-
-          {/* Contenedor arrastrable horizontalmente */}
-          <div
-            ref={ribbonRef}
-            id="editor-word-processor-ribbon"
-            onMouseDown={handleRibbonMouseDown}
-            className={`min-h-[44px] px-3 sm:px-6 py-1.5 flex items-center overflow-x-auto no-scrollbar select-none ${
-              isRibbonOverflowing ? (isDraggingRibbon ? "cursor-grabbing" : "cursor-grab") : ""
-            }`}
-            style={{
-              justifyContent: isRibbonOverflowing ? "flex-start" : "center",
-            }}
-          >
-            <div
-              className={`flex items-center gap-1 sm:gap-1.5 flex-nowrap shrink-0 min-w-max ${
-                isRibbonOverflowing ? "" : "mx-auto"
-              } ${isDraggingRibbon ? "pointer-events-none" : ""}`}
-            >
-              {/* GRUPO 0: DESHACER & REHACER (UNDO / REDO) */}
-              <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)] shrink-0">
-                <button
-                  type="button"
-                  id="ribbon-undo-btn"
-                  disabled={!canUndo}
-                  onClick={handleUndo}
-                  className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  title="Deshacer última acción (Ctrl+Z / ⌘Z)"
-                >
-                  <Undo2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  id="ribbon-redo-btn"
-                  disabled={!canRedo}
-                  onClick={handleRedo}
-                  className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  title="Rehacer acción deshecha (Ctrl+Y / ⌘Shift+Z)"
-                >
-                  <Redo2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
-
-              {/* GRUPO 1: TIPOGRAFÍA & FUENTE */}
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  id="ribbon-font-selector"
-                  onClick={handleOpenFontMenu}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer max-w-[130px] sm:max-w-[155px] truncate"
-                  title="Cambiar tipografía del manuscrito"
-                >
-                  <Type className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
-                  <span className="truncate">{currentFontLabel}</span>
-                  <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
-                </button>
-
-                {/* Font Size Step Controls (- / Size / +) */}
-                <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
-                  <button
-                    type="button"
-                    id="font-size-decrease-btn"
-                    onClick={() =>
-                      onUpdateProjectSettings({
-                        fontSize: Math.max(10, (project.settings.fontSize || 18) - 1),
-                      })
-                    }
-                    className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
-                    title="Reducir tamaño de letra"
-                  >
-                    <Minus className="w-3 h-3" />
-                  </button>
-                  <span
-                    className="px-1.5 text-xs font-mono font-bold text-[var(--text-primary)] min-w-[24px] text-center select-none"
-                    title="Tamaño actual de letra"
-                  >
-                    {project.settings.fontSize || 18}
-                  </span>
-                  <button
-                    type="button"
-                    id="font-size-increase-btn"
-                    onClick={() =>
-                      onUpdateProjectSettings({
-                        fontSize: Math.min(36, (project.settings.fontSize || 18) + 1),
-                      })
-                    }
-                    className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] cursor-pointer"
-                    title="Aumentar tamaño de letra"
-                  >
-                    <Plus className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
-
-              {/* GRUPO 2: PÁRRAFO, INTERLINEADO & ALINEACIÓN */}
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  id="ribbon-line-spacing-btn"
-                  onClick={handleOpenSpacingMenu}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
-                  title="Ajustar interlineado del manuscrito"
-                >
-                  <span className="font-mono text-xs text-[var(--accent)] font-bold">↕</span>
-                  <span className="hidden xl:inline">{getLineSpacingLabel()}</span>
-                  <ChevronDown className="w-3 h-3 opacity-60" />
-                </button>
-
-                {/* Alignment: Left vs Justify */}
-                <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
-                  <button
-                    type="button"
-                    id="align-left-btn"
-                    onClick={() => onUpdateProjectSettings({ textAlign: "left" })}
-                    className={`p-1 rounded-md transition-colors cursor-pointer ${
-                      (project.settings.textAlign || "left") === "left"
-                        ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
-                    }`}
-                    title="Alinear texto a la izquierda"
-                  >
-                    <AlignLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    id="align-justify-btn"
-                    onClick={() => onUpdateProjectSettings({ textAlign: "justify" })}
-                    className={`p-1 rounded-md transition-colors cursor-pointer ${
-                      project.settings.textAlign === "justify"
-                        ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
-                    }`}
-                    title="Justificar texto (formato editorial)"
-                  >
-                    <AlignJustify className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* Sangría & 1ª Línea Inteligente */}
-                <div className="flex items-center rounded-lg p-0.5 bg-[var(--bg-surface-hover)]">
-                  <button
-                    id="apply-indent-btn"
-                    type="button"
-                    onClick={handleIndentButtonClick}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] transition-colors cursor-pointer"
-                    title="Añadir sangría al párrafo seleccionado (Tab)"
-                  >
-                    <Indent className="w-3.5 h-3.5 text-[var(--accent)]" />
-                    <span className="hidden xl:inline">Sangría</span>
-                  </button>
-
-                  <button
-                    id="outdent-btn"
-                    type="button"
-                    onClick={handleOutdentButtonClick}
-                    className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] transition-colors cursor-pointer"
-                    title="Reducir sangría en el párrafo seleccionado (Shift+Tab)"
-                  >
-                    <Outdent className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    id="toggle-first-line-indent-btn"
-                    type="button"
-                    onClick={() => {
-                      const nextState = !project.settings.paragraphIndent;
-                      onUpdateProjectSettings({ paragraphIndent: nextState });
-                      showToast(
-                        nextState
-                          ? "Sangría de 1.ª línea activada (párrafos automáticos con Tab)"
-                          : "Sangría de 1.ª línea desactivada"
-                      );
-                    }}
-                    className={`px-2 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0 ${
-                      project.settings.paragraphIndent
-                        ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-bold shadow-xs"
-                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)]"
-                    }`}
-                    title="Activar sangría de 1.ª línea automática (cada nuevo párrafo al pulsar Enter comenzará sangrado)"
-                  >
-                    <span className="hidden sm:inline">1.ª Línea</span>
-                    <span className="sm:hidden">1.ª Lín.</span>
-                    {project.settings.paragraphIndent ? " ✓" : ""}
-                  </button>
-                </div>
-              </div>
-
-              <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
-
-              {/* GRUPO 3: ELEMENTOS DE NOVELA & DIÁLOGOS (Sin botón Diálogos RAE) */}
-              <div className="flex items-center gap-1 shrink-0">
-                {/* Guion Largo Dialogo (—) */}
-                <button
-                  id="insert-em-dash-btn"
-                  type="button"
-                  onClick={handleInsertDash}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[var(--text-primary)] bg-[var(--accent-subtle)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] transition-colors cursor-pointer"
-                  title="Insertar Guion Largo de Diálogo (—) [Ctrl+Shift+M o Alt+-]"
-                >
-                  <span className="text-base leading-none font-bold text-[var(--accent)]">—</span>
-                  <span className="hidden xl:inline">Guion</span>
-                </button>
-
-                {/* Comillas Latinas (« ») */}
-                <button
-                  id="insert-guillemets-btn"
-                  type="button"
-                  onClick={handleInsertGuillemets}
-                  className="px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
-                  title="Insertar Comillas Latinas (« »)"
-                >
-                  « »
-                </button>
-
-                {/* Separador de Escena (* * *) */}
-                <button
-                  id="insert-break-btn"
-                  type="button"
-                  onClick={handleInsertBreak}
-                  className="px-2 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
-                  title="Insertar Separador de Escena (* * *)"
-                >
-                  * * *
-                </button>
-              </div>
-
-              <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
-
-              {/* GRUPO 4: ERGONOMÍA LITERARIA (TOGGLEABLE TYPEWRITER & FOCUS MODE) */}
-              <div className="flex items-center gap-1 shrink-0">
-                {/* Typewriter Scroll Toggle */}
-                <button
-                  id="toggle-typewriter-mode-btn"
-                  type="button"
-                  onClick={() => {
-                    const nextVal = !isTypewriterActive;
-                    onUpdateProjectSettings({ typewriterMode: nextVal });
-                    showToast(
-                      nextVal
-                        ? "Scroll de máquina de escribir activado (línea centrada)"
-                        : "Scroll de máquina de escribir desactivado"
-                    );
-                  }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                    isTypewriterActive
-                      ? "bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold shadow-2xs"
-                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]"
-                  }`}
-                  title="Scroll de Máquina de Escribir (Mantiene la línea activa en el centro) [Alt+T]"
-                >
-                  <ScrollText className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden xl:inline">Máquina</span>
-                  {isTypewriterActive && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" />}
-                </button>
-
-                {/* Paragraph Focus Mode Toggle */}
-                <button
-                  id="toggle-focus-mode-btn"
-                  type="button"
-                  onClick={() => {
-                    const nextVal = !isFocusActive;
-                    onUpdateProjectSettings({ focusMode: nextVal });
-                    showToast(
-                      nextVal
-                        ? "Modo foco por párrafo activado (atenúa párrafos adyacentes)"
-                        : "Modo foco desactivado"
-                    );
-                  }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                    isFocusActive
-                      ? "bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold shadow-2xs"
-                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]"
-                  }`}
-                  title="Modo Foco por Párrafo (Atenúa los párrafos circundantes) [Alt+F]"
-                >
-                  <Focus className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden xl:inline">Foco</span>
-                  {isFocusActive && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" />}
-                </button>
-              </div>
-
-              <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />
-
-              {/* GRUPO 5: UTILIDADES */}
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  id="toggle-case-btn"
-                  onClick={handleToggleCase}
-                  className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
-                  title="Alternar MAYÚSCULAS / minúsculas / Título en la selección"
-                >
-                  <CaseSensitive className="w-3.5 h-3.5" />
-                </button>
-
-                <button
-                  type="button"
-                  id="copy-content-btn"
-                  onClick={handleCopyContent}
-                  className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
-                  title="Copiar texto de la escena al portapapeles"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Botón sutil de desplazamiento hacia la derecha */}
-          {canScrollRibbonRight && (
-            <button
-              type="button"
-              onClick={() => scrollRibbon("right")}
-              className="absolute right-0 top-0 bottom-0 z-40 px-1 bg-gradient-to-l from-[var(--bg-sidebar)] via-[var(--bg-sidebar)] to-transparent flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-              title="Desplazar herramientas a la derecha"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Main Text Writing Canvas with Native Scrollbar on Far Right Edge */}
-      <div
-        id="editor-scroll-container"
-        className="flex-1 min-h-0 relative z-10 w-full h-full flex flex-col overflow-hidden"
-      >
-        {/* Zen mode floating badge with quick toggles */}
-        {isZenMode && (
-          <div className="absolute top-4 right-8 z-30 flex items-center gap-3 bg-[var(--bg-sidebar)]/90 backdrop-blur-md px-4 py-1.5 rounded-full border border-[var(--border-subtle)] shadow-lg text-xs select-none opacity-40 hover:opacity-100 transition-opacity duration-300">
-            <span className="font-novel-display font-semibold tracking-wider text-[var(--text-primary)] truncate max-w-[200px]">
-              {scene.title}
-            </span>
-
-            {/* Quick Typewriter toggle inside Zen */}
-            <button
-              type="button"
-              onClick={() => {
-                const nextVal = !isTypewriterActive;
-                onUpdateProjectSettings({ typewriterMode: nextVal });
-                showToast(nextVal ? "Máquina activada" : "Máquina desactivada");
-              }}
-              className={`p-1 rounded-md transition-colors cursor-pointer ${
-                isTypewriterActive
-                  ? "text-[var(--accent)] font-bold"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-              }`}
-              title="Alternar Scroll de Máquina de Escribir (Alt+T)"
-            >
-              <ScrollText className="w-3.5 h-3.5" />
-            </button>
-
-            {/* Quick Focus toggle inside Zen */}
-            <button
-              type="button"
-              onClick={() => {
-                const nextVal = !isFocusActive;
-                onUpdateProjectSettings({ focusMode: nextVal });
-                showToast(nextVal ? "Foco activado" : "Foco desactivado");
-              }}
-              className={`p-1 rounded-md transition-colors cursor-pointer ${
-                isFocusActive
-                  ? "text-[var(--accent)] font-bold"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-              }`}
-              title="Alternar Modo Foco por Párrafo (Alt+F)"
-            >
-              <Focus className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsZenMode(false)}
-              className="flex items-center gap-1 hover:text-[var(--accent)] cursor-pointer text-[var(--accent)] font-medium pl-1 border-l border-[var(--border-subtle)]"
-              title="Salir de Modo Zen (Esc / Alt+Z)"
-            >
-              <Minimize2 className="w-3.5 h-3.5" />
-              <span>Salir</span>
-            </button>
-          </div>
-        )}
-
-        {/* Literary Textarea: Centered Column ~720px, scrollbar at far right edge */}
-        <textarea
-          id="novel-manuscript-textarea"
-          ref={textareaRef}
-          value={scene.content || ""}
-          onChange={handleTextChange}
-          onScroll={handleScroll}
-          onClick={() => updateErgonomics(false)}
-          onKeyUp={() => updateErgonomics(false)}
-          onSelect={() => updateErgonomics(false)}
-          onKeyDown={(e) => {
-            const isMac = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-            const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
-
-            if (isCmdOrCtrl && !e.altKey) {
-              if (e.key.toLowerCase() === "z" && !e.shiftKey) {
-                e.preventDefault();
-                e.stopPropagation();
-                handleUndo();
-                return;
-              }
-              if (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey)) {
-                e.preventDefault();
-                e.stopPropagation();
-                handleRedo();
-                return;
-              }
-            }
-
-            if (e.key === "Enter") {
-              if (project.settings.paragraphIndent && textareaRef.current && scene) {
-                e.preventDefault();
-                const res = handleSmartEnter(
-                  scene.content || "",
-                  textareaRef.current.selectionStart,
-                  textareaRef.current.selectionEnd,
-                  true
-                );
-                onUpdateScene(scene.id, {
-                  content: res.newText,
-                  wordCount: countWords(res.newText),
-                });
-                pushToHistory(res.newText);
-                setTimeout(() => {
-                  textareaRef.current?.focus();
-                  textareaRef.current?.setSelectionRange(res.newCursor, res.newCursor);
-                  updateErgonomics(true);
-                }, 0);
-                return;
-              }
-            }
-
-            if (e.key === "Tab") {
-              e.preventDefault();
-              if (!textareaRef.current || !scene) return;
-              const res = e.shiftKey
-                ? outdentLines(scene.content || "", textareaRef.current.selectionStart, textareaRef.current.selectionEnd)
-                : indentLines(scene.content || "", textareaRef.current.selectionStart, textareaRef.current.selectionEnd);
-              onUpdateScene(scene.id, {
-                content: res.newText,
-                wordCount: countWords(res.newText),
-              });
-              pushToHistory(res.newText);
-              setTimeout(() => {
-                textareaRef.current?.focus();
-                textareaRef.current?.setSelectionRange(res.newStart, res.newEnd);
-                updateErgonomics(true);
-              }, 0);
-            }
-          }}
-          placeholder="Comienza a escribir tu escena aquí... Usa Tab para sangrar párrafos, y Ctrl+Shift+M para diálogos (—)."
-          style={{
-            fontSize: `${project.settings.fontSize || 18}px`,
-            lineHeight: getNumericLineHeight(),
-            textAlign: project.settings.textAlign || "left",
-            tabSize: 4,
-            MozTabSize: 4,
-            whiteSpace: "pre-wrap",
-            fontFamily:
-              project.settings.fontFamily === "custom" && project.settings.customFontData
-                ? `"${project.settings.customFontName}", serif`
-                : undefined,
-            color: "var(--text-primary)",
-            paddingLeft: columnConfig.sidePaddingCalc,
-            paddingRight: columnConfig.sidePaddingCalc,
-            paddingTop: isZenMode ? "4rem" : "2.5rem",
-            paddingBottom: "60vh",
-            scrollbarGutter: "stable",
-          }}
-          className={`w-full h-full flex-1 bg-transparent resize-none focus:outline-none border-none tracking-wide overflow-y-scroll custom-scroll always-scroll ${
-            project.settings.fontFamily === "serif-display"
-              ? "font-novel-display"
-              : project.settings.fontFamily === "garamond"
-              ? "font-novel-garamond"
-              : project.settings.fontFamily === "lora"
-              ? "font-novel-lora"
-              : project.settings.fontFamily === "sans"
-              ? "font-novel-sans"
-              : project.settings.fontFamily === "mono"
-              ? "font-novel-mono"
-              : project.settings.fontFamily === "custom"
-              ? ""
-              : "font-novel-serif"
-          } text-[var(--text-primary)] placeholder-[var(--text-muted)]/60 selection:bg-[var(--accent-subtle)] transition-[mask-image,-webkit-mask-image] duration-150`}
-          spellCheck="true"
         />
-      </div>
-
-      {/* Bottom Status & Word Count Footer */}
-      {!isZenMode && (
-        <footer
-          id="editor-footer"
-          className="h-9 px-4 sm:px-6 flex items-center justify-between shrink-0 text-xs text-[var(--text-muted)] select-none font-mono border-t border-[var(--border-subtle)]"
-          style={{
-            backgroundColor: "var(--bg-sidebar)",
-          }}
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-[var(--text-primary)]">{wordCount}</span>
-              <span>palabras</span>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-1.5">
-              <span>{charCount} caracteres</span>
-            </div>
-
-            <div className="hidden md:flex items-center gap-1.5">
-              <Clock className="w-3 h-3" />
-              <span>~{readingTime} min de lectura</span>
-            </div>
-          </div>
-
-          {/* Scene goal progress bar */}
-          {project.settings.enableWordGoals !== false ? (
-            <div className="flex items-center gap-2">
-              <span className="hidden sm:inline">Meta:</span>
-              <span className="font-semibold text-[var(--text-primary)]">
-                {wordCount} / {targetWords}
-              </span>
-              <div className="w-20 sm:w-28 h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[var(--accent)] transition-all"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="text-[11px] text-[var(--text-muted)] opacity-80">
-              Escritura libre (Metas desactivadas)
-            </div>
-          )}
-        </footer>
       )}
 
-      {/* Portales de Desplegables de Ribbon (Nunca se cortan por overflow ni quedan bajo el manuscrito) */}
-      {showFontMenu &&
-        createPortal(
-          <div
-            ref={fontMenuRef}
-            onMouseDown={(e) => e.stopPropagation()}
-            className="fixed rounded-xl shadow-2xl p-2 z-[9999] space-y-1 border border-[var(--border-subtle)] animate-in fade-in zoom-in-95 duration-100"
-            style={{
-              top: `${fontMenuPos.top}px`,
-              left: `${fontMenuPos.left}px`,
-              width: "16rem",
-              backgroundColor: "var(--bg-editor)",
-            }}
-          >
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-0.5">
-              Tipografías Literarias
-            </div>
+      {!isZenMode && (
+        <EditorRibbon
+          ribbonScroll={ribbonScroll}
+          textActions={textActions}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          currentFontLabel={currentFontLabel}
+          onOpenFontMenu={handleOpenFontMenu}
+          onOpenSpacingMenu={handleOpenSpacingMenu}
+          project={project}
+          onUpdateProjectSettings={onUpdateProjectSettings}
+          showToast={showToast}
+        />
+      )}
 
-            {fontOptions.map((font) => (
-              <button
-                key={font.id}
-                onClick={() => {
-                  onUpdateProjectSettings({ fontFamily: font.id as any });
-                  setShowFontMenu(false);
-                }}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-left transition-colors cursor-pointer ${
-                  project.settings.fontFamily === font.id
-                    ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
-                    : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
-                }`}
-              >
-                <span className={font.previewClass}>{font.label}</span>
-                {project.settings.fontFamily === font.id && (
-                  <Check className="w-3.5 h-3.5 shrink-0" />
-                )}
-              </button>
-            ))}
+      <EditorCanvas
+        textareaRef={textareaRef}
+        scene={scene}
+        project={project}
+        isZenMode={isZenMode}
+        columnConfig={columnConfig}
+        isTypewriterActive={isTypewriterActive}
+        isFocusActive={isFocusActive}
+        onToggleTypewriter={() => {
+          onUpdateProjectSettings({ typewriterMode: !isTypewriterActive });
+          showToast(!isTypewriterActive ? "Máquina activada" : "Máquina desactivada");
+        }}
+        onToggleFocus={() => {
+          onUpdateProjectSettings({ focusMode: !isFocusActive });
+          showToast(!isFocusActive ? "Foco activado" : "Foco desactivado");
+        }}
+        onExitZen={() => setIsZenMode(false)}
+        handleTextChange={textActions.handleTextChange}
+        handleKeyDown={textActions.handleKeyDown}
+        updateErgonomics={updateErgonomics}
+      />
 
-            <div className="pt-2 border-t border-[var(--border-subtle)] mt-1">
-              <input
-                ref={customFontInputRef}
-                type="file"
-                accept=".ttf,.otf,.woff,.woff2"
-                onChange={handleCustomFontUpload}
-                className="hidden"
-              />
+      {!isZenMode && (
+        <EditorFooter
+          wordCount={wordCount}
+          charCount={charCount}
+          readingTime={readingTime}
+          targetWords={targetWords}
+          progressPercent={progressPercent}
+          enableWordGoals={project.settings.enableWordGoals !== false}
+        />
+      )}
 
-              {project.settings.customFontData && project.settings.customFontName ? (
-                <div className="flex items-center justify-between p-1.5 rounded-lg bg-[var(--bg-surface-hover)] mb-1">
-                  <div className="truncate flex-1 pr-1">
-                    <p className="text-xs font-bold text-[var(--text-primary)] truncate">
-                      {project.settings.customFontName.replace(/^Custom_/, "")}
-                    </p>
-                    <span className="text-[10px] text-[var(--accent)] font-medium">
-                      {project.settings.fontFamily === "custom" ? "✓ En uso" : "Cargada"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {project.settings.fontFamily !== "custom" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onUpdateProjectSettings({ fontFamily: "custom" });
-                          setShowFontMenu(false);
-                        }}
-                        className="px-2 py-0.5 rounded bg-[var(--accent)] text-[var(--accent-contrast)] text-[10px] font-semibold"
-                      >
-                        Usar
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleRemoveCustomFont}
-                      className="p-1 text-red-500 hover:bg-red-500/15 rounded cursor-pointer"
-                      title="Eliminar fuente propia"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              ) : null}
+      <EditorFontMenuPortal
+        isOpen={showFontMenu}
+        onClose={() => setShowFontMenu(false)}
+        position={fontMenuPos}
+        project={project}
+        onUpdateProjectSettings={onUpdateProjectSettings}
+        customFontInputRef={customFontInputRef}
+        handleCustomFontUpload={handleCustomFontUpload}
+        handleRemoveCustomFont={handleRemoveCustomFont}
+      />
 
-              <button
-                type="button"
-                onClick={() => customFontInputRef.current?.click()}
-                className="w-full flex items-center justify-center gap-1.5 py-1 px-2 rounded-lg border border-dashed border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)]/10 text-xs font-medium transition-colors cursor-pointer"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>{project.settings.customFontData ? "Cargar otra fuente (.ttf/.otf)" : "Subir mi propia fuente (.ttf/.otf)"}</span>
-              </button>
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {showSpacingMenu &&
-        createPortal(
-          <div
-            ref={spacingMenuRef}
-            onMouseDown={(e) => e.stopPropagation()}
-            className="fixed rounded-xl shadow-2xl p-1 z-[9999] space-y-0.5 border border-[var(--border-subtle)] animate-in fade-in zoom-in-95 duration-100"
-            style={{
-              top: `${spacingMenuPos.top}px`,
-              left: `${spacingMenuPos.left}px`,
-              width: "12rem",
-              backgroundColor: "var(--bg-editor)",
-            }}
-          >
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-1">
-              Interlineado
-            </div>
-            {lineSpacingOptions.map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => {
-                  onUpdateProjectSettings({ lineSpacing: opt.id as any });
-                  setShowSpacingMenu(false);
-                }}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                  project.settings.lineSpacing === opt.id || project.settings.lineSpacing === opt.val
-                    ? "bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold"
-                    : "hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]"
-                }`}
-              >
-                <span>{opt.label}</span>
-                {(project.settings.lineSpacing === opt.id || project.settings.lineSpacing === opt.val) && (
-                  <Check className="w-3.5 h-3.5" />
-                )}
-              </button>
-            ))}
-          </div>,
-          document.body
-        )}
+      <EditorSpacingMenuPortal
+        isOpen={showSpacingMenu}
+        onClose={() => setShowSpacingMenu(false)}
+        position={spacingMenuPos}
+        project={project}
+        onUpdateProjectSettings={onUpdateProjectSettings}
+      />
     </main>
   );
 };

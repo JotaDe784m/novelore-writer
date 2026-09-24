@@ -30,8 +30,21 @@ async function runTests() {
   console.log("🧪 Novelore Desktop - Verificación: Ribbon y Desplegables Portaleados");
   console.log("=============================================================\n");
 
-  const editorFilePath = path.join(process.cwd(), "src/components/editor/RichTextEditor.tsx");
-  const editorCode = fs.readFileSync(editorFilePath, "utf-8");
+  const editorDir = path.join(process.cwd(), "src/components/editor");
+  const readEditorFilesRecursively = (dir: string): string => {
+    let combined = "";
+    for (const file of fs.readdirSync(dir)) {
+      if (file === "SceneInspector.tsx" || file === "ManuscriptSidebar.tsx") continue;
+      const fullPath = path.join(dir, file);
+      if (fs.statSync(fullPath).isDirectory()) {
+        combined += "\n" + readEditorFilesRecursively(fullPath);
+      } else if (file.endsWith(".tsx") || file.endsWith(".ts")) {
+        combined += "\n" + fs.readFileSync(fullPath, "utf-8");
+      }
+    }
+    return combined;
+  };
+  const editorCode = readEditorFilesRecursively(editorDir);
 
   // -------------------------------------------------------------
   // GRUPO 1: Ribbon Drag-to-Scroll y Soporte Responsive

@@ -11,7 +11,8 @@
     "build:electron": "esbuild electron/main.ts --bundle --platform=node --target=node20 --external:electron --outfile=dist-electron/main.cjs && esbuild electron/preload.ts --bundle --platform=node --target=node20 --external:electron --outfile=dist-electron/preload.cjs",
     "build": "vite build && npm run build:electron",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "audit": "knip"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -33,6 +34,7 @@
     "autoprefixer": "^10.4.21",
     "electron": "^35.0.0",
     "esbuild": "^0.25.0",
+    "knip": "^6.38.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2"
