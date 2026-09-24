@@ -254,3 +254,4 @@ export const ACCENT_PRESETS = [
   { name: "Cian Neón", color: "#00D8F6" },
   { name: "Rosa Vibrante", color: "#EC4899" },
 ];
+
