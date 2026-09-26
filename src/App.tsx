@@ -94,7 +94,7 @@ export const App: React.FC = () => {
     useThemeStore.getState().syncWithProject(project);
   }, [project.settings?.theme, project.settings?.customAccentColor]);
 
-  // Atajo de teclado global: Ctrl+\ o Cmd+\ para alternar la barra lateral del manuscrito
+  // Atajos globales: Ctrl+\ / Cmd+\ (manuscrito) y Ctrl+I / Cmd+I (inspector de escena)
   useEffect(() => {
     const handleGlobalShortcuts = (e: KeyboardEvent) => {
       const isMac =
@@ -106,6 +106,9 @@ export const App: React.FC = () => {
         if (e.key === "\\" || e.code === "Backslash") {
           e.preventDefault();
           setIsSidebarOpen((prev) => !prev);
+        } else if (e.key.toLowerCase() === "i" || e.code === "KeyI") {
+          e.preventDefault();
+          setIsInspectorOpen((prev) => !prev);
         }
       }
     };
@@ -292,7 +295,7 @@ export const App: React.FC = () => {
                     project={project}
                     onUpdateScene={handleUpdateScene}
                     onClose={() => setIsInspectorOpen(false)}
-                    onOpenEntityDossier={(id) => setDossierEntityId(id)}
+                    onOpenEntityDossier={(id: string) => setDossierEntityId(id)}
                     onCreateCharacter={() => setIsCreatingCharacterFromInspector(true)}
                     onOpenWordGoals={() => setIsWordGoalsModalOpen(true)}
                     onUpdateProject={handleUpdateProject}

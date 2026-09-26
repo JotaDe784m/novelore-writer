@@ -8,6 +8,17 @@ export type EntityCategory =
 
 export type SceneStatus = "idea" | "draft" | "revised" | "polished" | "final";
 
+export type NarrativeAnalysisMode = "dramatic" | "worldbuilding" | "reaction" | "free";
+
+export interface SceneNoteCard {
+  id: string;
+  title: string;
+  content: string;
+  color?: string;
+}
+
+export type SceneNotesTemplate = NarrativeAnalysisMode | "custom";
+
 export interface Scene {
   id: string;
   chapterId: string;
@@ -15,10 +26,14 @@ export interface Scene {
   content: string; // Plain text or HTML formatted content
   synopsis: string;
   notes: string;
+  noteCards?: SceneNoteCard[];
+  notesTemplate?: SceneNotesTemplate;
+  templateNotes?: Partial<Record<SceneNotesTemplate, SceneNoteCard[]>>;
   status: SceneStatus;
   povCharacterId?: string;
   characterIds: string[]; // Characters present
   locationId?: string;
+  analysisMode?: NarrativeAnalysisMode;
   goal: string; // What the POV wants
   conflict: string; // What's in the way
   outcome: string; // How it resolves

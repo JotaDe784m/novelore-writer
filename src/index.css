@@ -38,6 +38,26 @@
     --border-color: var(--border-subtle);
   }
 
+  select {
+    color-scheme: light dark;
+  }
+
+  .dark select,
+  [data-theme="dark"] select,
+  [data-theme="scifi"] select,
+  [data-theme="noir"] select,
+  [data-theme="gothic"] select,
+  [data-theme="forest"] select,
+  [data-theme="midnight"] select,
+  [data-theme="dream"] select {
+    color-scheme: dark;
+  }
+
+  option, optgroup {
+    background-color: var(--bg-editor, #141416);
+    color: var(--text-primary, #f4f4f6);
+  }
+
   /* ATMÓSFERA 1: Claro Editorial (Minimal / Clean) - Blanco marfil neutro */
   .theme-minimal,
   .theme-clean,

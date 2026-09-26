@@ -198,10 +198,16 @@ export function applyStylesToDOM(
   const body = document.body;
 
   // Atributos y clases
-  root.setAttribute("data-theme", themeId);
-  body.setAttribute("data-theme", themeId);
-  root.className = `theme-${themeId}${isDark ? " dark" : ""}`;
-  body.className = isDark ? "dark" : "";
+  if (root) {
+    root.setAttribute("data-theme", themeId);
+    root.className = `theme-${themeId}${isDark ? " dark" : ""}`;
+    root.style.colorScheme = isDark ? "dark" : "light";
+  }
+  if (body) {
+    body.setAttribute("data-theme", themeId);
+    body.className = isDark ? "dark" : "";
+    body.style.colorScheme = isDark ? "dark" : "light";
+  }
 
   // Variables dinámicas para acento
   if (customAccent && customAccent.trim()) {

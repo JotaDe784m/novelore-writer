@@ -56,11 +56,14 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Pila de historial Deshacer / Rehacer (*Undo/Redo*) con atajos estándar (`Ctrl+Z`, `Ctrl+Y`).
 - [x] Barra de herramientas (Ribbon) en fila única fluida con arrastre horizontal (drag-to-scroll), centrado responsivo y menús portaleados sin recortes.
 
-### Subfase 1.5: Inspector de Escenas Básico
-- Rediseñar `SceneInspector.tsx` con arquitectura colapsable al 100% hacia el borde derecho (`Ctrl+I` / `Cmd+I`), sin marcos de panel:
-  - Triunvirato dramático: Objetivo, Conflicto y Resultado de la escena.
-  - Estado de la escena: Idea, Borrador, Revisión, Pulido, Final.
-  - Metas individuales de palabras por escena y barra de progreso.
+### Subfase 1.5: Inspector de Escenas & Sistema de Notas Dinámicas [COMPLETADA]
+- [x] Rediseñar `SceneInspector.tsx` con arquitectura modular (componentes $\le 250$ líneas) y colapsable al 100% hacia el borde derecho (`Ctrl+I` / `Cmd+I`), sin marcos de panel:
+  - [x] Sistema de Notas flexible con tarjetas dinámicas y editables (título y contenido) y selector de plantillas (*Dramático*, *Worldbuilding*, *Reacción* y *Libre*).
+  - [x] Botón `+ Añadir Nota` disponible en todas las plantillas y en modo libre.
+  - [x] Sinopsis narrativa sincronizada en tiempo real con las vistas de planeación (Tablero de Corcho y Esquema).
+  - [x] Selector de Punto de Vista (POV) con soporte para Narrador Omnisciente, Sin POV / Coral y entidades del Códice con contraste optimizado en tema oscuro.
+  - [x] Estado de la escena con chips visuales: Idea, Borrador, Revisión, Pulido, Final.
+  - [x] Metas individuales de palabras por escena, barra de progreso y cálculo de tiempo de lectura.
 
 ---
 
