@@ -52,12 +52,17 @@ async function startDev() {
   const { default: electronPath } = await import("electron");
 
   console.log("🖥️  [Novelore] Abriendo ventana nativa de Electron...");
-  const electronProcess = spawn(electronPath, [path.join(rootDir, "dist-electron/main.cjs")], {
+  const childEnv = { ...process.env, VITE_DEV_SERVER_URL: devUrl };
+  delete childEnv.ELECTRON_RUN_AS_NODE;
+
+  const electronArgs = [path.join(rootDir, "dist-electron/main.cjs")];
+  if (process.platform === "linux") {
+    electronArgs.unshift("--no-sandbox");
+  }
+
+  const electronProcess = spawn(electronPath, electronArgs, {
     stdio: "inherit",
-    env: {
-      ...process.env,
-      VITE_DEV_SERVER_URL: devUrl,
-    },
+    env: childEnv,
   });
 
   electronProcess.on("close", async () => {

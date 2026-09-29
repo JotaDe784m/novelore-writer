@@ -298,7 +298,36 @@ function createWindow(): void {
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
   if (devServerUrl) {
-    mainWindow.loadURL(devServerUrl);
+    mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+      const levelNames = ["DEBUG", "INFO", "WARN", "ERROR"];
+      console.log(`[Renderer ${levelNames[level] || level}] ${message} (${sourceId}:${line})`);
+    });
+
+    mainWindow.webContents.on("preload-error", (_event, preloadPath, error) => {
+      console.error(`[Electron] Error en preload (${preloadPath}):`, error);
+    });
+
+    mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+      console.error(`[Electron] Falló carga de URL (${validatedURL}): ${errorCode} - ${errorDescription}`);
+    });
+
+    const loadWithRetry = async (attempts = 10, delayMs = 300) => {
+      for (let i = 0; i < attempts; i++) {
+        try {
+          if (!mainWindow || mainWindow.isDestroyed()) return;
+          await mainWindow.loadURL(devServerUrl);
+          return;
+        } catch (err) {
+          if (i === attempts - 1) {
+            console.error(`[Electron] No se pudo conectar a Vite tras ${attempts} intentos:`, err);
+          } else {
+            await new Promise((r) => setTimeout(r, delayMs));
+          }
+        }
+      }
+    };
+    loadWithRetry();
+    mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }
@@ -553,6 +582,51 @@ ipcMain.handle("fs:saveProjectJson", async (_event, projectData: any) => {
     const projectJsonPath = path.join(currentProjectPath, "project.json");
     await writeAtomic(projectJsonPath, JSON.stringify(projectData, null, 2));
     return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+});
+
+// 8. Guardado y lectura atómica del Códice (codex.json)
+ipcMain.handle("fs:saveCodex", async (_event, data: { entities?: any[]; relationships?: any[] }) => {
+  if (!currentProjectPath) return { success: false, error: "No hay proyecto abierto." };
+  try {
+    const codexJsonPath = path.join(currentProjectPath, "codex.json");
+    const codexPayload = {
+      entities: Array.isArray(data?.entities) ? data.entities : [],
+      relationships: Array.isArray(data?.relationships) ? data.relationships : [],
+    };
+    await writeAtomic(codexJsonPath, JSON.stringify(codexPayload, null, 2));
+
+    // Mantener sincronizado updatedAt en project.json
+    const projectJsonPath = path.join(currentProjectPath, "project.json");
+    if (await fileExists(projectJsonPath)) {
+      try {
+        const meta = JSON.parse(await fs.readFile(projectJsonPath, "utf-8"));
+        meta.updatedAt = new Date().toISOString();
+        await writeAtomic(projectJsonPath, JSON.stringify(meta, null, 2));
+      } catch {}
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("fs:readCodex", async () => {
+  if (!currentProjectPath) return { success: false, error: "No hay proyecto abierto." };
+  try {
+    const codexJsonPath = path.join(currentProjectPath, "codex.json");
+    if (await fileExists(codexJsonPath)) {
+      const parsed = JSON.parse(await fs.readFile(codexJsonPath, "utf-8"));
+      return {
+        success: true,
+        entities: parsed.entities || [],
+        relationships: parsed.relationships || [],
+      };
+    }
+    return { success: true, entities: [], relationships: [] };
   } catch (err: any) {
     return { success: false, error: err.message };
   }

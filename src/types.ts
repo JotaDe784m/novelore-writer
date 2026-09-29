@@ -4,7 +4,8 @@ export type EntityCategory =
   | "faction"
   | "item"
   | "concept"
-  | "event";
+  | "event"
+  | "other";
 
 export type SceneStatus = "idea" | "draft" | "revised" | "polished" | "final";
 

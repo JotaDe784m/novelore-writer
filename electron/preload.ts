@@ -74,6 +74,16 @@ export interface ElectronAPI {
     success: boolean;
     error?: string;
   }>;
+  saveCodex: (data: { entities: any[]; relationships: any[] }) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+  readCodex: () => Promise<{
+    success: boolean;
+    entities?: any[];
+    relationships?: any[];
+    error?: string;
+  }>;
 }
 
 const api: ElectronAPI = {
@@ -96,6 +106,8 @@ const api: ElectronAPI = {
   saveProjectData: (data) => ipcRenderer.invoke("fs:saveProjectData", data),
   saveProjectJson: (projectData: any) =>
     ipcRenderer.invoke("fs:saveProjectJson", projectData),
+  saveCodex: (data) => ipcRenderer.invoke("fs:saveCodex", data),
+  readCodex: () => ipcRenderer.invoke("fs:readCodex"),
 };
 
 contextBridge.exposeInMainWorld("electronAPI", api);

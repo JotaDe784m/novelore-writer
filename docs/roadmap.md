@@ -67,12 +67,14 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 
 ---
 
-## Fase 2: Worldbuilding & Códice Local (Estilo Heptabase) **[PLANIFICADA]**
+## Fase 2: Worldbuilding & Códice Local (Estilo Heptabase) **[EN PROGRESO]**
 **Objetivo**: Construir la enciclopedia del universo ficticio integrada con el sistema de archivos local y el texto del manuscrito, con tarjetas fluidas y sin rigidez administrativa.
 
 ### Subfase 2.1: Persistencia del Códice (`codex.json`)
-- Implementar `useCodexStore` para gestionar las 6 categorías de entidades: Personajes, Lugares, Facciones, Objetos, Conceptos y Eventos Históricos.
-- Serialización estructurada y guardado desacoplado en `codex.json`.
+- [x] Implementar `useCodexStore` para gestionar las 7 categorías de entidades: Personajes, Lugares, Facciones, Objetos, Conceptos, Eventos Históricos y Libre / General (`other`).
+- [x] Serialización estructurada y guardado desacoplado atómico en `codex.json` con canales IPC dedicados (`fs:saveCodex` y `fs:readCodex`).
+- [x] Arquitectura modular de componentes ($\le 250$ líneas) dividida en `src/components/codex/hub/` (`CodexHeader`, `CodexFilterBar`, `CodexEntityCard`, `CodexEmptyState`).
+- [x] Campos de atributos expandibles verticalmente hacia abajo en tarjetas y modal para lectura completa de textos largos.
 
 ### Subfase 2.2: Dossiers y Atributos Dinámicos
 - Adaptar `EntityModal.tsx` con estética limpia de tarjeta de conocimiento (sin líneas de tabla densas).

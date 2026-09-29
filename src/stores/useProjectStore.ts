@@ -90,6 +90,21 @@ declare global {
         success: boolean;
         error?: string;
       }>;
+      saveCodex: (data: {
+        entities: any[];
+        relationships: any[];
+      }) => Promise<{
+        success: boolean;
+        error?: string;
+      }>;
+      readCodex: () => Promise<{
+        success: boolean;
+        codex?: {
+          entities: any[];
+          relationships: any[];
+        };
+        error?: string;
+      }>;
       saveProjectJson: (projectData: any) => Promise<{
         success: boolean;
         error?: string;

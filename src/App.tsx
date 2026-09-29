@@ -28,6 +28,7 @@ import { VisualBoardView } from "./components/board/VisualBoardView";
 import { useProjectStore } from "./stores/useProjectStore";
 import { useThemeStore } from "./stores/useThemeStore";
 import { useManuscriptStore } from "./stores/useManuscriptStore";
+import { useCodexStore } from "./stores/useCodexStore";
 
 export const App: React.FC = () => {
   const projectStore = useProjectStore();
@@ -45,6 +46,10 @@ export const App: React.FC = () => {
       useThemeStore.getState().syncWithProject(projectStore.project);
       const first = projectStore.project.acts[0]?.chapters[0]?.scenes[0];
       useManuscriptStore.getState().loadManuscript(projectStore.project.acts, first?.id);
+      useCodexStore.getState().loadCodex(
+        projectStore.project.entities || [],
+        projectStore.project.relationships || []
+      );
       if (first) {
         setSelectedSceneId(first.id);
       }
@@ -61,6 +66,10 @@ export const App: React.FC = () => {
         useThemeStore.getState().syncWithProject(loaded);
         const firstScene = loaded.acts[0]?.chapters[0]?.scenes[0];
         useManuscriptStore.getState().loadManuscript(loaded.acts, firstScene?.id);
+        useCodexStore.getState().loadCodex(
+          loaded.entities || [],
+          loaded.relationships || []
+        );
         if (firstScene) {
           setSelectedSceneId(firstScene.id);
         }

@@ -1,6 +1,7 @@
 import React from "react";
 import { User, MapPin, ExternalLink } from "lucide-react";
 import { Scene, NovelProject } from "../../../types";
+import { useCodexStore } from "../../../stores/useCodexStore";
 
 interface InspectorEntitiesProps {
   scene: Scene;
@@ -15,8 +16,10 @@ export const InspectorEntities: React.FC<InspectorEntitiesProps> = ({
   onUpdateScene,
   onOpenEntityDossier,
 }) => {
-  const characters = project.entities.filter((e) => e.category === "character");
-  const locations = project.entities.filter((e) => e.category === "location");
+  const storeEntities = useCodexStore((state) => state.entities);
+  const allEntities = storeEntities.length > 0 ? storeEntities : project.entities || [];
+  const characters = allEntities.filter((e) => e.category === "character");
+  const locations = allEntities.filter((e) => e.category === "location");
 
   const isSpecialPov = scene.povCharacterId === "omniscient" || scene.povCharacterId === "coral";
   const povCharacter = !isSpecialPov ? characters.find((c) => c.id === scene.povCharacterId) : undefined;

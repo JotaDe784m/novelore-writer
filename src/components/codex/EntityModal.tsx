@@ -465,7 +465,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
       targetTimelineEventId = undefined;
     }
 
-    const updatedAttributes = {
+    const updatedAttributes: Record<string, string> = {
       ...attributes,
       ...(category === "event" && dateOrEpoch ? { Época: dateOrEpoch.trim() } : {}),
     };
@@ -1553,19 +1553,12 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                         <label className="text-xs font-semibold text-[var(--text-muted)] block mb-1">
                           Valor Inicial (Opcional)
                         </label>
-                        <input
-                          type="text"
+                        <textarea
                           value={newFieldValue}
                           onChange={(e) => setNewFieldValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleConfirmAddCustomField();
-                            }
-                          }}
                           placeholder="Ej: Neutral bueno, Espada de Éter..."
-                          className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs sm:text-sm text-[var(--text-main)] focus:outline-none focus:border-[var(--accent)]"
+                          rows={2}
+                          className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs sm:text-sm text-[var(--text-main)] focus:outline-none focus:border-[var(--accent)] resize-y min-h-[42px] leading-relaxed"
                         />
                       </div>
                     </div>
@@ -1604,16 +1597,16 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleRemoveAttribute(key)}
-                          className="text-red-500 opacity-0 group-hover:opacity-100 hover:underline text-[11px] transition-opacity"
+                          className="text-red-500 opacity-0 group-hover:opacity-100 hover:underline text-[11px] transition-opacity cursor-pointer"
                         >
                           Quitar
                         </button>
                       </div>
-                      <input
-                        type="text"
+                      <textarea
                         value={val}
                         onChange={(e) => handleAttributeChange(key, e.target.value)}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs sm:text-sm focus:outline-none focus:border-[var(--accent)]"
+                        rows={2}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs sm:text-sm text-[var(--text-main)] focus:outline-none focus:border-[var(--accent)] resize-y min-h-[42px] leading-relaxed break-words"
                       />
                     </div>
                   ))}
