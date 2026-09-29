@@ -82,7 +82,13 @@ export const EntityModal: React.FC<EntityModalProps> = ({
   const [notes, setNotes] = useState(entity?.notes || "");
   const [color, setColor] = useState(
     entity?.color ||
-      (initialCategory === "event" ? "#f59e0b" : initialCategory === "location" ? "#10b981" : "#3b82f6")
+      (initialCategory === "event"
+        ? "#f59e0b"
+        : initialCategory === "location"
+        ? "#10b981"
+        : initialCategory === "other"
+        ? "#64748b"
+        : "#3b82f6")
   );
   const rafEntityColorRef = useRef<number | null>(null);
   const lastEntityColorTimeRef = useRef<number>(0);
@@ -230,6 +236,11 @@ export const EntityModal: React.FC<EntityModalProps> = ({
           Época: "Año o era",
           Bandos: "Quienes participaron",
           Consecuencias: "Impacto en el presente",
+        };
+      case "other":
+        return {
+          Tipo: "Libre / General",
+          Notas: "Anotaciones o contexto general...",
         };
       default:
         return {};
@@ -541,6 +552,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
     { id: "item", label: "Objeto / Reliquia", icon: Gem },
     { id: "concept", label: "Magia / Concepto", icon: Zap },
     { id: "event", label: "Evento Histórico", icon: Calendar },
+    { id: "other", label: "Libre / General", icon: Sparkles },
   ];
 
   const CategoryIcon = categories.find((c) => c.id === category)?.icon || User;
@@ -742,7 +754,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                 <label className="font-bold block mb-2 text-[var(--text-muted)] uppercase tracking-wider text-xs">
                   Categoría del Elemento
                 </label>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
                   {categories.map((c) => {
                     const Icon = c.icon;
                     const isSelected = category === c.id;
@@ -751,14 +763,14 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                         type="button"
                         key={c.id}
                         onClick={() => handleCategoryChange(c.id)}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                        className={`flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
                           isSelected
                             ? "bg-[var(--accent)] text-[var(--accent-contrast)] border-[var(--accent)] font-bold shadow-xs"
                             : "border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--accent)]/40"
                         }`}
                       >
-                        <Icon className="w-5 h-5 mb-1.5" />
-                        <span className="text-xs leading-tight font-medium">{c.label}</span>
+                        <Icon className="w-4 h-4 sm:w-5 sm:h-5 mb-1 sm:mb-1.5 shrink-0" />
+                        <span className="text-[11px] sm:text-xs leading-tight font-medium truncate w-full">{c.label}</span>
                       </button>
                     );
                   })}
@@ -1505,7 +1517,9 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                           ? ["Portador Actual", "Origen", "Material", "Poder Oculto", "Maldición"]
                           : category === "event"
                           ? ["Época", "Bandos", "Consecuencias", "Tratado / Pacto", "Reliquia Perdida", "Mártir / Héroe"]
-                          : ["Regla Fundamental", "Coste / Sacrificio", "Origen Mítico", "Alcance"]
+                          : category === "concept"
+                          ? ["Regla Fundamental", "Coste / Sacrificio", "Origen Mítico", "Alcance"]
+                          : ["Tipo", "Origen", "Importancia", "Detalles", "Notas"]
                         ).map((suggestion) => (
                           <button
                             key={suggestion}
