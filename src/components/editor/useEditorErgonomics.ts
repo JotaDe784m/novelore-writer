@@ -33,13 +33,20 @@ export function useEditorErgonomics(
     const { start: pStart, end: pEnd } = getParagraphBounds(text, pos);
 
     const cs = window.getComputedStyle(ta);
+    mir.style.boxSizing = cs.boxSizing;
     mir.style.width = `${ta.clientWidth}px`;
     mir.style.fontFamily = cs.fontFamily;
     mir.style.fontSize = cs.fontSize;
+    mir.style.fontWeight = cs.fontWeight;
     mir.style.lineHeight = cs.lineHeight;
+    mir.style.letterSpacing = cs.letterSpacing;
+    mir.style.textAlign = cs.textAlign;
+    mir.style.textIndent = cs.textIndent;
+    mir.style.tabSize = cs.tabSize;
     mir.style.paddingLeft = cs.paddingLeft;
     mir.style.paddingRight = cs.paddingRight;
     mir.style.paddingTop = cs.paddingTop;
+    mir.style.paddingBottom = cs.paddingBottom;
     mir.style.whiteSpace = cs.whiteSpace;
     mir.style.wordBreak = cs.wordBreak;
 
@@ -51,8 +58,10 @@ export function useEditorErgonomics(
     const pSpan = mir.querySelector("#p-active") as HTMLElement | null;
 
     if (pSpan) {
-      const pTop = pSpan.offsetTop;
-      const pHeight = pSpan.offsetHeight;
+      const mirRect = mir.getBoundingClientRect();
+      const spanRect = pSpan.getBoundingClientRect();
+      const pTop = spanRect.top - mirRect.top;
+      const pHeight = Math.max(spanRect.height, pSpan.offsetHeight, 24);
 
       if (isTypewriterActive && (forceTypewriter || document.activeElement === ta)) {
         const targetScroll = calculateTypewriterScrollTop(pTop + pHeight / 2, ta.clientHeight);
@@ -62,15 +71,16 @@ export function useEditorErgonomics(
       }
 
       if (isFocusActive) {
-        const topInView = pTop - ta.scrollTop;
-        const bottomInView = topInView + pHeight;
-        const grad = calculateFocusMaskGradient(topInView, bottomInView, ta.clientHeight);
+        const grad = calculateFocusMaskGradient(pTop, pHeight, ta.scrollTop);
         ta.style.webkitMaskImage = grad;
         ta.style.maskImage = grad;
       } else {
         ta.style.webkitMaskImage = "none";
         ta.style.maskImage = "none";
       }
+    } else {
+      ta.style.webkitMaskImage = "none";
+      ta.style.maskImage = "none";
     }
   }, [textareaRef, isTypewriterActive, isFocusActive, scene]);
 
