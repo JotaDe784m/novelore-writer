@@ -68,6 +68,53 @@ const spaceText = "    Línea con cuatro espacios";
 const res7 = outdentLines(spaceText, 4, 4);
 assert(res7.newText === "Línea con cuatro espacios", "Remueve hasta 4 espacios equivalentes a tab");
 
+// 8. formatAllParagraphIndents
+console.log("\n📌 8. Formateo de sangrías en todo el texto (formatAllParagraphIndents)");
+const sampleScene = `# Capítulo 1: El Inicio
+
+El sol caía sobre la colina con fuerza.
+—Debemos irnos —dijo Juan.
+
+* * *
+
+La noche llegó silenciosa.
+> Cita que no debe sangrarse.`;
+
+import { formatAllParagraphIndents, removeAllParagraphIndents } from "../utils/indentation";
+import { insertEmDashAtCursor } from "../utils/formatters";
+
+const formattedScene = formatAllParagraphIndents(sampleScene);
+assert(formattedScene.includes("\tEl sol caía sobre la colina con fuerza."), "Sangra el primer párrafo de la escena");
+assert(formattedScene.includes("\t—Debemos irnos —dijo Juan."), "Sangra el diálogo");
+assert(formattedScene.includes("# Capítulo 1: El Inicio"), "No sangra el encabezado markdown");
+assert(formattedScene.includes("* * *"), "No sangra el separador de escena");
+assert(formattedScene.includes("> Cita que no debe sangrarse."), "No sangra la cita en bloque");
+
+// 9. removeAllParagraphIndents
+console.log("\n📌 9. Remoción de sangrías (removeAllParagraphIndents)");
+const unindentedScene = removeAllParagraphIndents(formattedScene);
+assert(unindentedScene.includes("\nEl sol caía sobre la colina"), "Remueve sangría del primer párrafo");
+assert(unindentedScene.includes("\n—Debemos irnos"), "Remueve sangría del diálogo");
+
+// 10. Mid-line Enter with tab does not clear tab
+console.log("\n📌 10. Enter tras tabulador con texto siguiente (no borra el tabulador erróneamente)");
+const res10 = handleSmartEnter("\tTexto existente", 1, 1, true);
+assert(res10.newText === "\t\n\tTexto existente", "Preserva el tabulador y divide la línea con sangría");
+
+// 11. insertEmDashAtCursor with autoIndentEnabled
+console.log("\n📌 11. Inserción de guion de diálogo (—) al inicio con autoIndentEnabled");
+const mockTextarea = {
+  value: "",
+  selectionStart: 0,
+  selectionEnd: 0,
+  focus: () => {},
+  setSelectionRange: () => {},
+} as unknown as HTMLTextAreaElement;
+
+let capturedDashUpdate = "";
+insertEmDashAtCursor(mockTextarea, (t) => { capturedDashUpdate = t; }, true);
+assert(capturedDashUpdate === "\t—", "Inserta \\t— al inicio de escena si auto-sangría está activada");
+
 console.log("\n=============================================================");
 console.log(`📊 RESULTADO: ${passed} pasadas, ${failed} fallidas`);
 console.log("=============================================================");

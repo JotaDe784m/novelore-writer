@@ -65,7 +65,8 @@ export function formatSpanishDialogue(input: string): string {
  */
 export function insertEmDashAtCursor(
   textarea: HTMLTextAreaElement,
-  onUpdate: (newText: string) => void
+  onUpdate: (newText: string) => void,
+  autoIndentEnabled: boolean = false
 ) {
   const start = textarea.selectionStart;
   const end = textarea.selectionEnd;
@@ -76,7 +77,11 @@ export function insertEmDashAtCursor(
   if (isSelection) {
     // Wrap or prepend selected text with em-dash
     const selectedText = originalText.substring(start, end);
-    const replacement = `—${selectedText.trimStart()}`;
+    const beforeCursor = originalText.substring(0, start);
+    const lastNewline = beforeCursor.lastIndexOf("\n");
+    const isLineStart = start === 0 || lastNewline === start - 1;
+    const prefix = autoIndentEnabled && isLineStart ? "\t—" : "—";
+    const replacement = `${prefix}${selectedText.trimStart()}`;
     const newText =
       originalText.substring(0, start) + replacement + originalText.substring(end);
     onUpdate(newText);
@@ -89,9 +94,18 @@ export function insertEmDashAtCursor(
     // Check if at start of line or space
     const beforeCursor = originalText.substring(0, start);
     const lastNewline = beforeCursor.lastIndexOf("\n");
-    const isLineStart = start === 0 || lastNewline === start - 1;
+    const linePrefix = beforeCursor.substring(lastNewline + 1);
+    const isLineStart =
+      start === 0 ||
+      lastNewline === start - 1 ||
+      /^[\t ]+$/.test(linePrefix);
 
-    const dashToInsert = isLineStart ? "—" : " —";
+    let dashToInsert = isLineStart ? "—" : " —";
+    // If at the start of a completely unindented line and autoIndent is enabled, prepend tab
+    if (autoIndentEnabled && (start === 0 || lastNewline === start - 1)) {
+      dashToInsert = "\t—";
+    }
+
     const newText =
       originalText.substring(0, start) + dashToInsert + originalText.substring(end);
     onUpdate(newText);

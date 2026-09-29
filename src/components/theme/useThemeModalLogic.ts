@@ -16,7 +16,7 @@ export function useThemeModalLogic({
   project,
   onUpdateProject,
 }: UseThemeModalLogicProps) {
-  const { scope, setScope, setTheme: setStoreTheme, setCustomAccent: setStoreAccent } = useThemeStore();
+  const { setTheme: setStoreTheme, setCustomAccent: setStoreAccent } = useThemeStore();
   const currentThemeId = project.settings.theme || "minimal";
   const [selectedCategory, setSelectedCategory] = useState<"all" | "literary" | "genre">("all");
   const [toneFilter, setToneFilter] = useState<"all" | "light" | "dark">("all");
@@ -95,14 +95,12 @@ export function useThemeModalLogic({
     setLocalAccent(targetThemeObj.palette.defaultAccent);
 
     setStoreTheme(themeId, {
-      persistScope: scope,
       onUpdateProject,
     });
   };
 
   const commitAccent = (color: string) => {
     setStoreAccent(color, {
-      persistScope: scope,
       onUpdateProject,
     });
   };
@@ -147,7 +145,6 @@ export function useThemeModalLogic({
 
     setLocalAccent(activeTheme.palette.defaultAccent);
     setStoreAccent(null, {
-      persistScope: scope,
       onUpdateProject,
     });
   };
@@ -164,8 +161,6 @@ export function useThemeModalLogic({
   }, [activeTheme]);
 
   return {
-    scope,
-    setScope,
     currentThemeId,
     selectedCategory,
     setSelectedCategory,
@@ -182,4 +177,3 @@ export function useThemeModalLogic({
     handleResetAccent,
   };
 }
-

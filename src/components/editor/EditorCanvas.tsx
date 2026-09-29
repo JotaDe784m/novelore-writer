@@ -16,6 +16,7 @@ interface EditorCanvasProps {
   onExitZen: () => void;
   handleTextChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  handlePaste?: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
   updateErgonomics: (forceTypewriter?: boolean) => void;
 }
 
@@ -32,6 +33,7 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = ({
   onExitZen,
   handleTextChange,
   handleKeyDown,
+  handlePaste,
   updateErgonomics,
 }) => {
   return (
@@ -60,6 +62,7 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = ({
         onKeyUp={() => updateErgonomics(false)}
         onSelect={() => updateErgonomics(false)}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         placeholder="Comienza a escribir tu escena aquí... Usa Tab para sangrar párrafos, y Ctrl+Shift+M para diálogos (—)."
         style={{
           fontSize: `${project.settings.fontSize || 18}px`,

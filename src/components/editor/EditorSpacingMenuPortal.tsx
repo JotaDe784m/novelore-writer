@@ -24,6 +24,10 @@ export const EditorSpacingMenuPortal: React.FC<EditorSpacingMenuPortalProps> = (
   useEffect(() => {
     if (!isOpen) return;
     const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest("#ribbon-line-spacing-btn")) {
+        return;
+      }
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose();
       }

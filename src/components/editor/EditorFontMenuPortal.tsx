@@ -30,6 +30,10 @@ export const EditorFontMenuPortal: React.FC<EditorFontMenuPortalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest("#ribbon-font-selector")) {
+        return;
+      }
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose();
       }

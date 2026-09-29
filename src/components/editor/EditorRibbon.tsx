@@ -103,11 +103,7 @@ export const EditorRibbon: React.FC<EditorRibbonProps> = ({
             onIndent={textActions.handleIndent}
             onOutdent={textActions.handleOutdent}
             paragraphIndent={project.settings.paragraphIndent}
-            onToggleFirstLineIndent={() => {
-              const nextState = !project.settings.paragraphIndent;
-              onUpdateProjectSettings({ paragraphIndent: nextState });
-              showToast(nextState ? "Sangría de 1.ª línea activada" : "Sangría desactivada");
-            }}
+            onToggleFirstLineIndent={textActions.handleToggleFirstLineIndent}
           />
 
           <div className="h-4 w-px bg-[var(--border-subtle)] shrink-0 mx-0.5" />

@@ -50,7 +50,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   return (
     <header
       id="editor-scene-header"
-      className="h-11 px-3 sm:px-5 flex items-center justify-between shrink-0 select-none min-w-0 border-b border-[var(--border-subtle)] relative z-50"
+      className="h-11 px-3 sm:px-5 flex items-center justify-between shrink-0 select-none min-w-0 border-b border-[var(--border-subtle)] relative z-10"
       style={{
         backgroundColor: "var(--bg-sidebar)",
       }}

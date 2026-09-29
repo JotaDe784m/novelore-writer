@@ -1,17 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   NovelProject,
   ProjectView,
   Scene,
-  WorldEntity,
 } from "./types";
-import {
-  loadActiveProject,
-  saveProject,
-} from "./utils/storage";
 import { demoProject } from "./data/demoProject";
-import { countWords } from "./utils/formatters";
 import { Navbar } from "./components/Navbar";
 import { ManuscriptSidebar } from "./components/editor/ManuscriptSidebar";
 import { RichTextEditor } from "./components/editor/RichTextEditor";
@@ -25,6 +19,7 @@ import { EntityModal } from "./components/codex/EntityModal";
 import { HomeDashboard } from "./components/home/HomeDashboard";
 import { WordGoalsModal } from "./components/project/WordGoalsModal";
 import { VisualBoardView } from "./components/board/VisualBoardView";
+import { NoActiveProjectState } from "./components/common/NoActiveProjectState";
 import { useProjectStore } from "./stores/useProjectStore";
 import { useThemeStore } from "./stores/useThemeStore";
 import { useManuscriptStore } from "./stores/useManuscriptStore";
@@ -32,16 +27,14 @@ import { useCodexStore } from "./stores/useCodexStore";
 
 export const App: React.FC = () => {
   const projectStore = useProjectStore();
+  const activeTheme = useThemeStore((s) => s.activeTheme);
 
-  const [project, setProject] = useState<NovelProject>(() => {
-    return demoProject;
-  });
-
-  const [isInitialLoadDone, setIsInitialLoadDone] = useState(false);
+  // El estado de proyecto inicia limpio (null). El autor puede abrir o probar la demo desde el inicio
+  const [project, setProject] = useState<NovelProject | null>(null);
 
   // Sincronizar proyecto cuando useProjectStore carga uno nuevo desde disco
   useEffect(() => {
-    if (projectStore.project && projectStore.project.id !== project.id) {
+    if (projectStore.project && projectStore.project.id !== project?.id) {
       setProject(projectStore.project);
       useThemeStore.getState().syncWithProject(projectStore.project);
       const first = projectStore.project.acts[0]?.chapters[0]?.scenes[0];
@@ -54,39 +47,10 @@ export const App: React.FC = () => {
         setSelectedSceneId(first.id);
       }
     }
-  }, [projectStore.project]);
-
-  // Carga inicial asíncrona de respaldo
-  useEffect(() => {
-    let isCancelled = false;
-    loadActiveProject().then((loaded) => {
-      if (isCancelled) return;
-      if (!projectStore.project) {
-        setProject(loaded);
-        useThemeStore.getState().syncWithProject(loaded);
-        const firstScene = loaded.acts[0]?.chapters[0]?.scenes[0];
-        useManuscriptStore.getState().loadManuscript(loaded.acts, firstScene?.id);
-        useCodexStore.getState().loadCodex(
-          loaded.entities || [],
-          loaded.relationships || []
-        );
-        if (firstScene) {
-          setSelectedSceneId(firstScene.id);
-        }
-      }
-      setIsInitialLoadDone(true);
-    });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
+  }, [projectStore.project, project?.id]);
 
   const [activeView, setActiveView] = useState<ProjectView>("home");
-  const [selectedSceneId, setSelectedSceneId] = useState<string>(() => {
-    const firstScene = project.acts[0]?.chapters[0]?.scenes[0];
-    return firstScene ? firstScene.id : "";
-  });
+  const [selectedSceneId, setSelectedSceneId] = useState<string>("");
 
   // Toggles de UI
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -101,7 +65,7 @@ export const App: React.FC = () => {
   // Sincronizar tema con useThemeStore cuando cambien las preferencias del proyecto
   useEffect(() => {
     useThemeStore.getState().syncWithProject(project);
-  }, [project.settings?.theme, project.settings?.customAccentColor]);
+  }, [project?.settings?.theme, project?.settings?.customAccentColor]);
 
   // Atajos globales: Ctrl+\ / Cmd+\ (manuscrito) y Ctrl+I / Cmd+I (inspector de escena)
   useEffect(() => {
@@ -128,23 +92,24 @@ export const App: React.FC = () => {
 
   // Selección de escena actual
   const currentScene = useMemo(() => {
+    if (!project) return null;
     const storeScene = useManuscriptStore.getState().getSelectedScene();
     if (storeScene) return storeScene;
 
-    for (const act of project.acts) {
+    for (const act of project.acts || []) {
       for (const chapter of act.chapters || []) {
         const found = (chapter.scenes || []).find((s) => s.id === selectedSceneId);
         if (found) return found;
       }
     }
     return project.acts[0]?.chapters[0]?.scenes[0] || null;
-  }, [project.acts, selectedSceneId]);
+  }, [project, selectedSceneId]);
 
   // Entidad de dossier activa
   const selectedDossierEntity = useMemo(() => {
-    if (!dossierEntityId) return null;
-    return project.entities.find((e) => e.id === dossierEntityId) || null;
-  }, [project.entities, dossierEntityId]);
+    if (!project || !dossierEntityId) return null;
+    return (project.entities || []).find((e) => e.id === dossierEntityId) || null;
+  }, [project, dossierEntityId]);
 
   // Handlers de actualización de proyecto
   const handleUpdateProject = (
@@ -152,6 +117,7 @@ export const App: React.FC = () => {
   ) => {
     const nowIso = new Date().toISOString();
     setProject((prev) => {
+      if (!prev) return prev;
       const updated = updater(prev);
       const withTimestamp = { ...updated, updatedAt: nowIso };
       useProjectStore.getState().debouncedSaveProjectData(withTimestamp);
@@ -169,11 +135,14 @@ export const App: React.FC = () => {
     }
 
     const currentActs = useManuscriptStore.getState().acts;
-    setProject((prev) => ({
-      ...prev,
-      acts: currentActs,
-      updatedAt: new Date().toISOString(),
-    }));
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        acts: currentActs,
+        updatedAt: new Date().toISOString(),
+      };
+    });
   };
 
   // Actualizar configuración del proyecto
@@ -182,6 +151,7 @@ export const App: React.FC = () => {
   ) => {
     const nowIso = new Date().toISOString();
     setProject((prev) => {
+      if (!prev) return prev;
       const updated: NovelProject = {
         ...prev,
         updatedAt: nowIso,
@@ -201,10 +171,67 @@ export const App: React.FC = () => {
     setActiveView("home");
   };
 
+  // Cargar y activar proyecto
+  const handleSelectProject = (newProj: NovelProject) => {
+    setProject(newProj);
+    useProjectStore.getState().setProject(newProj);
+    useThemeStore.getState().syncWithProject(newProj);
+    const first = newProj.acts[0]?.chapters[0]?.scenes[0];
+    useManuscriptStore.getState().loadManuscript(newProj.acts, first?.id);
+    useCodexStore.getState().loadCodex(
+      newProj.entities || [],
+      newProj.relationships || []
+    );
+    if (first) setSelectedSceneId(first.id);
+    setActiveView("manuscript");
+  };
+
+  // Probar novela de ejemplo
+  const handleLoadDemo = () => {
+    handleSelectProject(demoProject);
+  };
+
+  // Abrir carpeta física
+  const handleOpenLocalFolder = async () => {
+    const opened = await projectStore.openProjectFolder();
+    if (opened) {
+      handleSelectProject(opened);
+    }
+  };
+
+  // Cerrar novela activa y volver a taller
+  const handleCloseProject = () => {
+    setProject(null);
+    projectStore.clearProject();
+    setActiveView("home");
+  };
+
+  const getSectionName = (view: ProjectView) => {
+    switch (view) {
+      case "manuscript":
+      case "editor":
+        return "el Manuscrito";
+      case "planning":
+        return "la Planificación";
+      case "codex":
+      case "world":
+        return "la Biblia de Mundo";
+      case "relationships":
+      case "relations":
+        return "el Mapa de Relaciones";
+      case "gallery":
+        return "la Pizarra Visual";
+      case "export":
+        return "la Maquetación y Exportación";
+      default:
+        return "esta sección";
+    }
+  };
+
   return (
     <div
       id="novelore-app-root"
-      className={`theme-${project.settings?.theme || "minimal"} w-full h-full flex flex-col overflow-hidden select-text font-sans`}
+      className={`theme-${activeTheme || "minimal"} w-full h-full flex flex-col overflow-hidden select-text font-sans`}
       style={{
         backgroundColor: "var(--bg-main)",
         color: "var(--text-main)",
@@ -218,17 +245,9 @@ export const App: React.FC = () => {
           setActiveView={setActiveView}
           onUpdateProject={handleUpdateProject}
           onNewProject={handleCreateNewProject}
-          onOpenLocalFolder={async () => {
-            const opened = await projectStore.openProjectFolder();
-            if (opened) {
-              setProject(opened);
-              useThemeStore.getState().syncWithProject(opened);
-              const first = opened.acts[0]?.chapters[0]?.scenes[0];
-              useManuscriptStore.getState().loadManuscript(opened.acts, first?.id);
-              if (first) setSelectedSceneId(first.id);
-              setActiveView("manuscript");
-            }
-          }}
+          onOpenLocalFolder={handleOpenLocalFolder}
+          onOpenDemo={handleLoadDemo}
+          onCloseProject={handleCloseProject}
           isSidebarOpen={isSidebarOpen}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           isZenMode={isZenMode}
@@ -252,125 +271,126 @@ export const App: React.FC = () => {
             className="flex-1 flex overflow-hidden w-full min-h-0 min-w-0"
           >
             {/* VISTA 0: INICIO Y GESTIÓN DE NOVELAS LOCALES */}
-            {activeView === "home" && (
+            {activeView === "home" ? (
               <HomeDashboard
                 currentProject={project}
-                onSelectProject={(newProj) => {
-                  setProject(newProj);
-                  useProjectStore.getState().setProject(newProj);
-                  useThemeStore.getState().syncWithProject(newProj);
-                  const first = newProj.acts[0]?.chapters[0]?.scenes[0];
-                  useManuscriptStore.getState().loadManuscript(newProj.acts, first?.id);
-                  if (first) setSelectedSceneId(first.id);
-                  setActiveView("manuscript");
-                }}
+                onSelectProject={handleSelectProject}
                 onNavigateView={(v) => setActiveView(v)}
               />
-            )}
-
-            {/* VISTA 1: EDITOR DE MANUSCRITO */}
-            {(activeView === "manuscript" || activeView === "editor") && (
+            ) : !project ? (
+              <NoActiveProjectState
+                sectionName={getSectionName(activeView)}
+                onOpenDemo={handleLoadDemo}
+                onOpenFolder={handleOpenLocalFolder}
+                onGoHome={() => setActiveView("home")}
+              />
+            ) : (
               <>
-                {/* Esquema lateral */}
-                {isSidebarOpen && !isZenMode && (
-                  <ManuscriptSidebar
+                {/* VISTA 1: EDITOR DE MANUSCRITO */}
+                {(activeView === "manuscript" || activeView === "editor") && (
+                  <>
+                    {/* Esquema lateral */}
+                    {isSidebarOpen && !isZenMode && (
+                      <ManuscriptSidebar
+                        project={project}
+                        selectedSceneId={selectedSceneId}
+                        onSelectScene={(sceneId) => {
+                          setSelectedSceneId(sceneId);
+                          useManuscriptStore.getState().selectScene(sceneId);
+                        }}
+                        onUpdateProject={handleUpdateProject}
+                        onCloseSidebar={() => setIsSidebarOpen(false)}
+                      />
+                    )}
+
+                    {/* Editor central */}
+                    <RichTextEditor
+                      scene={currentScene}
+                      project={project}
+                      onUpdateScene={handleUpdateScene}
+                      onUpdateProjectSettings={handleUpdateProjectSettings}
+                      isZenMode={isZenMode}
+                      setIsZenMode={setIsZenMode}
+                      isInspectorOpen={isInspectorOpen}
+                      onOpenInspector={() => setIsInspectorOpen(!isInspectorOpen)}
+                    />
+
+                    {/* Inspector lateral */}
+                    {isInspectorOpen && currentScene && !isZenMode && (
+                      <SceneInspector
+                        scene={currentScene}
+                        project={project}
+                        onUpdateScene={handleUpdateScene}
+                        onClose={() => setIsInspectorOpen(false)}
+                        onOpenEntityDossier={(id: string) => setDossierEntityId(id)}
+                        onCreateCharacter={() => setIsCreatingCharacterFromInspector(true)}
+                        onOpenWordGoals={() => setIsWordGoalsModalOpen(true)}
+                        onUpdateProject={handleUpdateProject}
+                      />
+                    )}
+                  </>
+                )}
+
+                {/* VISTA 2: PLANEACIÓN NARRATIVA */}
+                {activeView === "planning" && (
+                  <PlanningDashboard
                     project={project}
-                    selectedSceneId={selectedSceneId}
-                    onSelectScene={(sceneId) => {
-                      setSelectedSceneId(sceneId);
-                      useManuscriptStore.getState().selectScene(sceneId);
-                    }}
                     onUpdateProject={handleUpdateProject}
-                    onCloseSidebar={() => setIsSidebarOpen(false)}
+                    onSelectScene={handleSelectScene}
+                    onOpenEntityDossier={(id) => {
+                      setDossierEntityId(id);
+                      setActiveView("codex");
+                    }}
                   />
                 )}
 
-                {/* Editor central */}
-                <RichTextEditor
-                  scene={currentScene}
-                  project={project}
-                  onUpdateScene={handleUpdateScene}
-                  onUpdateProjectSettings={handleUpdateProjectSettings}
-                  isZenMode={isZenMode}
-                  setIsZenMode={setIsZenMode}
-                  isInspectorOpen={isInspectorOpen}
-                  onOpenInspector={() => setIsInspectorOpen(!isInspectorOpen)}
-                />
-
-                {/* Inspector lateral */}
-                {isInspectorOpen && currentScene && !isZenMode && (
-                  <SceneInspector
-                    scene={currentScene}
+                {/* VISTA 3: BIBLIA DE MUNDO & CÓDICE */}
+                {(activeView === "codex" || activeView === "world") && (
+                  <WorldbuildingHub
                     project={project}
-                    onUpdateScene={handleUpdateScene}
-                    onClose={() => setIsInspectorOpen(false)}
-                    onOpenEntityDossier={(id: string) => setDossierEntityId(id)}
-                    onCreateCharacter={() => setIsCreatingCharacterFromInspector(true)}
-                    onOpenWordGoals={() => setIsWordGoalsModalOpen(true)}
                     onUpdateProject={handleUpdateProject}
+                    onOpenRelationshipMap={() => setActiveView("relationships")}
+                  />
+                )}
+
+                {/* VISTA 4: MAPA DE RELACIONES */}
+                {(activeView === "relationships" || activeView === "relations") && (
+                  <RelationshipMapView
+                    project={project}
+                    onUpdateProject={handleUpdateProject}
+                    onBackToCodex={() => setActiveView("codex")}
+                    onOpenBoard={() => setActiveView("gallery")}
+                    onOpenEntityBoard={(entityId) => {
+                      setDossierInitialTab("whiteboard");
+                      setDossierEntityId(entityId);
+                    }}
+                  />
+                )}
+
+                {/* VISTA 5: PIZARRA VISUAL */}
+                {activeView === "gallery" && (
+                  <VisualBoardView
+                    project={project}
+                    onUpdateProject={handleUpdateProject}
+                  />
+                )}
+
+                {/* VISTA 6: MAQUETACIÓN EDITORIAL & EXPORTAR */}
+                {activeView === "export" && (
+                  <ExportPageView
+                    project={project}
+                    onUpdateProject={handleUpdateProject}
+                    onBack={() => setActiveView("manuscript")}
                   />
                 )}
               </>
-            )}
-
-            {/* VISTA 2: PLANEACIÓN NARRATIVA */}
-            {activeView === "planning" && (
-              <PlanningDashboard
-                project={project}
-                onUpdateProject={handleUpdateProject}
-                onSelectScene={handleSelectScene}
-                onOpenEntityDossier={(id) => {
-                  setDossierEntityId(id);
-                  setActiveView("codex");
-                }}
-              />
-            )}
-
-            {/* VISTA 3: BIBLIA DE MUNDO & CÓDICE */}
-            {(activeView === "codex" || activeView === "world") && (
-              <WorldbuildingHub
-                project={project}
-                onUpdateProject={handleUpdateProject}
-                onOpenRelationshipMap={() => setActiveView("relationships")}
-              />
-            )}
-
-            {/* VISTA 4: MAPA DE RELACIONES */}
-            {(activeView === "relationships" || activeView === "relations") && (
-              <RelationshipMapView
-                project={project}
-                onUpdateProject={handleUpdateProject}
-                onBackToCodex={() => setActiveView("codex")}
-                onOpenBoard={() => setActiveView("gallery")}
-                onOpenEntityBoard={(entityId) => {
-                  setDossierInitialTab("whiteboard");
-                  setDossierEntityId(entityId);
-                }}
-              />
-            )}
-
-            {/* VISTA 5: PIZARRA VISUAL */}
-            {activeView === "gallery" && (
-              <VisualBoardView
-                project={project}
-                onUpdateProject={handleUpdateProject}
-              />
-            )}
-
-            {/* VISTA 6: MAQUETACIÓN EDITORIAL & EXPORTAR */}
-            {activeView === "export" && (
-              <ExportPageView
-                project={project}
-                onUpdateProject={handleUpdateProject}
-                onBack={() => setActiveView("manuscript")}
-              />
             )}
           </motion.div>
         </AnimatePresence>
       </div>
 
       {/* Modales Globales */}
-      {isExportModalOpen && (
+      {project && isExportModalOpen && (
         <ExportModal
           project={project}
           onClose={() => setIsExportModalOpen(false)}
@@ -378,15 +398,17 @@ export const App: React.FC = () => {
       )}
 
       {/* Metas y Objetivos de Palabras */}
-      <WordGoalsModal
-        project={project}
-        isOpen={isWordGoalsModalOpen}
-        onClose={() => setIsWordGoalsModalOpen(false)}
-        onUpdateProject={handleUpdateProject}
-      />
+      {project && (
+        <WordGoalsModal
+          project={project}
+          isOpen={isWordGoalsModalOpen}
+          onClose={() => setIsWordGoalsModalOpen(false)}
+          onUpdateProject={handleUpdateProject}
+        />
+      )}
 
       {/* Dossier de Entidades de la Biblia de Mundo */}
-      {(dossierEntityId || isCreatingCharacterFromInspector) && (
+      {project && (dossierEntityId || isCreatingCharacterFromInspector) && (
         <EntityModal
           entity={isCreatingCharacterFromInspector ? null : selectedDossierEntity}
           project={project}

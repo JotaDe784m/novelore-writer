@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   BookOpen,
@@ -17,12 +17,15 @@ import {
   Compass,
   AlertTriangle,
   Pencil,
+  EyeOff,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { NovelProject, ProjectView, RecentProjectMeta } from "../../types";
+import { demoProject } from "../../data/demoProject";
+import { calculateTotalWords } from "../../utils/storage";
 
 interface HomeDashboardProps {
-  currentProject: NovelProject;
+  currentProject: NovelProject | null;
   onSelectProject: (project: NovelProject) => void;
   onNavigateView: (view: ProjectView) => void;
 }
@@ -39,10 +42,31 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "title" | "words">("recent");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showDemoProject, setShowDemoProject] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("novelore_show_demo_card") !== "false";
+    }
+    return true;
+  });
   const [feedbackMsg, setFeedbackMsg] = useState<{
     text: string;
     type: "success" | "error";
   } | null>(null);
+
+  const handleToggleShowDemo = () => {
+    setShowDemoProject((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("novelore_show_demo_card", String(next));
+      }
+      showToast(
+        next
+          ? "Novela de ejemplo visible en el taller"
+          : "Novela de ejemplo desactivada del inicio"
+      );
+      return next;
+    });
+  };
 
   // Formulario de nueva novela
   const [newTitle, setNewTitle] = useState("");
@@ -103,6 +127,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     }
   };
 
+  const handleOpenDemo = () => {
+    onSelectProject(demoProject);
+    showToast("¡Novela de demostración cargada!");
+    onNavigateView("manuscript");
+  };
+
   const handleRemoveRecent = async (e: React.MouseEvent, folderPath: string) => {
     e.stopPropagation();
     await removeRecentProject(folderPath);
@@ -141,7 +171,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     });
 
     if (success) {
-      if (currentProject?.title === editingProject.title) {
+      if (currentProject && currentProject.title === editingProject.title) {
         onSelectProject({
           ...currentProject,
           title: editTitle.trim(),
@@ -203,7 +233,32 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     }
   };
 
-  const filteredProjects = recentProjects
+  const demoWords = useMemo(() => calculateTotalWords(demoProject), []);
+
+  const demoMeta = useMemo<RecentProjectMeta & { isDemo: boolean }>(
+    () => ({
+      path: "demo://ecos-del-vacio",
+      title: demoProject.title,
+      subtitle: demoProject.subtitle,
+      author: demoProject.author,
+      genre: demoProject.genre,
+      updatedAt: demoProject.updatedAt,
+      wordCount: demoWords,
+      synopsis: demoProject.synopsis,
+      logline: demoProject.logline,
+      isDemo: true,
+    }),
+    [demoWords]
+  );
+
+  const allProjects = useMemo(() => {
+    if (showDemoProject) {
+      return [demoMeta, ...recentProjects];
+    }
+    return recentProjects;
+  }, [showDemoProject, demoMeta, recentProjects]);
+
+  const filteredProjects = allProjects
     .filter((p) => {
       const q = searchQuery.toLowerCase();
       return (
@@ -228,7 +283,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       return 0;
     });
 
-  const totalAllWords = recentProjects.reduce(
+  const totalAllWords = allProjects.reduce(
     (acc, p) => acc + (p.wordCount || 0),
     0
   );
@@ -320,21 +375,21 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       </div>
 
-      {/* SECCIÓN: PROYECTOS RECIENTES EN DISCO */}
+      {/* SECCIÓN: PROYECTOS EN DISCO Y TALLER */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-bold font-novel-display text-[var(--text-main)]">
-              Novelas Recientes ({recentProjects.length})
+              Novelas en Taller ({allProjects.length})
             </h2>
             <p className="text-[11px] text-[var(--text-muted)]">
               Palabras acumuladas: <strong className="text-[var(--text-main)]">{totalAllWords.toLocaleString()}</strong>
             </p>
           </div>
 
-          {/* Buscador y Ordenador */}
-          {recentProjects.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
+          {/* Buscador, Ordenador y Toggle de Ejemplo */}
+          <div className="flex flex-wrap items-center gap-2">
+            {allProjects.length > 0 && (
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                 <input
@@ -342,10 +397,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   placeholder="Buscar por título, autor o ruta..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 rounded-xl text-xs border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-[var(--accent)] w-56 sm:w-64"
+                  className="pl-8 pr-3 py-1.5 rounded-xl text-xs border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-[var(--accent)] w-52 sm:w-60"
                 />
               </div>
+            )}
 
+            {allProjects.length > 0 && (
               <div className="flex items-center gap-1 border border-[var(--border-color)] rounded-xl p-1 bg-[var(--bg-input)] text-xs">
                 <button
                   onClick={() => setSortBy("recent")}
@@ -378,25 +435,44 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   Palabras
                 </button>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Toggle para mostrar/desactivar novela de ejemplo */}
+            <button
+              type="button"
+              onClick={handleToggleShowDemo}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer border ${
+                showDemoProject
+                  ? "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent)]/40 font-semibold"
+                  : "border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-[var(--text-main)]"
+              }`}
+              title={
+                showDemoProject
+                  ? "Desactivar novela de ejemplo en el inicio"
+                  : "Mostrar novela de ejemplo en el inicio"
+              }
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Ejemplo: {showDemoProject ? "Visible" : "Oculto"}</span>
+            </button>
+          </div>
         </div>
 
         {/* LISTA O ESTADO VACÍO */}
-        {recentProjects.length === 0 ? (
+        {allProjects.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[var(--border-color)] p-12 text-center bg-[var(--bg-card)]/40 flex flex-col items-center justify-center space-y-4">
             <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 text-[var(--text-muted)]">
               <FolderOpen className="w-8 h-8 text-[var(--accent)] opacity-80" />
             </div>
             <div className="space-y-1 max-w-md">
               <h3 className="font-bold text-base text-[var(--text-main)] font-novel-display">
-                No hay novelas recientes
+                No hay novelas en el taller
               </h3>
               <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                Empieza creando una nueva novela en cualquier carpeta de tu disco duro o abre una carpeta existente que ya contenga tu proyecto.
+                Empieza creando una nueva novela en tu equipo, abre una carpeta existente o activa la novela de ejemplo para pruebas.
               </p>
             </div>
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <button
                 onClick={handleOpenLocalFolder}
                 className="px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs font-semibold text-[var(--text-main)] hover:bg-[var(--bg-card)] transition-colors cursor-pointer"
@@ -409,6 +485,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               >
                 + Crear Nueva Novela
               </button>
+              {!showDemoProject && (
+                <button
+                  onClick={handleToggleShowDemo}
+                  className="px-4 py-2 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-subtle)] text-xs font-semibold text-[var(--accent)] hover:opacity-90 transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Activar Novela de Ejemplo</span>
+                </button>
+              )}
             </div>
           </div>
         ) : filteredProjects.length === 0 ? (
@@ -418,7 +503,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProjects.map((p) => {
-              const isCurrent = currentProject?.title === p.title;
+              const isDemo = (p as any).isDemo === true;
+              const isCurrent = isDemo
+                ? currentProject?.id === demoProject.id
+                : currentProject?.title === p.title;
 
               return (
                 <motion.div
@@ -443,6 +531,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                               Activa
                             </span>
                           )}
+                          {isDemo && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold shrink-0 flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              <span>Ejemplo</span>
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-[var(--text-muted)] truncate">
                           {p.author || "Autor desconocido"} • {p.genre || "Ficción"}
@@ -451,20 +545,32 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
                       {/* Botones de acción de la tarjeta */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <button
-                          onClick={(e) => handleStartEditProject(e, p)}
-                          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
-                          title="Editar datos de la novela (título, autor, sinopsis, etc.)"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => handleRemoveRecent(e, p.path)}
-                          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
-                          title="Quitar del historial reciente (no borra los archivos del disco)"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                        {isDemo ? (
+                          <button
+                            onClick={handleToggleShowDemo}
+                            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-all cursor-pointer"
+                            title="Ocultar novela de ejemplo del taller (puedes reactivarla desde el filtro)"
+                          >
+                            <EyeOff className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={(e) => handleStartEditProject(e, p)}
+                              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
+                              title="Editar datos de la novela (título, autor, sinopsis, etc.)"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => handleRemoveRecent(e, p.path)}
+                              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
+                              title="Quitar del historial reciente (no borra los archivos del disco)"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -478,9 +584,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     {/* Ruta física en disco */}
                     <div
                       className="text-[10px] font-mono text-[var(--text-muted)] truncate bg-black/5 dark:bg-white/5 px-2 py-1 rounded-md"
-                      title={p.path}
+                      title={isDemo ? "Entorno de demostración y pruebas en memoria" : p.path}
                     >
-                      {p.path}
+                      {isDemo ? "Entorno de demostración y pruebas" : p.path}
                     </div>
                   </div>
 
@@ -490,14 +596,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       <strong className="text-[var(--text-main)]">
                         {(p.wordCount || 0).toLocaleString()}
                       </strong>{" "}
-                      palabras • {formatDate(p.updatedAt)}
+                      palabras • {isDemo ? "Demostración" : formatDate(p.updatedAt)}
                     </div>
 
                     <button
-                      onClick={() => handleOpenRecent(p.path)}
+                      onClick={() => (isDemo ? handleOpenDemo() : handleOpenRecent(p.path))}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-semibold hover:opacity-90 shadow-2xs transition-all cursor-pointer"
                     >
-                      <span>Abrir</span>
+                      <span>{isDemo ? "Probar" : "Abrir"}</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>

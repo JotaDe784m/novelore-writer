@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 export function useFloatingMenus() {
   const [showFontMenu, setShowFontMenu] = useState(false);
@@ -6,42 +6,38 @@ export function useFloatingMenus() {
   const [fontMenuPos, setFontMenuPos] = useState({ top: 0, left: 0 });
   const [spacingMenuPos, setSpacingMenuPos] = useState({ top: 0, left: 0 });
 
-  const closeFloatingMenus = () => {
+  const closeFloatingMenus = useCallback(() => {
     setShowFontMenu(false);
     setShowSpacingMenu(false);
-  };
+  }, []);
 
-  const handleOpenFontMenu = (e: React.MouseEvent) => {
+  const handleOpenFontMenu = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (showFontMenu) {
-      setShowFontMenu(false);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    setFontMenuPos({
-      top: rect.bottom + 6,
-      left: Math.max(12, Math.min(window.innerWidth - 268, rect.left)),
-    });
-    setShowFontMenu(true);
+    const target = (e.currentTarget || e.target) as HTMLElement | null;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    const top = rect.bottom + 6;
+    const left = Math.max(12, Math.min(window.innerWidth - 268, rect.left));
+
+    setFontMenuPos({ top, left });
     setShowSpacingMenu(false);
-  };
+    setShowFontMenu((prev) => !prev);
+  }, []);
 
-  const handleOpenSpacingMenu = (e: React.MouseEvent) => {
+  const handleOpenSpacingMenu = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (showSpacingMenu) {
-      setShowSpacingMenu(false);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    setSpacingMenuPos({
-      top: rect.bottom + 6,
-      left: Math.max(12, Math.min(window.innerWidth - 200, rect.left)),
-    });
-    setShowSpacingMenu(true);
+    const target = (e.currentTarget || e.target) as HTMLElement | null;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    const top = rect.bottom + 6;
+    const left = Math.max(12, Math.min(window.innerWidth - 200, rect.left));
+
+    setSpacingMenuPos({ top, left });
     setShowFontMenu(false);
-  };
+    setShowSpacingMenu((prev) => !prev);
+  }, []);
 
   return {
     showFontMenu,
@@ -55,4 +51,3 @@ export function useFloatingMenus() {
     handleOpenSpacingMenu,
   };
 }
-

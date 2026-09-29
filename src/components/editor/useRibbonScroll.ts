@@ -43,6 +43,11 @@ export function useRibbonScroll(onScrollOrResize?: () => void) {
     ribbonScrollLeftRef.current = el.scrollLeft;
   };
 
+  const onScrollOrResizeRef = useRef(onScrollOrResize);
+  useEffect(() => {
+    onScrollOrResizeRef.current = onScrollOrResize;
+  }, [onScrollOrResize]);
+
   useEffect(() => {
     const el = ribbonRef.current;
     if (!el) return;
@@ -53,6 +58,11 @@ export function useRibbonScroll(onScrollOrResize?: () => void) {
         el.scrollLeft += e.deltaY;
         checkRibbonScroll();
       }
+    };
+
+    const handleScroll = () => {
+      checkRibbonScroll();
+      onScrollOrResizeRef.current?.();
     };
 
     const handleWindowMouseMove = (e: MouseEvent) => {
@@ -83,37 +93,35 @@ export function useRibbonScroll(onScrollOrResize?: () => void) {
       }
     };
 
+    const handleWindowResize = () => {
+      checkRibbonScroll();
+      onScrollOrResizeRef.current?.();
+    };
+
     el.addEventListener("wheel", handleWheel, { passive: false });
-    el.addEventListener("scroll", checkRibbonScroll, { passive: true });
-    if (onScrollOrResize) {
-      el.addEventListener("scroll", onScrollOrResize, { passive: true });
-    }
+    el.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("mousemove", handleWindowMouseMove);
     window.addEventListener("mouseup", handleWindowMouseUp);
+    window.addEventListener("resize", handleWindowResize);
 
     const ro = new ResizeObserver(() => {
       checkRibbonScroll();
-      if (onScrollOrResize) onScrollOrResize();
     });
     ro.observe(el);
-    window.addEventListener("resize", checkRibbonScroll);
 
     checkRibbonScroll();
     const t = setTimeout(checkRibbonScroll, 120);
 
     return () => {
       el.removeEventListener("wheel", handleWheel);
-      el.removeEventListener("scroll", checkRibbonScroll);
-      if (onScrollOrResize) {
-        el.removeEventListener("scroll", onScrollOrResize);
-      }
+      el.removeEventListener("scroll", handleScroll);
       window.removeEventListener("mousemove", handleWindowMouseMove);
       window.removeEventListener("mouseup", handleWindowMouseUp);
+      window.removeEventListener("resize", handleWindowResize);
       ro.disconnect();
-      window.removeEventListener("resize", checkRibbonScroll);
       clearTimeout(t);
     };
-  }, [checkRibbonScroll, onScrollOrResize]);
+  }, [checkRibbonScroll]);
 
   return {
     ribbonRef,

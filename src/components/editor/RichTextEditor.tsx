@@ -92,6 +92,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     scene,
     project,
     onUpdateScene,
+    onUpdateProjectSettings,
     pushToHistory,
     undo,
     redo,
@@ -107,6 +108,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     onUpdateProjectSettings,
     setIsZenMode,
     showToast,
+    onInsertDash: textActions.handleInsertDash,
   });
 
   if (!scene) return <EditorEmptyState />;
@@ -192,6 +194,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         onExitZen={() => setIsZenMode(false)}
         handleTextChange={textActions.handleTextChange}
         handleKeyDown={textActions.handleKeyDown}
+        handlePaste={textActions.handlePaste}
         updateErgonomics={updateErgonomics}
       />
 

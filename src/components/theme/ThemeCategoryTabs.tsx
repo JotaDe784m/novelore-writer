@@ -4,8 +4,6 @@ import { Sun, Moon, Search } from "lucide-react";
 interface ThemeCategoryTabsProps {
   selectedCategory: "all" | "literary" | "genre";
   onSelectCategory: (category: "all" | "literary" | "genre") => void;
-  scope: "project" | "global";
-  onSetScope: (scope: "project" | "global") => void;
   toneFilter: "all" | "light" | "dark";
   onSetToneFilter: (tone: "all" | "light" | "dark") => void;
   searchQuery: string;
@@ -15,8 +13,6 @@ interface ThemeCategoryTabsProps {
 export const ThemeCategoryTabs: React.FC<ThemeCategoryTabsProps> = ({
   selectedCategory,
   onSelectCategory,
-  scope,
-  onSetScope,
   toneFilter,
   onSetToneFilter,
   searchQuery,
@@ -73,41 +69,8 @@ export const ThemeCategoryTabs: React.FC<ThemeCategoryTabsProps> = ({
         </button>
       </div>
 
-      {/* Scope selector, Tone selector & Search */}
+      {/* Tone selector & Search */}
       <div className="flex items-center gap-2 flex-wrap justify-end">
-        {/* Scope Segmented Control */}
-        <div
-          className="inline-flex items-center p-0.5 rounded-lg border text-xs"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            borderColor: "var(--border-color)",
-          }}
-          title="Define si la atmósfera se guarda para esta novela o como preferencia global del sistema"
-        >
-          <button
-            type="button"
-            onClick={() => onSetScope("project")}
-            className={`px-2 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer ${
-              scope === "project"
-                ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-xs"
-                : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
-            }`}
-          >
-            Esta Novela
-          </button>
-          <button
-            type="button"
-            onClick={() => onSetScope("global")}
-            className={`px-2 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer ${
-              scope === "global"
-                ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-xs"
-                : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
-            }`}
-          >
-            Toda la App
-          </button>
-        </div>
-
         {/* Tone selector */}
         <div
           className="inline-flex items-center p-0.5 rounded-lg border"
@@ -174,4 +137,3 @@ export const ThemeCategoryTabs: React.FC<ThemeCategoryTabsProps> = ({
     </div>
   );
 };
-

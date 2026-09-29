@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Palette, BookOpen, X } from "lucide-react";
 import { NovelProject } from "../types";
@@ -26,8 +27,6 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
   onUpdateProject,
 }) => {
   const {
-    scope,
-    setScope,
     currentThemeId,
     selectedCategory,
     setSelectedCategory,
@@ -51,10 +50,10 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 md:p-8 bg-black/60 backdrop-blur-xs select-none"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 md:p-8 bg-black/60 backdrop-blur-xs select-none"
         onClick={onClose}
       >
         <motion.div
@@ -118,12 +117,10 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
             </button>
           </div>
 
-          {/* Controls Bar: Categories, Scope & Search */}
+          {/* Controls Bar: Categories, Tone & Search */}
           <ThemeCategoryTabs
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
-            scope={scope}
-            onSetScope={setScope}
             toneFilter={toneFilter}
             onSetToneFilter={setToneFilter}
             searchQuery={searchQuery}
@@ -193,4 +190,8 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({
       </div>
     </AnimatePresence>
   );
+
+  return typeof document !== "undefined"
+    ? createPortal(modalContent, document.body)
+    : modalContent;
 };
