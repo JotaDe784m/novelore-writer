@@ -14,7 +14,6 @@ import {
   Camera,
   Image as ImageIcon,
   Check,
-  Star,
   ZoomIn,
   Upload,
   FileText,
@@ -709,8 +708,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                 {/* Profile Controls & Explanation */}
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-[var(--text-main)] flex items-center gap-2">
-                      <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                    <span className="font-bold text-sm text-[var(--text-main)]">
                       Foto de Perfil de la Entrada
                     </span>
                     {avatarUrl && (
@@ -878,37 +876,33 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Custom Hex input with live indicator and direct picker */}
-                  <div className="flex items-center gap-2 pt-0.5">
-                    <div
-                      className="w-5 h-5 rounded-md border border-[var(--border-color)] shadow-2xs shrink-0"
-                      style={{ backgroundColor: color }}
-                    />
-                    <input
-                      type="text"
-                      value={color}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val.startsWith("#") || val === "") {
-                          setColor(val);
-                        } else {
-                          setColor("#" + val);
-                        }
-                      }}
-                      placeholder="#3b82f6"
-                      maxLength={9}
-                      className="w-24 px-2 py-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] text-xs font-mono text-[var(--text-main)] focus:outline-none focus:border-[var(--accent)]"
-                    />
-                    <label className="text-[11px] text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-main)] flex items-center gap-1 font-medium">
+                  {/* Selector único de color personalizado (Muestra interactiva + Código Hex) */}
+                  <div className="pt-0.5">
+                    <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] focus-within:border-[var(--accent)] transition-colors">
                       <input
                         type="color"
                         value={color.startsWith("#") && color.length === 7 ? color : "#3b82f6"}
                         onInput={(e) => handleEntityColorChange((e.target as HTMLInputElement).value, false)}
                         onChange={(e) => handleEntityColorChange((e.target as HTMLInputElement).value, true)}
-                        className="w-4 h-4 rounded cursor-pointer border-0 p-0 bg-transparent"
+                        className="w-5 h-5 rounded-md cursor-pointer border-0 p-0 bg-transparent shrink-0"
+                        title="Seleccionar color personalizado"
                       />
-                      <span>Personalizado</span>
-                    </label>
+                      <input
+                        type="text"
+                        value={color}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val.startsWith("#") || val === "") {
+                            setColor(val);
+                          } else {
+                            setColor("#" + val);
+                          }
+                        }}
+                        placeholder="#3b82f6"
+                        maxLength={9}
+                        className="w-20 bg-transparent text-xs font-mono text-[var(--text-main)] focus:outline-none uppercase"
+                      />
+                    </div>
                   </div>
                 </div>
 
