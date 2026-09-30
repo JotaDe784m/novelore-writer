@@ -105,3 +105,116 @@ export function filterAndSortEntities(
 
   return result;
 }
+
+export function getDefaultAttributes(category: EntityCategory): Record<string, string> {
+  switch (category) {
+    case "character":
+      return {
+        Rol: "Protagonista / Aliado",
+        Edad: "25 años",
+        Motivación: "¿Qué persigue el personaje?",
+        "Mayor Miedo": "¿A qué teme más en el mundo?",
+        "Secreto Inconfesable": "Un secreto que nadie sabe...",
+        "Rasgo Físico": "Ojos, cicatrices, porte...",
+      };
+    case "location":
+      return {
+        Tipo: "Ciudad / Fortaleza / Mazmorra",
+        Clima: "Brumoso y frío",
+        Peligros: "¿Qué amenazas acechan?",
+        Atmósfera: "Sensaciones de luz, sonido y olor...",
+      };
+    case "faction":
+      return {
+        Líder: "Nombre del gobernante o canciller",
+        Lema: "'Lema de la orden'",
+        Recursos: "Ejército, magia, dinero...",
+      };
+    case "item":
+      return {
+        Origen: "Forjado por...",
+        Poder: "Efecto o propiedad mágica",
+        Coste: "Precio o peligro de usarlo",
+      };
+    case "concept":
+      return {
+        Tipo: "Magia dura / Tecnología / Ley",
+        Reglas: "Límites y condiciones",
+        Peligro: "Consecuencias de abuso",
+      };
+    case "event":
+      return {
+        Época: "Año o era",
+        Bandos: "Quiénes participaron",
+        Consecuencias: "Impacto en el presente",
+      };
+    case "other":
+    default:
+      return {
+        Tipo: "Libre / General",
+        Notas: "Anotaciones o contexto general...",
+      };
+  }
+}
+
+export const CATEGORY_ATTRIBUTE_SUGGESTIONS: Record<EntityCategory, string[]> = {
+  character: [
+    "Ocupación",
+    "Alineamiento",
+    "Arma Principal",
+    "Lealtad",
+    "Habilidad / Poder",
+    "Especie / Raza",
+    "Debilidad",
+    "Rasgo Físico",
+    "Voz / Forma de hablar",
+    "Meta inmediata",
+  ],
+  location: [
+    "Clima",
+    "Gobernante",
+    "Población",
+    "Recurso Clave",
+    "Peligro / Amenaza",
+    "Defensas",
+    "Leyenda local",
+  ],
+  faction: [
+    "Líder",
+    "Sede Central",
+    "Ideología",
+    "Enemigos Jurados",
+    "Influencia",
+    "Ritos de Iniciación",
+  ],
+  item: [
+    "Portador Actual",
+    "Origen",
+    "Material",
+    "Poder Oculto",
+    "Maldición",
+    "Paradero Anterior",
+  ],
+  concept: [
+    "Regla Fundamental",
+    "Coste / Sacrificio",
+    "Origen Mítico",
+    "Alcance y Limitaciones",
+    "Practicantes Conocidos",
+  ],
+  event: [
+    "Época",
+    "Bandos",
+    "Consecuencias",
+    "Tratado / Pacto",
+    "Reliquia Perdida",
+    "Mártir / Héroe",
+  ],
+  other: [
+    "Tipo",
+    "Origen",
+    "Importancia",
+    "Detalles",
+    "Notas",
+  ],
+};

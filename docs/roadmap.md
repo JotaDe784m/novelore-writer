@@ -77,9 +77,10 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Campos de atributos expandibles verticalmente hacia abajo en tarjetas y modal para lectura completa de textos largos.
 
 ### Subfase 2.2: Dossiers y Atributos Dinámicos
-- Adaptar `EntityModal.tsx` con estética limpia de tarjeta de conocimiento (sin líneas de tabla densas).
-- Plantillas de atributos dinámicos (Rol, Motivación, Miedos, Clima, etc.) y campos personalizados.
-- Gestión de etiquetas sutiles, notas de trasfondo y alias/variantes del nombre.
+- [x] Adaptar `EntityModal.tsx` con estética limpia de tarjeta de conocimiento (sin líneas de tabla densas).
+- [x] Plantillas de atributos dinámicos (Rol, Motivación, Miedos, Clima, etc.) y campos personalizados.
+- [x] Gestión de etiquetas sutiles, notas de trasfondo y alias/variantes del nombre con contador de menciones en tiempo real.
+- [x] Arquitectura modular de componentes ($\le 250$ líneas) dividida en `src/components/codex/dossier/` (`EntityModalHeader`, `DossierTabsNav`, `DossierIdentityTab`, `DossierAttributesTab`, `DossierMentionsTab`, `DossierEventLoreTab`, `DossierNotesTab`, `DossierColorPicker`).
 
 ### Subfase 2.3: Gestión Local de Multimedia (`assets/gallery/`)
 - Implementar canal IPC para copiar físicamente imágenes locales a `assets/gallery/`.
