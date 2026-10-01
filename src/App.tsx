@@ -41,13 +41,41 @@ export const App: React.FC = () => {
       useManuscriptStore.getState().loadManuscript(projectStore.project.acts, first?.id);
       useCodexStore.getState().loadCodex(
         projectStore.project.entities || [],
-        projectStore.project.relationships || []
+        projectStore.project.relationships || [],
+        projectStore.project.relationshipPositions || {},
+        projectStore.project.relationshipCategories || []
       );
       if (first) {
         setSelectedSceneId(first.id);
       }
     }
   }, [projectStore.project, project?.id]);
+
+  // Registrar vaciado preventivo de guardados antes de cerrar o recargar la ventana
+  useEffect(() => {
+    const flushAllSaves = async () => {
+      try {
+        await useCodexStore.getState().saveCodexImmediately();
+      } catch (err) {
+        console.error("Error al vaciar guardados en salida:", err);
+      }
+    };
+
+    (window as any).__noveloreFlushSaves = flushAllSaves;
+
+    const handleBeforeUnload = () => {
+      flushAllSaves();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", handleBeforeUnload);
+
+    return () => {
+      delete (window as any).__noveloreFlushSaves;
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("pagehide", handleBeforeUnload);
+    };
+  }, []);
 
   const [activeView, setActiveView] = useState<ProjectView>("home");
   const [selectedSceneId, setSelectedSceneId] = useState<string>("");
@@ -180,7 +208,9 @@ export const App: React.FC = () => {
     useManuscriptStore.getState().loadManuscript(newProj.acts, first?.id);
     useCodexStore.getState().loadCodex(
       newProj.entities || [],
-      newProj.relationships || []
+      newProj.relationships || [],
+      newProj.relationshipPositions || {},
+      newProj.relationshipCategories || []
     );
     if (first) setSelectedSceneId(first.id);
     setActiveView("manuscript");
@@ -201,6 +231,7 @@ export const App: React.FC = () => {
 
   // Cerrar novela activa y volver a taller
   const handleCloseProject = () => {
+    useCodexStore.getState().saveCodexImmediately();
     setProject(null);
     projectStore.clearProject();
     setActiveView("home");

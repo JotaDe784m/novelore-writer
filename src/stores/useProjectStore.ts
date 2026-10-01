@@ -429,6 +429,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
         entities: targetProject.entities || [],
         relationships: targetProject.relationships || [],
         relationshipPositions: targetProject.relationshipPositions || {},
+        relationshipCategories: targetProject.relationshipCategories || [],
       };
 
       const planningData = {

@@ -11,62 +11,74 @@ let codexSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 const getElectronAPI = () => (typeof window !== "undefined" ? window.electronAPI : undefined);
 
 export const useCodexStore = create<CodexStoreState>((set, get) => {
-  const triggerDebouncedSave = (
-    entities: WorldEntity[],
-    relationships: Relationship[],
-    updatedPositions?: Record<string, { x: number; y: number }>,
-    updatedCategories?: RelationshipCategory[]
+  const syncToProjectStore = (
+    entities: WorldEntity[], relationships: Relationship[],
+    positions?: Record<string, { x: number; y: number }>, customCats?: RelationshipCategory[]
   ) => {
-    const positions = updatedPositions ?? get().relationshipPositions;
-    const customRelationshipCategories = updatedCategories ?? get().customRelationshipCategories;
     const projectStore = useProjectStore.getState();
     if (projectStore.project) {
       projectStore.setProject({
-        ...projectStore.project,
-        entities,
-        relationships,
-        relationshipPositions: positions,
-        relationshipCategories: customRelationshipCategories,
+        ...projectStore.project, entities, relationships,
+        relationshipPositions: positions ?? get().relationshipPositions,
+        relationshipCategories: customCats ?? get().customRelationshipCategories,
         updatedAt: new Date().toISOString(),
       });
     }
+  };
 
+  const executeSave = async (
+    entities: WorldEntity[], relationships: Relationship[],
+    updatedPositions?: Record<string, { x: number; y: number }>, updatedCategories?: RelationshipCategory[]
+  ): Promise<boolean> => {
+    if (codexSaveTimeout) {
+      clearTimeout(codexSaveTimeout);
+      codexSaveTimeout = null;
+    }
+    const positions = updatedPositions ?? get().relationshipPositions;
+    const customRelationshipCategories = updatedCategories ?? get().customRelationshipCategories;
+    syncToProjectStore(entities, relationships, positions, customRelationshipCategories);
+
+    const electronAPI = getElectronAPI();
+    if (!electronAPI?.saveCodex) {
+      set({ isSaving: false });
+      return false;
+    }
+
+    try {
+      set({ isSaving: true });
+      const res = await electronAPI.saveCodex({
+        entities, relationships,
+        relationshipPositions: positions,
+        customRelationshipCategories,
+      });
+      const success = !!res?.success;
+      set({
+        isSaving: false, lastSavedAt: success ? new Date() : get().lastSavedAt,
+        errorMessage: success ? null : (res?.error || "Error al guardar códice"),
+      });
+      return success;
+    } catch (err: any) {
+      set({ isSaving: false, errorMessage: err.message });
+      return false;
+    }
+  };
+
+  const triggerDebouncedSave = (
+    entities: WorldEntity[], relationships: Relationship[],
+    updatedPositions?: Record<string, { x: number; y: number }>, updatedCategories?: RelationshipCategory[]
+  ) => {
+    syncToProjectStore(entities, relationships, updatedPositions, updatedCategories);
     set({ isSaving: true });
     if (codexSaveTimeout) clearTimeout(codexSaveTimeout);
-
-    codexSaveTimeout = setTimeout(async () => {
-      const electronAPI = getElectronAPI();
-      if (electronAPI?.saveCodex) {
-        try {
-          const res = await electronAPI.saveCodex({
-            entities,
-            relationships,
-            relationshipPositions: positions,
-            customRelationshipCategories,
-          });
-          set({ isSaving: false, lastSavedAt: res.success ? new Date() : get().lastSavedAt, errorMessage: res.error || null });
-        } catch (err: any) {
-          set({ isSaving: false, errorMessage: err.message });
-        }
-      } else {
-        set({ isSaving: false });
-      }
+    codexSaveTimeout = setTimeout(() => {
+      executeSave(entities, relationships, updatedPositions, updatedCategories);
     }, 500);
   };
 
   return {
-    entities: [],
-    relationships: [],
-    relationshipPositions: {},
-    customRelationshipCategories: [],
-    selectedEntityId: null,
-    selectedCategory: "all",
-    searchQuery: "",
-    selectedTag: "all",
-    sortBy: "default",
-    isSaving: false,
-    lastSavedAt: null,
-    errorMessage: null,
+    entities: [], relationships: [], relationshipPositions: {}, customRelationshipCategories: [],
+    selectedEntityId: null, selectedCategory: "all", searchQuery: "", selectedTag: "all",
+    sortBy: "default", isSaving: false, lastSavedAt: null, errorMessage: null,
 
     loadCodex: (entities, relationships = [], relationshipPositions = {}, customRelationshipCategories = []) => {
       set({
@@ -76,6 +88,11 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
         customRelationshipCategories: Array.isArray(customRelationshipCategories) ? customRelationshipCategories : [],
         errorMessage: null,
       });
+    },
+
+    saveCodexImmediately: async () => {
+      const { entities, relationships, relationshipPositions, customRelationshipCategories } = get();
+      return executeSave(entities, relationships, relationshipPositions, customRelationshipCategories);
     },
 
     addEntity: (category, name) => {
@@ -105,10 +122,7 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
       const nextRelationships = relationships.filter((r) => r.sourceEntityId !== id && r.targetEntityId !== id);
       const nextPositions = { ...relationshipPositions };
       delete nextPositions[id];
-      set({
-        entities: nextEntities, relationships: nextRelationships, relationshipPositions: nextPositions,
-        selectedEntityId: selectedEntityId === id ? null : selectedEntityId,
-      });
+      set({ entities: nextEntities, relationships: nextRelationships, relationshipPositions: nextPositions, selectedEntityId: selectedEntityId === id ? null : selectedEntityId });
       triggerDebouncedSave(nextEntities, nextRelationships, nextPositions);
     },
 
@@ -128,10 +142,8 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
       const { entities, relationships, relationshipPositions } = get();
       const newRel: Relationship = {
         id: `rel-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        sourceEntityId, targetEntityId, type,
-        label: label || type,
-        sentiment: sentiment || "neutral",
-        description: description || undefined,
+        sourceEntityId, targetEntityId, type, label: label || type,
+        sentiment: sentiment || "neutral", description: description || undefined,
       };
       const next = [...relationships, newRel];
       set({ relationships: next });
@@ -154,47 +166,37 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
     },
 
     updateNodePosition: (entityId, pos, save = true) => {
-      const { entities, relationships, relationshipPositions } = get();
+      const { entities, relationships, relationshipPositions, customRelationshipCategories } = get();
       const next = { ...relationshipPositions, [entityId]: pos };
       set({ relationshipPositions: next });
-      if (save) {
-        triggerDebouncedSave(entities, relationships, next);
-      }
+      if (save) executeSave(entities, relationships, next, customRelationshipCategories);
     },
 
     updateNodePositions: (positions, save = true) => {
-      const { entities, relationships, relationshipPositions } = get();
+      const { entities, relationships, relationshipPositions, customRelationshipCategories } = get();
       const next = { ...relationshipPositions, ...positions };
       set({ relationshipPositions: next });
-      if (save) {
-        triggerDebouncedSave(entities, relationships, next);
-      }
+      if (save) executeSave(entities, relationships, next, customRelationshipCategories);
     },
 
     updateRelationshipControlPoint: (relId, point, save = true) => {
-      const { entities, relationships, relationshipPositions } = get();
+      const { entities, relationships, relationshipPositions, customRelationshipCategories } = get();
       const next = relationships.map((r) => (r.id === relId ? { ...r, controlPoint: point } : r));
       set({ relationships: next });
-      if (save) {
-        triggerDebouncedSave(entities, next, relationshipPositions);
-      }
+      if (save) executeSave(entities, next, relationshipPositions, customRelationshipCategories);
     },
 
     resetRelationshipControlPoints: () => {
       const { entities, relationships, relationshipPositions, customRelationshipCategories } = get();
       const next = relationships.map((r) => ({ ...r, controlPoint: undefined }));
       set({ relationships: next });
-      triggerDebouncedSave(entities, next, relationshipPositions, customRelationshipCategories);
+      executeSave(entities, next, relationshipPositions, customRelationshipCategories);
     },
 
     addRelationshipCategory: (category) => {
       const { entities, relationships, relationshipPositions, customRelationshipCategories } = get();
       const id = `rcat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      const newCategory: RelationshipCategory = {
-        ...category,
-        id,
-        isCustom: true,
-      };
+      const newCategory: RelationshipCategory = { ...category, id, isCustom: true };
       const next = [...customRelationshipCategories, newCategory];
       set({ customRelationshipCategories: next });
       triggerDebouncedSave(entities, relationships, relationshipPositions, next);

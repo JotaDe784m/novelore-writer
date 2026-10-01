@@ -21,6 +21,7 @@ export interface CodexStoreState {
     relationshipPositions?: Record<string, { x: number; y: number }>,
     customRelationshipCategories?: RelationshipCategory[]
   ) => void;
+  saveCodexImmediately: () => Promise<boolean>;
   addEntity: (category: EntityCategory, name?: string) => WorldEntity;
   updateEntity: (id: string, updates: Partial<WorldEntity>) => void;
   deleteEntity: (id: string) => void;
