@@ -1,7 +1,22 @@
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, protocol, net } from "electron";
 import path from "node:path";
 import fs from "node:fs/promises";
+import url from "node:url";
 declare const __dirname: string;
+
+// Registrar esquema local novelore-asset:// con soporte de streaming y fetch
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "novelore-asset",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+]);
 
 let mainWindow: BrowserWindow | null = null;
 let currentProjectPath: string | null = null;
@@ -14,6 +29,7 @@ export interface RecentProject {
   genre?: string;
   synopsis?: string;
   logline?: string;
+  coverUrl?: string;
   updatedAt: string;
   wordCount?: number;
 }
@@ -81,6 +97,7 @@ async function initOrLoadProject(
     synopsis?: string;
     logline?: string;
     targetWords?: number;
+    coverUrl?: string;
   }
 ): Promise<{
   success: boolean;
@@ -150,6 +167,7 @@ async function initOrLoadProject(
         genre: projectMeta.genre || "",
         synopsis: projectMeta.synopsis || "",
         logline: projectMeta.logline || "",
+        coverUrl: projectMeta.coverUrl || "",
         updatedAt: projectMeta.updatedAt || new Date().toISOString(),
         wordCount: totalWords,
       });
@@ -175,6 +193,7 @@ async function initOrLoadProject(
       subtitle: initialOptions?.subtitle || "",
       author: initialOptions?.author || "Autor",
       genre: initialOptions?.genre || "Ficción",
+      coverUrl: initialOptions?.coverUrl || "",
       logline: initialOptions?.logline || "",
       synopsis: initialOptions?.synopsis || "",
       createdAt: nowIso,
@@ -269,6 +288,7 @@ async function initOrLoadProject(
       genre: initialProjectMeta.genre,
       synopsis: initialProjectMeta.synopsis,
       logline: initialProjectMeta.logline,
+      coverUrl: initialProjectMeta.coverUrl,
       updatedAt: nowIso,
       wordCount: 0,
     });
@@ -365,6 +385,7 @@ ipcMain.handle("dialog:createProjectFolder", async (_event, options: {
   synopsis?: string;
   logline?: string;
   targetWords?: number;
+  coverUrl?: string;
 }) => {
   if (!mainWindow) return { canceled: true };
 
@@ -519,6 +540,7 @@ ipcMain.handle("fs:saveProjectData", async (_event, data: {
         genre: data.projectMeta.genre || "",
         synopsis: data.projectMeta.synopsis || "",
         logline: data.projectMeta.logline || "",
+        coverUrl: data.projectMeta.coverUrl || "",
         updatedAt: new Date().toISOString(),
         wordCount,
       });
@@ -566,6 +588,7 @@ ipcMain.handle("project:updateProjectMeta", async (_event, folderPath: string, u
       genre: updatedMeta.genre || "",
       synopsis: updatedMeta.synopsis || "",
       logline: updatedMeta.logline || "",
+      coverUrl: updatedMeta.coverUrl !== undefined ? updatedMeta.coverUrl : (existing?.coverUrl || ""),
       updatedAt: updatedMeta.updatedAt,
       wordCount: existing?.wordCount || 0,
     });
@@ -632,8 +655,134 @@ ipcMain.handle("fs:readCodex", async () => {
   }
 });
 
+// 9. Guardar imagen física en subcarpeta local del proyecto (/assets/gallery/ o /assets/covers/)
+ipcMain.handle(
+  "assets:saveImage",
+  async (
+    _event,
+    data: {
+      subfolder: "gallery" | "covers" | "fonts" | "documents";
+      fileName?: string;
+      bufferBase64: string;
+      projectPath?: string;
+    }
+  ) => {
+    const targetProject = data.projectPath || currentProjectPath;
+    if (!targetProject) {
+      return { success: false, error: "No hay proyecto especificado." };
+    }
+
+    try {
+      const allowedSubfolders = ["gallery", "covers", "fonts", "documents"];
+      const subfolder = allowedSubfolders.includes(data.subfolder) ? data.subfolder : "gallery";
+      const assetsDir = path.join(targetProject, "assets", subfolder);
+      await fs.mkdir(assetsDir, { recursive: true });
+
+      let cleanBase64 = data.bufferBase64;
+      let extension = "png";
+      const match = data.bufferBase64.match(/^data:image\/([a-zA-Z0-9+]+);base64,/);
+      if (match) {
+        extension = match[1].toLowerCase();
+        if (extension === "jpeg") extension = "jpg";
+        cleanBase64 = data.bufferBase64.replace(/^data:image\/[a-zA-Z0-9+]+;base64,/, "");
+      }
+
+      const rawName = data.fileName
+        ? path.basename(data.fileName, path.extname(data.fileName)).replace(/[^a-zA-Z0-9_-]/g, "_")
+        : "img";
+      const finalFileName = `${rawName}_${Date.now()}.${extension}`;
+      const targetFilePath = path.join(assetsDir, finalFileName);
+
+      const buffer = Buffer.from(cleanBase64, "base64");
+      await fs.writeFile(targetFilePath, buffer);
+
+      const relativePath = path.join("assets", subfolder, finalFileName).replace(/\\/g, "/");
+      return { success: true, relativePath };
+    } catch (err: any) {
+      console.error("Error al guardar archivo multimedia local:", err);
+      return { success: false, error: err.message };
+    }
+  }
+);
+
+// 10. Eliminar imagen física
+ipcMain.handle(
+  "assets:deleteImage",
+  async (_event, data: { relativePath: string; projectPath?: string }) => {
+    const targetProject = data.projectPath || currentProjectPath;
+    if (!targetProject) return { success: false, error: "No hay proyecto especificado." };
+
+    try {
+      const fullPath = path.resolve(targetProject, data.relativePath);
+      const assetsRoot = path.resolve(targetProject, "assets");
+      if (!fullPath.startsWith(assetsRoot)) {
+        return { success: false, error: "Operación denegada fuera del directorio assets." };
+      }
+
+      if (await fileExists(fullPath)) {
+        await fs.unlink(fullPath);
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+);
+
 // Ciclo de vida de la aplicación
 app.whenReady().then(() => {
+  // Protocolo nativo de alta velocidad para servir archivos de assets
+  protocol.handle("novelore-asset", async (request) => {
+    try {
+      const parsed = new URL(request.url);
+      let targetProject = currentProjectPath;
+      let relPath = "";
+
+      if (parsed.hostname === "project-asset") {
+        const proj = parsed.searchParams.get("projectPath");
+        const rel = parsed.searchParams.get("relPath");
+        if (proj && rel) {
+          targetProject = proj;
+          relPath = decodeURIComponent(rel).replace(/^\/+/, "");
+        }
+      } else {
+        const host = parsed.hostname ? decodeURIComponent(parsed.hostname) : "";
+        const pathname = decodeURIComponent(parsed.pathname || "");
+        relPath = `${host}${pathname}`.replace(/^\/+/, "");
+      }
+
+      if (!targetProject) {
+        const recent = await getRecentProjectsList();
+        if (recent && recent.length > 0 && recent[0].path) {
+          targetProject = recent[0].path;
+        }
+      }
+
+      if (!targetProject) {
+        return new Response("No project specified", { status: 404 });
+      }
+
+      let fullPath = path.resolve(targetProject, relPath);
+      if (!fullPath.startsWith(path.resolve(targetProject))) {
+        return new Response("Access denied", { status: 403 });
+      }
+
+      if (!(await fileExists(fullPath))) {
+        // Fallback: Si no existe directamente, comprobar si agregando 'assets/' existe
+        const withAssets = path.resolve(targetProject, "assets", relPath);
+        if (await fileExists(withAssets)) {
+          fullPath = withAssets;
+        } else {
+          return new Response("Asset not found", { status: 404 });
+        }
+      }
+
+      return net.fetch(url.pathToFileURL(fullPath).toString());
+    } catch (err: any) {
+      return new Response(`Error loading asset: ${err.message}`, { status: 500 });
+    }
+  });
+
   createWindow();
 
   app.on("activate", () => {

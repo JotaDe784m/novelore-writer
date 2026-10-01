@@ -24,6 +24,7 @@ import {
   RelationshipType,
   WorldEntity,
 } from "../../types";
+import { resolveAssetUrl } from "../../utils/imageUtils";
 
 interface RelationshipMapViewProps {
   project: NovelProject;
@@ -760,7 +761,7 @@ export const RelationshipMapView: React.FC<RelationshipMapViewProps> = ({
                   {entity.avatarUrl ? (
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-white/40 mb-1 shrink-0">
                       <img
-                        src={entity.avatarUrl}
+                        src={resolveAssetUrl(entity.avatarUrl)}
                         alt={entity.name}
                         className="w-full h-full object-cover pointer-events-none"
                       />
@@ -807,7 +808,7 @@ export const RelationshipMapView: React.FC<RelationshipMapViewProps> = ({
                   {selectedEntity.avatarUrl ? (
                     <div className="w-9 h-9 rounded-xl overflow-hidden border border-[var(--border-color)] shadow-xs shrink-0">
                       <img
-                        src={selectedEntity.avatarUrl}
+                        src={resolveAssetUrl(selectedEntity.avatarUrl)}
                         alt={selectedEntity.name}
                         className="w-full h-full object-cover"
                       />

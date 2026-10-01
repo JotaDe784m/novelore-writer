@@ -78,24 +78,112 @@ export function compressImage(
   });
 }
 
+
 /**
- * Optimizes a base64 data URL if it exceeds the specified size threshold.
+ * Resuelve una ruta de asset física ('assets/gallery/...', 'assets/covers/...')
+ * a una URL accesible por el motor de renderizado de Electron o el navegador.
  */
-export async function compressDataUrlIfLarge(
-  dataUrl: string,
-  thresholdBytes = 45000,
-  maxDimension = 640,
-  quality = 0.65
-): Promise<string> {
-  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) {
-    return dataUrl;
+export function resolveAssetUrl(urlOrPath?: string, projectPath?: string): string {
+  if (!urlOrPath) return "";
+  const trimmed = urlOrPath.trim();
+  if (
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("blob:")
+  ) {
+    return trimmed;
   }
-  if (dataUrl.length <= thresholdBytes) {
-    return dataUrl;
+
+  const cleanRel = trimmed.replace(/^\/+/, "");
+
+  // Si estamos en entorno Electron, utilizar el protocolo nativo novelore-asset://
+  if (typeof window !== "undefined" && window.electronAPI?.isElectron) {
+    const effectiveProjectPath =
+      projectPath ||
+      (typeof window !== "undefined" ? (window as any).__novelore_current_project_path : undefined);
+
+    if (effectiveProjectPath) {
+      return `novelore-asset://project-asset?projectPath=${encodeURIComponent(
+        effectiveProjectPath
+      )}&relPath=${encodeURIComponent(cleanRel)}`;
+    }
+    return `novelore-asset://${cleanRel}`;
   }
+
+  return cleanRel;
+}
+
+/**
+ * Guarda físicamente una imagen en el almacenamiento local del proyecto (assets/gallery/ o assets/covers/).
+ * Si está en modo web sin Electron, retorna el Base64 comprimido como fallback.
+ */
+export async function saveLocalImage(
+  fileOrBase64: File | Blob | string,
+  subfolder: "gallery" | "covers" | "fonts" | "documents",
+  options?: { fileName?: string; projectPath?: string; compress?: boolean }
+): Promise<{ success: boolean; relativePath: string; error?: string }> {
   try {
-    return await compressImage(dataUrl, maxDimension, maxDimension, quality);
-  } catch {
-    return dataUrl;
+    let base64Data = "";
+    let originalName = options?.fileName;
+
+    if (typeof fileOrBase64 === "string") {
+      // Si ya es una ruta relativa en assets, no es necesario re-guardarla
+      if (fileOrBase64.startsWith("assets/")) {
+        return { success: true, relativePath: fileOrBase64 };
+      }
+      base64Data = fileOrBase64;
+    } else {
+      if (fileOrBase64 instanceof File && !originalName) {
+        originalName = fileOrBase64.name;
+      }
+      base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(fileOrBase64);
+      });
+    }
+
+    // Optimización ligera previa al guardado
+    if (options?.compress !== false && base64Data.startsWith("data:image/")) {
+      const maxDim = subfolder === "covers" ? 1400 : 1600;
+      base64Data = await compressImage(base64Data, maxDim, maxDim, 0.88);
+    }
+
+    // En Electron: guardar físicamente a través de IPC
+    if (typeof window !== "undefined" && window.electronAPI?.saveAssetImage) {
+      const res = await window.electronAPI.saveAssetImage({
+        subfolder,
+        fileName: originalName,
+        bufferBase64: base64Data,
+        projectPath: options?.projectPath,
+      });
+
+      if (res.success && res.relativePath) {
+        return { success: true, relativePath: res.relativePath };
+      }
+      return { success: false, relativePath: "", error: res.error || "Error al guardar asset físico." };
+    }
+
+    // Fallback web / pruebas sin Electron: retornar dataUrl directamente
+    return { success: true, relativePath: base64Data };
+  } catch (err: any) {
+    console.error("Error en saveLocalImage:", err);
+    return { success: false, relativePath: "", error: err.message };
   }
 }
+
+/**
+ * Elimina físicamente un asset multimedia del disco local
+ */
+export async function deleteLocalImage(
+  relativePath: string,
+  projectPath?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!relativePath || typeof window === "undefined" || !window.electronAPI?.deleteAssetImage) {
+    return { success: true };
+  }
+  return await window.electronAPI.deleteAssetImage(relativePath, projectPath);
+}
+

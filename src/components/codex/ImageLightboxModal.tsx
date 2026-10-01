@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Star, Download, ZoomIn, Calendar } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Star, Download } from "lucide-react";
 import { EntityImage } from "../../types";
+import { resolveAssetUrl } from "../../utils/imageUtils";
 
 interface ImageLightboxModalProps {
   isOpen: boolean;
@@ -42,6 +43,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
 
   const currentImage = images[currentIndex];
   const isAvatar = currentAvatarUrl === currentImage.url;
+  const resolvedMainUrl = resolveAssetUrl(currentImage.url);
 
   return (
     <div
@@ -64,7 +66,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
           {onSetAsAvatar && (
             <button
               onClick={() => onSetAsAvatar(currentImage.url)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                 isAvatar
                   ? "bg-amber-500 text-black"
                   : "bg-white/10 hover:bg-white/20 text-white"
@@ -77,11 +79,11 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
           )}
 
           <a
-            href={currentImage.url}
+            href={resolvedMainUrl}
             download={`${entityName.toLowerCase().replace(/\s+/g, "_")}_img_${currentIndex + 1}.png`}
             target="_blank"
             rel="noreferrer"
-            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
             title="Descargar imagen"
           >
             <Download className="w-4 h-4" />
@@ -89,7 +91,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors ml-2"
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors ml-2 cursor-pointer"
             title="Cerrar visor (Esc)"
           >
             <X className="w-5 h-5" />
@@ -102,7 +104,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
         {images.length > 1 && (
           <button
             onClick={() => onNavigate((currentIndex - 1 + images.length) % images.length)}
-            className="absolute left-4 z-10 p-3 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/20 shadow-xl transition-transform hover:scale-105"
+            className="absolute left-4 z-10 p-3 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/20 shadow-xl transition-transform hover:scale-105 cursor-pointer"
             title="Imagen anterior (Flecha izquierda)"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -110,7 +112,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
         )}
 
         <img
-          src={currentImage.url}
+          src={resolvedMainUrl}
           alt={currentImage.caption || entityName}
           className="max-h-[80vh] max-w-[90vw] object-contain rounded-lg shadow-2xl transition-all"
         />
@@ -118,7 +120,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
         {images.length > 1 && (
           <button
             onClick={() => onNavigate((currentIndex + 1) % images.length)}
-            className="absolute right-4 z-10 p-3 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/20 shadow-xl transition-transform hover:scale-105"
+            className="absolute right-4 z-10 p-3 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/20 shadow-xl transition-transform hover:scale-105 cursor-pointer"
             title="Siguiente imagen (Flecha derecha)"
           >
             <ChevronRight className="w-6 h-6" />
@@ -143,14 +145,14 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
             <button
               key={img.id || idx}
               onClick={() => onNavigate(idx)}
-              className={`w-9 h-9 rounded-md overflow-hidden border transition-all shrink-0 ${
+              className={`w-9 h-9 rounded-md overflow-hidden border transition-all shrink-0 cursor-pointer ${
                 idx === currentIndex
                   ? "ring-2 ring-amber-400 border-amber-400 scale-105"
                   : "border-white/20 opacity-60 hover:opacity-100"
               }`}
             >
               <img
-                src={img.url}
+                src={resolveAssetUrl(img.url)}
                 alt={img.caption || ""}
                 className="w-full h-full object-cover"
               />

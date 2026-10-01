@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { WorldEntity } from "../../types";
 import { VisualBoardView } from "../board/VisualBoardView";
 import { EntityModalProps } from "./dossier/dossierTypes";
@@ -8,8 +8,10 @@ import { DossierTabsNav } from "./dossier/DossierTabsNav";
 import { DossierIdentityTab } from "./dossier/DossierIdentityTab";
 import { DossierAttributesTab } from "./dossier/DossierAttributesTab";
 import { DossierMentionsTab } from "./dossier/DossierMentionsTab";
+import { DossierGalleryTab } from "./dossier/DossierGalleryTab";
 import { DossierEventLoreTab } from "./dossier/DossierEventLoreTab";
 import { DossierNotesTab } from "./dossier/DossierNotesTab";
+import { ImageLightboxModal } from "./ImageLightboxModal";
 
 export const EntityModal: React.FC<EntityModalProps> = ({
   entity,
@@ -29,6 +31,9 @@ export const EntityModal: React.FC<EntityModalProps> = ({
     initialTab,
     initialCategory,
   });
+
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const currentEntityForBoard: WorldEntity = useMemo(() => ({
     id: entity ? entity.id : "temp-new-entity",
@@ -86,7 +91,8 @@ export const EntityModal: React.FC<EntityModalProps> = ({
           category={logic.category}
           attributesCount={Object.keys(logic.attributes).length}
           mentionsCount={logic.mentionStats.totalCount}
-          whiteboardItemsCount={logic.whiteboard?.items?.length || logic.gallery.length}
+          galleryCount={logic.gallery.length}
+          whiteboardItemsCount={logic.whiteboard?.items?.length || 0}
         />
 
         <input
@@ -123,6 +129,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                 onRemoveAvatar={() => logic.setAvatarUrl("")}
                 onUploadAvatarClick={() => logic.fileInputRef.current?.click()}
                 onOpenWhiteboard={() => logic.setActiveTab("whiteboard")}
+                onNavigateToGallery={() => logic.setActiveTab("gallery")}
                 whiteboardItemsCount={logic.whiteboard?.items?.length || 0}
                 galleryCount={logic.gallery.length}
               />
@@ -146,6 +153,21 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                 onRemoveAlias={logic.handleRemoveAlias}
                 mentionStats={logic.mentionStats}
                 onNavigateToScene={onNavigateToScene}
+              />
+            )}
+
+            {logic.activeTab === "gallery" && (
+              <DossierGalleryTab
+                gallery={logic.gallery}
+                avatarUrl={logic.avatarUrl}
+                onAddImages={logic.handleAddGalleryImages}
+                onRemoveImage={logic.handleRemoveGalleryImage}
+                onUpdateCaption={logic.handleUpdateGalleryCaption}
+                onSetAsAvatar={logic.handleSetAvatarFromGallery}
+                onOpenLightbox={(idx) => {
+                  setLightboxIndex(idx);
+                  setLightboxOpen(true);
+                }}
               />
             )}
 
@@ -210,6 +232,17 @@ export const EntityModal: React.FC<EntityModalProps> = ({
           </div>
         )}
       </div>
+
+      <ImageLightboxModal
+        isOpen={lightboxOpen}
+        images={logic.gallery}
+        currentIndex={lightboxIndex}
+        entityName={logic.name || "Elemento"}
+        onClose={() => setLightboxOpen(false)}
+        onNavigate={(idx) => setLightboxIndex(idx)}
+        onSetAsAvatar={(url) => logic.handleSetAvatarFromGallery(url)}
+        currentAvatarUrl={logic.avatarUrl}
+      />
     </div>
   );
 };

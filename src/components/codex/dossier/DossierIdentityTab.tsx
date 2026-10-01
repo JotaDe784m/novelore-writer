@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Camera, Upload, Layers, User, MapPin, Shield, Gem, Zap, Calendar, Sparkles, X, Plus,
+  Camera, Upload, Layers, User, MapPin, Shield, Gem, Zap, Calendar, Sparkles, X, Plus, Image as ImageIcon,
 } from "lucide-react";
 import { EntityCategory } from "../../../types";
 import { DossierIdentityTabProps } from "./dossierTypes";
 import { DossierColorPicker } from "./DossierColorPicker";
+import { resolveAssetUrl } from "../../../utils/imageUtils";
 
 const CATEGORIES = [
   { id: "character" as EntityCategory, label: "Personaje", icon: User },
@@ -19,9 +20,13 @@ const CATEGORIES = [
 export const DossierIdentityTab: React.FC<DossierIdentityTabProps> = ({
   category, onCategoryChange, name, onNameChange, subtitle, onSubtitleChange,
   summary, onSummaryChange, color, onColorChange, tags, onAddTag, onRemoveTag,
-  avatarUrl, onRemoveAvatar, onUploadAvatarClick, onOpenWhiteboard, whiteboardItemsCount, galleryCount,
+  avatarUrl, onRemoveAvatar, onUploadAvatarClick, onOpenWhiteboard, onNavigateToGallery, whiteboardItemsCount, galleryCount,
 }) => {
   const [tagInput, setTagInput] = useState("");
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => setAvatarError(false), [avatarUrl]);
+
   const CurrentIcon = CATEGORIES.find((c) => c.id === category)?.icon || User;
 
   const handleTagSubmit = () => {
@@ -40,15 +45,22 @@ export const DossierIdentityTab: React.FC<DossierIdentityTabProps> = ({
             className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex items-center justify-center shadow-sm relative bg-[var(--bg-card)] border-2"
             style={{ borderColor: color }}
           >
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={name || "Perfil"} className="w-full h-full object-cover" />
+            {avatarUrl && !avatarError ? (
+              <img
+                src={resolveAssetUrl(avatarUrl)}
+                alt={name || "Perfil"}
+                onError={() => setAvatarError(true)}
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div
                 className="w-full h-full flex flex-col items-center justify-center text-white"
                 style={{ backgroundColor: color }}
               >
                 <CurrentIcon className="w-8 h-8 opacity-90 mb-0.5" />
-                <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">Sin foto</span>
+                <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">
+                  {avatarError ? "No hallada" : "Sin foto"}
+                </span>
               </div>
             )}
             <div
@@ -88,13 +100,23 @@ export const DossierIdentityTab: React.FC<DossierIdentityTabProps> = ({
               <Upload className="w-3.5 h-3.5 text-[var(--accent)]" />
               <span>Subir Foto</span>
             </button>
+            {onNavigateToGallery && (
+              <button
+                type="button"
+                onClick={onNavigateToGallery}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--bg-card)] hover:bg-[var(--bg-surface-hover)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shadow-2xs"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-[var(--accent)]" />
+                <span>Galería ({galleryCount})</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onOpenWhiteboard}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--bg-card)] hover:bg-[var(--bg-surface-hover)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shadow-2xs"
             >
               <Layers className="w-3.5 h-3.5 text-[var(--accent)]" />
-              <span>Abrir Pizarra ({whiteboardItemsCount || galleryCount})</span>
+              <span>Abrir Pizarra ({whiteboardItemsCount})</span>
             </button>
           </div>
         </div>

@@ -383,6 +383,7 @@ export interface RecentProjectMeta {
   genre?: string;
   synopsis?: string;
   logline?: string;
+  coverUrl?: string;
   updatedAt: string;
   wordCount?: number;
 }

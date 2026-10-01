@@ -9,6 +9,7 @@ export interface CreateProjectDialogOptions {
   synopsis?: string;
   logline?: string;
   targetWords?: number;
+  coverUrl?: string;
 }
 
 export interface ProjectStoreState {
@@ -109,6 +110,23 @@ declare global {
         success: boolean;
         error?: string;
       }>;
+      saveAssetImage?: (options: {
+        subfolder: "gallery" | "covers" | "fonts" | "documents";
+        fileName?: string;
+        bufferBase64: string;
+        projectPath?: string;
+      }) => Promise<{
+        success: boolean;
+        relativePath?: string;
+        error?: string;
+      }>;
+      deleteAssetImage?: (
+        relativePath: string,
+        projectPath?: string
+      ) => Promise<{
+        success: boolean;
+        error?: string;
+      }>;
     };
   }
 }
@@ -134,15 +152,25 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   lastSavedAt: null,
   errorMessage: null,
 
-  setProjectPath: (path) => set({ projectPath: path }),
+  setProjectPath: (path) => {
+    if (typeof window !== "undefined") {
+      (window as any).__novelore_current_project_path = path;
+    }
+    set({ projectPath: path });
+  },
 
-  setProject: (project) =>
+  setProject: (project) => {
+    const resolvedPath = project ? (project as any).projectPath || get().projectPath : null;
+    if (typeof window !== "undefined") {
+      (window as any).__novelore_current_project_path = resolvedPath;
+    }
     set({
       project,
-      projectPath: project ? (project as any).projectPath || get().projectPath : null,
+      projectPath: resolvedPath,
       isLoaded: !!project,
       errorMessage: null,
-    }),
+    });
+  },
 
   loadRecentProjects: async () => {
     const electronAPI = getElectronAPI();
@@ -188,6 +216,10 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
         return null;
       }
 
+      if (typeof window !== "undefined") {
+        (window as any).__novelore_current_project_path = result.projectPath;
+      }
+
       set({
         projectPath: result.projectPath,
         project: result.project,
@@ -228,6 +260,10 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
         return null;
       }
 
+      if (typeof window !== "undefined") {
+        (window as any).__novelore_current_project_path = result.projectPath;
+      }
+
       set({
         projectPath: result.projectPath,
         project: result.project,
@@ -261,6 +297,10 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       if (!result.success || result.error) {
         set({ isLoading: false, errorMessage: result.error || "Fallo al inicializar proyecto." });
         return null;
+      }
+
+      if (typeof window !== "undefined") {
+        (window as any).__novelore_current_project_path = result.projectPath;
       }
 
       set({

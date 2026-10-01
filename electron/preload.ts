@@ -8,6 +8,7 @@ export interface RecentProjectMeta {
   genre?: string;
   synopsis?: string;
   logline?: string;
+  coverUrl?: string;
   updatedAt: string;
   wordCount?: number;
 }
@@ -28,6 +29,7 @@ export interface ElectronAPI {
     synopsis?: string;
     logline?: string;
     targetWords?: number;
+    coverUrl?: string;
   }) => Promise<{
     canceled: boolean;
     success?: boolean;
@@ -84,6 +86,23 @@ export interface ElectronAPI {
     relationships?: any[];
     error?: string;
   }>;
+  saveAssetImage: (options: {
+    subfolder: "gallery" | "covers" | "fonts" | "documents";
+    fileName?: string;
+    bufferBase64: string;
+    projectPath?: string;
+  }) => Promise<{
+    success: boolean;
+    relativePath?: string;
+    error?: string;
+  }>;
+  deleteAssetImage: (
+    relativePath: string,
+    projectPath?: string
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
 }
 
 const api: ElectronAPI = {
@@ -108,6 +127,9 @@ const api: ElectronAPI = {
     ipcRenderer.invoke("fs:saveProjectJson", projectData),
   saveCodex: (data) => ipcRenderer.invoke("fs:saveCodex", data),
   readCodex: () => ipcRenderer.invoke("fs:readCodex"),
+  saveAssetImage: (options) => ipcRenderer.invoke("assets:saveImage", options),
+  deleteAssetImage: (relativePath, projectPath) =>
+    ipcRenderer.invoke("assets:deleteImage", { relativePath, projectPath }),
 };
 
 contextBridge.exposeInMainWorld("electronAPI", api);

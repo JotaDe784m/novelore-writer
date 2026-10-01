@@ -4,6 +4,7 @@ export type DossierTab =
   | "identity"
   | "attributes"
   | "mentions"
+  | "gallery"
   | "chronology"
   | "notes"
   | "whiteboard";
@@ -52,8 +53,19 @@ export interface DossierIdentityTabProps {
   onRemoveAvatar: () => void;
   onUploadAvatarClick: () => void;
   onOpenWhiteboard: () => void;
+  onNavigateToGallery?: () => void;
   whiteboardItemsCount: number;
   galleryCount: number;
+}
+
+export interface DossierGalleryTabProps {
+  gallery: EntityImage[];
+  avatarUrl: string;
+  onAddImages: (files: FileList | File[]) => void;
+  onRemoveImage: (id: string, url: string) => void;
+  onUpdateCaption: (id: string, caption: string) => void;
+  onSetAsAvatar: (url: string) => void;
+  onOpenLightbox: (index: number) => void;
 }
 
 export interface DossierAttributesTabProps {

@@ -1,5 +1,5 @@
 import React from "react";
-import { User, Sparkles, BookOpen, Calendar, FileText, Layers } from "lucide-react";
+import { User, Sparkles, BookOpen, Calendar, FileText, Layers, Image as ImageIcon } from "lucide-react";
 import { EntityCategory } from "../../../types";
 import { DossierTab } from "./dossierTypes";
 
@@ -9,6 +9,7 @@ interface DossierTabsNavProps {
   category: EntityCategory;
   attributesCount: number;
   mentionsCount: number;
+  galleryCount: number;
   whiteboardItemsCount: number;
 }
 
@@ -18,6 +19,7 @@ export const DossierTabsNav: React.FC<DossierTabsNavProps> = ({
   category,
   attributesCount,
   mentionsCount,
+  galleryCount,
   whiteboardItemsCount,
 }) => {
   const tabs: {
@@ -30,6 +32,7 @@ export const DossierTabsNav: React.FC<DossierTabsNavProps> = ({
     { id: "identity", label: "Identidad", icon: User },
     { id: "attributes", label: "Atributos & Rasgos", icon: Sparkles, count: attributesCount },
     { id: "mentions", label: "Menciones", icon: BookOpen, count: mentionsCount },
+    { id: "gallery", label: "Galería", icon: ImageIcon, count: galleryCount > 0 ? galleryCount : undefined },
     {
       id: "chronology",
       label: "Cronología & Lore",

@@ -82,10 +82,13 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Gestión de etiquetas sutiles, notas de trasfondo y alias/variantes del nombre con contador de menciones en tiempo real.
 - [x] Arquitectura modular de componentes ($\le 250$ líneas) dividida en `src/components/codex/dossier/` (`EntityModalHeader`, `DossierTabsNav`, `DossierIdentityTab`, `DossierAttributesTab`, `DossierMentionsTab`, `DossierEventLoreTab`, `DossierNotesTab`, `DossierColorPicker`).
 
-### Subfase 2.3: Gestión Local de Multimedia (`assets/gallery/`)
-- Implementar canal IPC para copiar físicamente imágenes locales a `assets/gallery/`.
-- Almacenamiento de rutas relativas limpias en las entidades en lugar de Base64.
-- Visor *Lightbox* a pantalla completa para las galerías de cada entidad.
+### Subfase 2.3: Gestión Local de Multimedia (`assets/gallery/` y `assets/covers/`)
+- [x] Implementar canales IPC (`assets:saveImage`, `assets:deleteImage`) para copiar físicamente imágenes locales a `assets/gallery/` y `assets/covers/`.
+- [x] Protocolo nativo de Electron `novelore-asset://` para streaming seguro y de alto rendimiento de assets en etiquetas `<img>`.
+- [x] Almacenamiento de rutas relativas limpias en las entidades y metadatos de proyecto en lugar de Base64.
+- [x] Pestaña modular de galería en el dossier del Códice (`DossierGalleryTab.tsx`) con arrastrar y soltar, subida múltiple, edición en línea de pies de foto y asignación de avatar.
+- [x] Visor *Lightbox* a pantalla completa (`ImageLightboxModal.tsx`) para las galerías de cada entidad con navegación por teclado.
+- [x] Componente moderno de portada de libro (`NovelCover.tsx`) con 8 estilos tipográficos por género y almacenamiento local en `HomeDashboard.tsx` (tarjetas, creación y edición).
 
 ### Subfase 2.4: Contador Automático de Menciones en el Manuscrito
 - Escaneo asíncrono y reactivo de los archivos `.md` del manuscrito para detectar menciones de nombres y alias.

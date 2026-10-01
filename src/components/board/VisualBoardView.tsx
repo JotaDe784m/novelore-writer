@@ -57,7 +57,7 @@ import {
   Play,
 } from "lucide-react";
 import { BoardItem, MoodboardCanvas, NovelProject, WorldEntity } from "../../types";
-import { compressImage } from "../../utils/imageUtils";
+import { compressImage, resolveAssetUrl, saveLocalImage } from "../../utils/imageUtils";
 import { ImageLightboxModal } from "../codex/ImageLightboxModal";
 import { BoardRichTextEditor, BoardRichTextEditorHandle } from "./BoardRichTextEditor";
 import { BoardResourceCard } from "./BoardResourceCard";
@@ -1036,6 +1036,15 @@ export const VisualBoardView: React.FC<VisualBoardViewProps> = ({
       const posX = Math.round(spawnCenterX - width / 2 + (i % 4) * 36);
       const posY = Math.round(spawnCenterY - height / 2 + Math.floor(i / 4) * 36);
 
+      let finalImageUrl = optimized;
+      if (typeof window !== "undefined" && window.electronAPI?.saveAssetImage) {
+        const fileName = "name" in file && typeof file.name === "string" ? file.name : undefined;
+        const saveRes = await saveLocalImage(file, "gallery", { fileName });
+        if (saveRes.success && saveRes.relativePath) {
+          finalImageUrl = saveRes.relativePath;
+        }
+      }
+
       newBoardImages.push({
         id: itemId,
         type: "image",
@@ -1043,7 +1052,7 @@ export const VisualBoardView: React.FC<VisualBoardViewProps> = ({
         y: posY,
         width,
         height,
-        imageUrl: optimized,
+        imageUrl: finalImageUrl,
         caption: cleanName,
         hideCaption: false,
         entityId: entity?.id,
@@ -1051,7 +1060,7 @@ export const VisualBoardView: React.FC<VisualBoardViewProps> = ({
 
       newGalleryEntries.push({
         id: `img-${Date.now()}-${i}`,
-        url: optimized,
+        url: finalImageUrl,
         caption: cleanName,
         createdAt: new Date().toISOString(),
       });
@@ -4347,7 +4356,7 @@ export const VisualBoardView: React.FC<VisualBoardViewProps> = ({
                     style={{ height: `${height}px` }}
                   >
                     <img
-                      src={item.imageUrl}
+                      src={resolveAssetUrl(item.imageUrl)}
                       alt={item.caption || "Imagen"}
                       className="w-full h-full object-cover select-none pointer-events-none rounded-xl"
                     />

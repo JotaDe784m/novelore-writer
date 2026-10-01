@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   BookOpen,
   Calendar,
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { EntityCategory, WorldEntity } from "../../../types";
 import { getCategoryLabel } from "../../../utils/codexDefaults";
+import { resolveAssetUrl } from "../../../utils/imageUtils";
 
 export interface CodexEntityCardProps {
   entity: WorldEntity;
@@ -49,6 +50,12 @@ export const CodexEntityCard: React.FC<CodexEntityCardProps> = ({
   mentionCount,
   onEdit,
 }) => {
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [entity.avatarUrl]);
+
   const Icon = getCategoryIcon(entity.category);
   const color = entity.color || "#3b82f6";
 
@@ -65,7 +72,7 @@ export const CodexEntityCard: React.FC<CodexEntityCardProps> = ({
         {/* Cabecera de la Tarjeta: Avatar / Icono, Nombre y Píldora de Menciones */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3.5 overflow-hidden">
-            {entity.avatarUrl ? (
+            {entity.avatarUrl && !avatarError ? (
               <div
                 className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl overflow-hidden shadow-2xs shrink-0 relative"
                 style={{
@@ -74,8 +81,9 @@ export const CodexEntityCard: React.FC<CodexEntityCardProps> = ({
                 }}
               >
                 <img
-                  src={entity.avatarUrl}
+                  src={resolveAssetUrl(entity.avatarUrl)}
                   alt={entity.name}
+                  onError={() => setAvatarError(true)}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <span

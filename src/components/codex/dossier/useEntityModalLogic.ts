@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import {
   EntityCategory,
   EntityImage,
@@ -8,7 +8,7 @@ import {
   TimelineEvent,
   WorldEntity,
 } from "../../../types";
-import { compressImage } from "../../../utils/imageUtils";
+import { saveLocalImage, deleteLocalImage } from "../../../utils/imageUtils";
 import { calculateEntityMentions, getAllManuscriptScenes } from "../../../utils/mentionCounter";
 import { getDefaultAttributes, getDefaultCategoryColor } from "../../../utils/codexDefaults";
 import { DossierTab, MentionStats } from "./dossierTypes";
@@ -107,15 +107,57 @@ export function useEntityModalLogic({
   const processImageFiles = async (files: FileList | File[]) => {
     const file = Array.from(files)[0];
     if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        setAvatarUrl(await compressImage(reader.result as string, 800, 800, 0.85));
-      } catch (err) {
-        console.error("Error al procesar avatar de entidad:", err);
+    try {
+      const res = await saveLocalImage(file, "gallery", {
+        fileName: `avatar_${name ? name.toLowerCase().replace(/[^a-z0-9]/g, "_") : "ent"}`,
+      });
+      if (res.success && res.relativePath) {
+        setAvatarUrl(res.relativePath);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Error al procesar avatar de entidad:", err);
+    }
+  };
+
+  const handleAddGalleryImages = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    for (const f of fileArray) {
+      if (!f.type.startsWith("image/")) continue;
+      try {
+        const res = await saveLocalImage(f, "gallery", {
+          fileName: `gal_${name ? name.toLowerCase().replace(/[^a-z0-9]/g, "_") : "item"}`,
+        });
+        if (res.success && res.relativePath) {
+          const newImg: EntityImage = {
+            id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            url: res.relativePath,
+            caption: f.name.replace(/\.[^/.]+$/, ""),
+            createdAt: new Date().toISOString(),
+          };
+          setGallery((prev) => [...prev, newImg]);
+          setAvatarUrl((cur) => cur || res.relativePath);
+        }
+      } catch (err) {
+        console.error("Error al añadir imagen a galería:", err);
+      }
+    }
+  };
+
+  const handleRemoveGalleryImage = async (id: string, url: string) => {
+    setGallery((prev) => prev.filter((img) => img.id !== id));
+    if (avatarUrl === url) {
+      const remaining = gallery.filter((img) => img.id !== id);
+      setAvatarUrl(remaining.length > 0 ? remaining[0].url : "");
+    }
+    await deleteLocalImage(url);
+  };
+
+  const handleUpdateGalleryCaption = (id: string, caption: string) => {
+    setGallery((prev) => prev.map((img) => (img.id === id ? { ...img, caption } : img)));
+  };
+
+  const handleSetAvatarFromGallery = (url: string) => {
+    setAvatarUrl(url);
   };
 
   const handleCategoryChange = (newCat: EntityCategory) => {
@@ -189,6 +231,7 @@ export function useEntityModalLogic({
     color, handleColorChange, tags, handleAddTag, handleRemoveTag, aliases, handleAddAlias, handleRemoveAlias,
     attributes, handleAttributeChange, handleRemoveAttribute, handleAddAttribute, avatarUrl, setAvatarUrl,
     gallery, setGallery, whiteboard, setWhiteboard, fileInputRef, processImageFiles,
+    handleAddGalleryImages, handleRemoveGalleryImage, handleUpdateGalleryCaption, handleSetAvatarFromGallery,
     isHistorical, setIsHistorical, dateOrEpoch, setDateOrEpoch, involvedEntityIds, handleToggleInvolvedEntity,
     syncWithTimeline, setSyncWithTimeline, timelineTrackId, setTimelineTrackId, timelineImportance, setTimelineImportance,
     existingTimelineEvent, scenesWithThisEvent, mentionStats, handleSubmit,
