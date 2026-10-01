@@ -322,9 +322,9 @@ function createWindow(): void {
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
   if (devServerUrl) {
-    mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
-      const levelNames = ["DEBUG", "INFO", "WARN", "ERROR"];
-      console.log(`[Renderer ${levelNames[level] || level}] ${message} (${sourceId}:${line})`);
+    mainWindow.webContents.on("console-message", (event) => {
+      const levelTag = event.level === "warning" ? "WARN" : (event.level || "info").toUpperCase();
+      console.log(`[Renderer ${levelTag}] ${event.message} (${event.sourceId}:${event.lineNumber})`);
     });
 
     mainWindow.webContents.on("preload-error", (_event, preloadPath, error) => {
