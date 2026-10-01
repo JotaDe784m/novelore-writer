@@ -1,6 +1,9 @@
 import React, { useState } from "react";
-import { BookOpen, Plus, X, ChevronRight, Hash } from "lucide-react";
+import { BookOpen, Plus, X, Layers, List, Sparkles } from "lucide-react";
 import { DossierMentionsTabProps } from "./dossierTypes";
+import { MentionsActBreakdown } from "./mentions/MentionsActBreakdown";
+import { MentionsSceneCard } from "./mentions/MentionsSceneCard";
+import { SceneMentionOccurrence } from "../../../utils/mentionTypes";
 
 export const DossierMentionsTab: React.FC<DossierMentionsTabProps> = ({
   name,
@@ -8,9 +11,11 @@ export const DossierMentionsTab: React.FC<DossierMentionsTabProps> = ({
   onAddAlias,
   onRemoveAlias,
   mentionStats,
+  detailedMentions,
   onNavigateToScene,
 }) => {
   const [aliasInput, setAliasInput] = useState("");
+  const [viewMode, setViewMode] = useState<"structure" | "flat">("structure");
 
   const handleAddSubmit = () => {
     if (aliasInput.trim()) {
@@ -19,12 +24,35 @@ export const DossierMentionsTab: React.FC<DossierMentionsTabProps> = ({
     }
   };
 
+  const totalCount = detailedMentions?.totalCount ?? mentionStats.totalCount;
+  const uniqueScenesCount = detailedMentions?.uniqueScenesCount ?? mentionStats.scenes.length;
+  const totalScenesInNovel = detailedMentions?.totalScenesInNovel ?? uniqueScenesCount;
+  const presencePercentage = detailedMentions?.scenePresencePercentage ?? 0;
+
   const primaryNameCount =
-    mentionStats.byTerm.find((t) => t.term === name.trim())?.count || 0;
+    (detailedMentions?.byTerm ?? mentionStats.byTerm).find(
+      (t) => t.term.toLowerCase() === name.trim().toLowerCase()
+    )?.count || 0;
+
+  // Fallback para lista plana si no viene detailedMentions
+  const flatScenes: SceneMentionOccurrence[] = detailedMentions?.flatScenes ?? mentionStats.scenes.map((s) => ({
+    sceneId: s.sceneId,
+    sceneTitle: s.sceneTitle,
+    sceneOrder: 1,
+    chapterId: "chap-unknown",
+    chapterTitle: s.chapterTitle,
+    chapterOrder: 1,
+    actId: "act-unknown",
+    actTitle: s.actTitle,
+    actOrder: 1,
+    count: s.count,
+    byTerm: { [name]: s.count },
+    snippets: [],
+  }));
 
   return (
     <div className="space-y-5 animate-in fade-in duration-150">
-      {/* 1. Header Summary Banner */}
+      {/* 1. Panel de Nombres y Apodos */}
       <div className="p-4 sm:p-5 rounded-2xl bg-[var(--bg-input)]/40 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -33,15 +61,11 @@ export const DossierMentionsTab: React.FC<DossierMentionsTabProps> = ({
               Menciones en el Manuscrito y Nombres Alternativos
             </span>
           </div>
+
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[var(--accent)] text-[var(--accent-contrast)] shadow-xs">
             <span>
-              {mentionStats.totalCount} {mentionStats.totalCount === 1 ? "mención total" : "menciones totales"}
+              {totalCount} {totalCount === 1 ? "mención total" : "menciones totales"}
             </span>
-            {mentionStats.scenes.length > 0 && (
-              <span className="opacity-80">
-                ({mentionStats.scenes.length} {mentionStats.scenes.length === 1 ? "escena" : "escenas"})
-              </span>
-            )}
           </div>
         </div>
 
@@ -50,7 +74,7 @@ export const DossierMentionsTab: React.FC<DossierMentionsTabProps> = ({
           Novelore rastrea el texto del manuscrito y contabiliza en qué escenas aparece esta entidad.
         </p>
 
-        {/* Input for adding alias */}
+        {/* Input para añadir apodo */}
         <div className="flex gap-2 pt-1">
           <input
             type="text"
@@ -76,7 +100,7 @@ export const DossierMentionsTab: React.FC<DossierMentionsTabProps> = ({
           </button>
         </div>
 
-        {/* Chips with counts */}
+        {/* Chips de términos con sus contadores */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
           <span className="px-2.5 py-1 rounded-xl text-xs font-medium bg-[var(--bg-card)] text-[var(--text-primary)] flex items-center gap-2 shadow-2xs">
             <span className="font-semibold">{name || "Nombre principal"}</span>
@@ -86,8 +110,10 @@ export const DossierMentionsTab: React.FC<DossierMentionsTabProps> = ({
           </span>
 
           {aliases.map((alias) => {
-            const count =
-              mentionStats.byTerm.find((t) => t.term.toLowerCase() === alias.toLowerCase().trim())?.count || 0;
+            const termStats = (detailedMentions?.byTerm ?? mentionStats.byTerm).find(
+              (t) => t.term.toLowerCase() === alias.toLowerCase().trim()
+            );
+            const count = termStats?.count || 0;
             return (
               <span
                 key={alias}
@@ -111,48 +137,75 @@ export const DossierMentionsTab: React.FC<DossierMentionsTabProps> = ({
         </div>
       </div>
 
-      {/* 2. Scenes Breakdown List */}
-      <div className="space-y-2">
-        <span className="font-bold text-xs uppercase tracking-wider text-[var(--text-secondary)] block">
-          Desglose por Escenas ({mentionStats.scenes.length})
-        </span>
+      {/* 2. Métrica de Presencia Global en la Novela */}
+      {totalCount > 0 && totalScenesInNovel > 0 && (
+        <div className="px-4 py-3 rounded-2xl bg-[var(--bg-input)]/25 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+            <Sparkles className="w-4 h-4 text-[var(--accent)]" />
+            <span>
+              Presente en <strong className="text-[var(--text-primary)]">{uniqueScenesCount}</strong> de{" "}
+              <strong className="text-[var(--text-primary)]">{totalScenesInNovel}</strong> escenas (
+              <strong className="text-[var(--accent)]">{presencePercentage}%</strong> del manuscrito)
+            </span>
+          </div>
 
-        {mentionStats.scenes.length === 0 ? (
-          <div className="p-6 text-center rounded-2xl bg-[var(--bg-input)]/30 text-[var(--text-muted)] text-xs">
-            No se han encontrado menciones en el texto actual del manuscrito.
+          {/* Selector de modo de vista */}
+          <div className="flex items-center gap-1 bg-[var(--bg-card)] p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setViewMode("structure")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                viewMode === "structure"
+                  ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Por Actos</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("flat")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                viewMode === "flat"
+                  ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Lista Plana</span>
+            </button>
           </div>
-        ) : (
-          <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-            {mentionStats.scenes.map((s) => (
-              <div
-                key={s.sceneId}
-                onClick={() => onNavigateToScene?.(s.sceneId)}
-                className={`p-3 rounded-xl bg-[var(--bg-input)]/40 hover:bg-[var(--bg-surface-hover)] flex items-center justify-between text-xs transition-colors ${
-                  onNavigateToScene ? "cursor-pointer group" : ""
-                }`}
-              >
-                <div className="min-w-0 pr-3">
-                  <span className="font-semibold text-[var(--text-primary)] block truncate">
-                    {s.sceneTitle}
-                  </span>
-                  <span className="text-[11px] text-[var(--text-muted)] truncate block">
-                    {s.chapterTitle} • {s.actTitle}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="font-mono font-bold text-xs text-[var(--accent)] px-2 py-0.5 rounded-lg bg-[var(--accent-subtle)] flex items-center gap-1">
-                    <Hash className="w-3 h-3 opacity-60" />
-                    <span>{s.count}</span>
-                  </span>
-                  {onNavigateToScene && (
-                    <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors" />
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* 3. Desglose de Escenas y Citas */}
+      {totalCount === 0 ? (
+        <div className="p-8 text-center rounded-2xl bg-[var(--bg-input)]/30 text-[var(--text-muted)] text-xs space-y-1">
+          <p className="font-semibold text-[var(--text-secondary)]">
+            Sin menciones en el texto actual del manuscrito
+          </p>
+          <p className="text-[11px]">
+            Añade escenas en el editor o nombra a esta entidad para que sus apariciones se registren aquí.
+          </p>
+        </div>
+      ) : viewMode === "structure" && detailedMentions && detailedMentions.acts.length > 0 ? (
+        <MentionsActBreakdown
+          acts={detailedMentions.acts}
+          totalMentions={detailedMentions.totalCount}
+          onNavigateToScene={onNavigateToScene}
+        />
+      ) : (
+        <div className="space-y-2">
+          {flatScenes.map((scene) => (
+            <MentionsSceneCard
+              key={scene.sceneId}
+              scene={scene}
+              onNavigateToScene={onNavigateToScene}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

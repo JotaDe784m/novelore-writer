@@ -350,6 +350,7 @@ export const App: React.FC = () => {
                     project={project}
                     onUpdateProject={handleUpdateProject}
                     onOpenRelationshipMap={() => setActiveView("relationships")}
+                    onNavigateToScene={handleSelectScene}
                   />
                 )}
 

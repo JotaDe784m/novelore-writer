@@ -1,52 +1,68 @@
 import { NovelProject, WorldEntity, Scene } from "../types";
+import { EntityMentionStats, MentionMatch } from "./mentionTypes";
 
-export interface MentionMatch {
-  sceneId: string;
-  sceneTitle: string;
-  chapterTitle: string;
-  actTitle: string;
-  count: number;
-}
-
-export interface EntityMentionStats {
-  totalCount: number;
-  byTerm: { term: string; count: number }[];
-  scenes: MentionMatch[];
-}
+export * from "./mentionTypes";
+export { calculateEntityDetailedMentions } from "./mentionHierarchy";
 
 export interface FlatSceneData {
   scene: Scene;
   chapterTitle: string;
+  chapterOrder?: number;
+  chapterId?: string;
   actTitle: string;
+  actOrder?: number;
+  actId?: string;
   plainText: string;
 }
 
+const sceneTextCache = new Map<string, { len: number; text: string }>();
+
+function cleanPlainText(raw: string): string {
+  return raw
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/[#*`_~>[\]()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /**
- * Extracts all scenes from project acts and chapters, with HTML stripped into searchable text
+ * Extracts and cleans searchable text from all scenes using a length-based cache
  */
 export function getAllManuscriptScenes(project: NovelProject): FlatSceneData[] {
   const result: FlatSceneData[] = [];
   if (!project.acts || !Array.isArray(project.acts)) return result;
 
-  for (const act of project.acts) {
+  for (let aIdx = 0; aIdx < project.acts.length; aIdx++) {
+    const act = project.acts[aIdx];
     if (!act.chapters || !Array.isArray(act.chapters)) continue;
-    for (const chapter of act.chapters) {
+
+    for (let cIdx = 0; cIdx < act.chapters.length; cIdx++) {
+      const chapter = act.chapters[cIdx];
       if (!chapter.scenes || !Array.isArray(chapter.scenes)) continue;
-      for (const scene of chapter.scenes) {
-        const rawContent = scene.content || "";
-        // Strip HTML tags and entities to get clean searchable text
-        const plain = rawContent
-          .replace(/<[^>]*>/g, " ")
-          .replace(/&nbsp;/g, " ")
-          .replace(/&amp;/g, "&")
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
-          .replace(/\s+/g, " ");
+
+      for (let sIdx = 0; sIdx < chapter.scenes.length; sIdx++) {
+        const scene = chapter.scenes[sIdx];
+        const raw = scene.content || "";
+        const cacheKey = `${scene.id}-${raw.length}`;
+
+        let plain = sceneTextCache.get(cacheKey)?.text;
+        if (plain === undefined) {
+          plain = cleanPlainText(raw);
+          sceneTextCache.set(cacheKey, { len: raw.length, text: plain });
+        }
 
         result.push({
           scene,
-          chapterTitle: chapter.title || "Capítulo",
-          actTitle: act.title || "Acto",
+          chapterTitle: chapter.title || `Capítulo ${cIdx + 1}`,
+          chapterOrder: chapter.order || cIdx + 1,
+          chapterId: chapter.id,
+          actTitle: act.title || `Acto ${aIdx + 1}`,
+          actOrder: act.order || aIdx + 1,
+          actId: act.id,
           plainText: plain,
         });
       }
@@ -55,34 +71,27 @@ export function getAllManuscriptScenes(project: NovelProject): FlatSceneData[] {
   return result;
 }
 
-/**
- * Escapes regex special characters
- */
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
- * Counts occurrences of a term in text using unicode-aware boundary matching for Spanish and other languages
+ * Counts occurrences of a term in text using unicode-aware boundary matching for Spanish
  */
 export function countOccurrencesInText(text: string, term: string): number {
   if (!text || !term || !term.trim()) return 0;
   const cleanTerm = term.trim();
 
   try {
-    // Unicode-aware word boundary: check that character before and after is not a letter or digit
     const regex = new RegExp(`(^|[^\\p{L}\\p{N}_])${escapeRegExp(cleanTerm)}($|[^\\p{L}\\p{N}_])`, "gui");
     let count = 0;
     let match: RegExpExecArray | null;
     while ((match = regex.exec(text)) !== null) {
       count++;
-      if (match.index === regex.lastIndex) {
-        regex.lastIndex++;
-      }
+      if (match.index === regex.lastIndex) regex.lastIndex++;
     }
     return count;
   } catch {
-    // Fallback standard word boundary
     const regex = new RegExp(`\\b${escapeRegExp(cleanTerm)}\\b`, "gi");
     const matches = text.match(regex);
     return matches ? matches.length : 0;
@@ -90,29 +99,64 @@ export function countOccurrencesInText(text: string, term: string): number {
 }
 
 /**
- * Calculate mention statistics for a given entity across the novel manuscript
+ * Extracts preview snippets with surrounding text for occurrences of a term
  */
-export function calculateEntityMentions(
-  entity: WorldEntity,
-  scenes: FlatSceneData[]
-): EntityMentionStats {
-  const terms = new Set<string>();
-  if (entity.name && entity.name.trim()) {
-    terms.add(entity.name.trim());
-  }
-  if (entity.aliases && Array.isArray(entity.aliases)) {
-    for (const alias of entity.aliases) {
-      if (alias && alias.trim()) {
-        terms.add(alias.trim());
-      }
+export function extractContextSnippets(
+  text: string,
+  term: string,
+  limit: number = 3
+): import("./mentionTypes").MentionContextSnippet[] {
+  if (!text || !term || !term.trim()) return [];
+  const cleanTerm = term.trim();
+  const snippets: import("./mentionTypes").MentionContextSnippet[] = [];
+
+  try {
+    const regex = new RegExp(`(^|[^\\p{L}\\p{N}_])(${escapeRegExp(cleanTerm)})($|[^\\p{L}\\p{N}_])`, "gui");
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text)) !== null && snippets.length < limit) {
+      const matchIndex = match.index + (match[1] ? match[1].length : 0);
+      const start = Math.max(0, matchIndex - 45);
+      const end = Math.min(text.length, matchIndex + cleanTerm.length + 45);
+
+      const before = text.substring(start, matchIndex);
+      const matchedStr = text.substring(matchIndex, matchIndex + cleanTerm.length);
+      const after = text.substring(matchIndex + cleanTerm.length, end);
+
+      let snippetText = text.substring(start, end).trim().replace(/\s+/g, " ");
+      if (start > 0) snippetText = `...${snippetText}`;
+      if (end < text.length) snippetText = `${snippetText}...`;
+
+      snippets.push({
+        text: snippetText,
+        matchedTerm: cleanTerm,
+        charIndex: matchIndex,
+        before,
+        match: matchedStr,
+        after,
+      });
+
+      if (match.index === regex.lastIndex) regex.lastIndex++;
     }
+  } catch {
+    // Silently fallback on malformed patterns
+  }
+  return snippets;
+}
+
+/**
+ * Calculates mention statistics for an entity across manuscript scenes
+ */
+export function calculateEntityMentions(entity: WorldEntity, scenes: FlatSceneData[]): EntityMentionStats {
+  const terms = new Set<string>();
+  if (entity.name?.trim()) terms.add(entity.name.trim());
+  if (Array.isArray(entity.aliases)) {
+    for (const a of entity.aliases) if (a?.trim()) terms.add(a.trim());
   }
 
   const termList = Array.from(terms);
   const byTermMap: Record<string, number> = {};
-  for (const t of termList) {
-    byTermMap[t] = 0;
-  }
+  for (const t of termList) byTermMap[t] = 0;
 
   const scenesResult: MentionMatch[] = [];
   let totalCount = 0;
@@ -147,7 +191,7 @@ export function calculateEntityMentions(
 }
 
 /**
- * Calculates mention counts for an array of entities efficiently in one pass
+ * Calculates mention counts for an array of entities in one pass
  */
 export function calculateAllEntitiesMentions(
   entities: WorldEntity[],
@@ -155,10 +199,8 @@ export function calculateAllEntitiesMentions(
 ): Record<string, EntityMentionStats> {
   const scenes = getAllManuscriptScenes(project);
   const result: Record<string, EntityMentionStats> = {};
-
   for (const entity of entities) {
     result[entity.id] = calculateEntityMentions(entity, scenes);
   }
-
   return result;
 }

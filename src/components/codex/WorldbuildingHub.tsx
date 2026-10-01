@@ -12,12 +12,14 @@ interface WorldbuildingHubProps {
   project: NovelProject;
   onUpdateProject?: (updater: (prev: NovelProject) => NovelProject) => void;
   onOpenRelationshipMap: () => void;
+  onNavigateToScene?: (sceneId: string) => void;
 }
 
 export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
   project,
   onUpdateProject,
   onOpenRelationshipMap,
+  onNavigateToScene,
 }) => {
   const [editingEntity, setEditingEntity] = useState<WorldEntity | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -189,6 +191,11 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
           onClose={() => {
             setIsCreating(false);
             setEditingEntity(null);
+          }}
+          onNavigateToScene={(sceneId) => {
+            setIsCreating(false);
+            setEditingEntity(null);
+            onNavigateToScene?.(sceneId);
           }}
         />
       )}

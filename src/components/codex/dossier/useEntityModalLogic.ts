@@ -9,7 +9,8 @@ import {
   WorldEntity,
 } from "../../../types";
 import { saveLocalImage, deleteLocalImage } from "../../../utils/imageUtils";
-import { calculateEntityMentions, getAllManuscriptScenes } from "../../../utils/mentionCounter";
+import { calculateEntityDetailedMentions } from "../../../utils/mentionHierarchy";
+import { EntityDetailedMentions } from "../../../utils/mentionTypes";
 import { getDefaultAttributes, getDefaultCategoryColor } from "../../../utils/codexDefaults";
 import { DossierTab, MentionStats } from "./dossierTypes";
 
@@ -88,20 +89,20 @@ export function useEntityModalLogic({
     return res;
   }, [entity, category, project.acts]);
 
-  const allScenes = useMemo(() => getAllManuscriptScenes(project), [project]);
-  const mentionStats: MentionStats = useMemo(() => {
+  const detailedMentions: EntityDetailedMentions = useMemo(() => {
     const tempEntity: WorldEntity = {
       id: entity?.id || "temp", name, aliases, category, summary, tags, attributes, notes,
     };
-    const res = calculateEntityMentions(tempEntity, allScenes);
-    return {
-      totalCount: res.totalCount,
-      byTerm: res.byTerm,
-      scenes: res.scenes.map((s) => ({
-        sceneId: s.sceneId, sceneTitle: s.sceneTitle, chapterTitle: s.chapterTitle, actTitle: s.actTitle, count: s.count,
-      })),
-    };
-  }, [entity?.id, name, aliases, category, summary, tags, attributes, notes, allScenes]);
+    return calculateEntityDetailedMentions(tempEntity, project);
+  }, [entity?.id, name, aliases, category, summary, tags, attributes, notes, project]);
+
+  const mentionStats: MentionStats = useMemo(() => ({
+    totalCount: detailedMentions.totalCount,
+    byTerm: detailedMentions.byTerm,
+    scenes: detailedMentions.flatScenes.map((s) => ({
+      sceneId: s.sceneId, sceneTitle: s.sceneTitle, chapterTitle: s.chapterTitle, actTitle: s.actTitle, count: s.count,
+    })),
+  }), [detailedMentions]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processImageFiles = async (files: FileList | File[]) => {
@@ -234,6 +235,6 @@ export function useEntityModalLogic({
     handleAddGalleryImages, handleRemoveGalleryImage, handleUpdateGalleryCaption, handleSetAvatarFromGallery,
     isHistorical, setIsHistorical, dateOrEpoch, setDateOrEpoch, involvedEntityIds, handleToggleInvolvedEntity,
     syncWithTimeline, setSyncWithTimeline, timelineTrackId, setTimelineTrackId, timelineImportance, setTimelineImportance,
-    existingTimelineEvent, scenesWithThisEvent, mentionStats, handleSubmit,
+    existingTimelineEvent, scenesWithThisEvent, detailedMentions, mentionStats, handleSubmit,
   };
 }

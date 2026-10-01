@@ -91,8 +91,12 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Componente moderno de portada de libro (`NovelCover.tsx`) con 8 estilos tipográficos por género y almacenamiento local en `HomeDashboard.tsx` (tarjetas, creación y edición).
 
 ### Subfase 2.4: Contador Automático de Menciones en el Manuscrito
-- Escaneo asíncrono y reactivo de los archivos `.md` del manuscrito para detectar menciones de nombres y alias.
-- Desglose cuantitativo de apariciones por escena, capítulo y acto.
+- [x] Motor de conteo optimizado (`mentionCounter.ts`, `mentionTypes.ts`, `mentionHierarchy.ts`) con caché por longitud de escena (`sceneTextCache`) y expresiones regulares Unicode compatibles con acentos y límites de palabra en español.
+- [x] Desglose cuantitativo y porcentual jerárquico por Actos, Capítulos y Escenas con cálculo de presencia global en la novela.
+- [x] Extracción contextual de citas (`snippets`) colapsadas por defecto con botón interactivo de despliegue ("Ver citas" / "Ocultar citas") para una interfaz limpia y respirable.
+- [x] Navegación directa en 1 clic desde las tarjetas de mención (`MentionsSceneCard.tsx`) hacia el editor de manuscrito seleccionando la escena automáticamente.
+- [x] Visualizador de distribución de ritmo narrativo por actos (`MentionsActBreakdown.tsx`) con barra porcentual tonal y acordeón plegable.
+- [x] Criterio de ordenación y filtrado rápido en el Códice para entidades sin menciones aún en el manuscrito (`unmentioned` en `CodexFilterBar.tsx`).
 
 ### Subfase 2.5: Grafo Visual de Relaciones
 - Adaptar `RelationshipMapView.tsx` con curvas Bezier orgánicas, nodos redondos limpios y sentimientos emocionales.

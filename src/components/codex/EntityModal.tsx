@@ -25,11 +25,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
   onNavigateToScene,
 }) => {
   const logic = useEntityModalLogic({
-    entity,
-    project,
-    onSave,
-    initialTab,
-    initialCategory,
+    entity, project, onSave, initialTab, initialCategory,
   });
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -152,6 +148,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                 onAddAlias={logic.handleAddAlias}
                 onRemoveAlias={logic.handleRemoveAlias}
                 mentionStats={logic.mentionStats}
+                detailedMentions={logic.detailedMentions}
                 onNavigateToScene={onNavigateToScene}
               />
             )}

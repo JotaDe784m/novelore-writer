@@ -1,4 +1,5 @@
 import { EntityCategory, EntityImage, NovelProject, Scene, TimelineEvent, WorldEntity } from "../../../types";
+import { EntityDetailedMentions } from "../../../utils/mentionTypes";
 
 export type DossierTab =
   | "identity"
@@ -82,6 +83,7 @@ export interface DossierMentionsTabProps {
   onAddAlias: (alias: string) => void;
   onRemoveAlias: (alias: string) => void;
   mentionStats: MentionStats;
+  detailedMentions?: EntityDetailedMentions;
   onNavigateToScene?: (sceneId: string) => void;
 }
 

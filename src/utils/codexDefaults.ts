@@ -63,7 +63,7 @@ export function filterAndSortEntities(
   selectedCategory: EntityCategory | "all",
   searchQuery: string,
   selectedTag: string,
-  sortBy: "default" | "most_mentions" | "least_mentions" | "name_asc",
+  sortBy: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc",
   mentionsMap: Record<string, { totalCount: number }> = {}
 ): import("../types").WorldEntity[] {
   const query = searchQuery.trim().toLowerCase();
@@ -101,6 +101,10 @@ export function filterAndSortEntities(
       const mB = mentionsMap[b.id]?.totalCount || 0;
       return mA - mB;
     });
+  } else if (sortBy === "unmentioned") {
+    result = result
+      .filter((e) => (mentionsMap[e.id]?.totalCount || 0) === 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   return result;

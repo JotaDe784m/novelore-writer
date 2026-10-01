@@ -7,7 +7,7 @@ export interface CodexStoreState {
   selectedCategory: EntityCategory | "all";
   searchQuery: string;
   selectedTag: string;
-  sortBy: "default" | "most_mentions" | "least_mentions" | "name_asc";
+  sortBy: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc";
   isSaving: boolean;
   lastSavedAt: Date | null;
   errorMessage: string | null;
@@ -34,7 +34,7 @@ export interface CodexStoreState {
   setSelectedCategory: (category: EntityCategory | "all") => void;
   setSearchQuery: (query: string) => void;
   setSelectedTag: (tag: string) => void;
-  setSortBy: (sort: "default" | "most_mentions" | "least_mentions" | "name_asc") => void;
+  setSortBy: (sort: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc") => void;
 
   // Selectores y Getters
   getEntityById: (id: string) => WorldEntity | undefined;

@@ -8,8 +8,8 @@ export interface CodexFilterBarProps {
   categoriesSummary: Record<EntityCategory | "all", number>;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  sortBy: "default" | "most_mentions" | "least_mentions" | "name_asc";
-  onSortByChange: (sort: "default" | "most_mentions" | "least_mentions" | "name_asc") => void;
+  sortBy: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc";
+  onSortByChange: (sort: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc") => void;
 }
 
 export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
@@ -85,6 +85,7 @@ export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
             <option value="default">Orden original</option>
             <option value="most_mentions">Más mencionados</option>
             <option value="least_mentions">Menos mencionados</option>
+            <option value="unmentioned">Sin menciones (pendientes)</option>
             <option value="name_asc">Nombre (A-Z)</option>
           </select>
         </div>

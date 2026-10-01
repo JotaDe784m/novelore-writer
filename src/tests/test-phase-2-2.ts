@@ -34,6 +34,7 @@ const dossierFiles = fs.readdirSync(dossierDir);
 
 dossierFiles.forEach((file) => {
   const filePath = path.join(dossierDir, file);
+  if (!fs.statSync(filePath).isFile()) return;
   const content = fs.readFileSync(filePath, "utf-8");
   const lineCount = content.split("\n").length;
   assert(
