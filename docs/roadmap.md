@@ -4,17 +4,17 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 
 ---
 
-## Estado Actual del Proyecto: **FASE 1 (EN PROCESO)**
+## Estado Actual del Proyecto: **FASE 2 COMPLETADA — PREPARANDO FASE 3**
 
 ```text
-[FASE 1: NÚCLEO DE ESCRITURA & UI] ──► [FASE 2: CÓDICE] ──► [FASE 3: PLANIFICACIÓN] ──► [FASE 4: PIZARRAS] ──► [FASE 5: MOTOR EDITORIAL]
-               ▲
-          (EN CURSO)
+[FASE 1: ESCRITURA] ──► [FASE 2: CÓDICE] ──► [FASE 3: PLANIFICACIÓN] ──► [FASE 4: PIZARRAS] ──► [FASE 5: MOTOR EDITORIAL]
+   (COMPLETADA)            (COMPLETADA)                    ▲
+                                                      (SIGUIENTE)
 ```
 
 ---
 
-## Fase 1: Núcleo de Escritura, Persistencia Local & Sistema de Diseño **[EN CURSO]**
+## Fase 1: Núcleo de Escritura, Persistencia Local & Sistema de Diseño [COMPLETADA]
 **Objetivo**: Establecer el entorno de escritorio en Electron, implementar el gestor de proyectos en carpetas del sistema de archivos, implantar el nuevo sistema de tokens y temas atmosféricos sin bordes, y habilitar un editor de manuscrito 100% operativo basado en archivos Markdown (`.md`).
 
 ### Subfase 1.1: Cascarón de Escritorio Electron & IPC Nativo [COMPLETADA]
@@ -67,22 +67,22 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 
 ---
 
-## Fase 2: Worldbuilding & Códice Local (Estilo Heptabase) **[EN PROGRESO]**
+## Fase 2: Worldbuilding & Códice Local (Estilo Heptabase) [COMPLETADA]
 **Objetivo**: Construir la enciclopedia del universo ficticio integrada con el sistema de archivos local y el texto del manuscrito, con tarjetas fluidas y sin rigidez administrativa.
 
-### Subfase 2.1: Persistencia del Códice (`codex.json`)
+### Subfase 2.1: Persistencia del Códice (`codex.json`) [COMPLETADA]
 - [x] Implementar `useCodexStore` para gestionar las 7 categorías de entidades: Personajes, Lugares, Facciones, Objetos, Conceptos, Eventos Históricos y Libre / General (`other`).
 - [x] Serialización estructurada y guardado desacoplado atómico en `codex.json` con canales IPC dedicados (`fs:saveCodex` y `fs:readCodex`).
 - [x] Arquitectura modular de componentes ($\le 250$ líneas) dividida en `src/components/codex/hub/` (`CodexHeader`, `CodexFilterBar`, `CodexEntityCard`, `CodexEmptyState`).
 - [x] Campos de atributos expandibles verticalmente hacia abajo en tarjetas y modal para lectura completa de textos largos.
 
-### Subfase 2.2: Dossiers y Atributos Dinámicos
+### Subfase 2.2: Dossiers y Atributos Dinámicos [COMPLETADA]
 - [x] Adaptar `EntityModal.tsx` con estética limpia de tarjeta de conocimiento (sin líneas de tabla densas).
 - [x] Plantillas de atributos dinámicos (Rol, Motivación, Miedos, Clima, etc.) y campos personalizados.
 - [x] Gestión de etiquetas sutiles, notas de trasfondo y alias/variantes del nombre con contador de menciones en tiempo real.
 - [x] Arquitectura modular de componentes ($\le 250$ líneas) dividida en `src/components/codex/dossier/` (`EntityModalHeader`, `DossierTabsNav`, `DossierIdentityTab`, `DossierAttributesTab`, `DossierMentionsTab`, `DossierEventLoreTab`, `DossierNotesTab`, `DossierColorPicker`).
 
-### Subfase 2.3: Gestión Local de Multimedia (`assets/gallery/` y `assets/covers/`)
+### Subfase 2.3: Gestión Local de Multimedia (`assets/gallery/` y `assets/covers/`) [COMPLETADA]
 - [x] Implementar canales IPC (`assets:saveImage`, `assets:deleteImage`) para copiar físicamente imágenes locales a `assets/gallery/` y `assets/covers/`.
 - [x] Protocolo nativo de Electron `novelore-asset://` para streaming seguro y de alto rendimiento de assets en etiquetas `<img>`.
 - [x] Almacenamiento de rutas relativas limpias en las entidades y metadatos de proyecto en lugar de Base64.
@@ -90,7 +90,7 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Visor *Lightbox* a pantalla completa (`ImageLightboxModal.tsx`) para las galerías de cada entidad con navegación por teclado.
 - [x] Componente moderno de portada de libro (`NovelCover.tsx`) con 8 estilos tipográficos por género y almacenamiento local en `HomeDashboard.tsx` (tarjetas, creación y edición).
 
-### Subfase 2.4: Contador Automático de Menciones en el Manuscrito
+### Subfase 2.4: Contador Automático de Menciones en el Manuscrito [COMPLETADA]
 - [x] Motor de conteo optimizado (`mentionCounter.ts`, `mentionTypes.ts`, `mentionHierarchy.ts`) con caché por longitud de escena (`sceneTextCache`) y expresiones regulares Unicode compatibles con acentos y límites de palabra en español.
 - [x] Desglose cuantitativo y porcentual jerárquico por Actos, Capítulos y Escenas con cálculo de presencia global en la novela.
 - [x] Extracción contextual de citas (`snippets`) colapsadas por defecto con botón interactivo de despliegue ("Ver citas" / "Ocultar citas") para una interfaz limpia y respirable.
@@ -98,7 +98,7 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Visualizador de distribución de ritmo narrativo por actos (`MentionsActBreakdown.tsx`) con barra porcentual tonal y acordeón plegable.
 - [x] Criterio de ordenación y filtrado rápido en el Códice para entidades sin menciones aún en el manuscrito (`unmentioned` en `CodexFilterBar.tsx`).
 
-### Subfase 2.5: Grafo Visual de Relaciones
+### Subfase 2.5: Grafo Visual de Relaciones [COMPLETADA]
 - [x] Persistencia atómica integrada en `codex.json` con canales IPC (`fs:saveCodex`, `fs:readCodex`) para almacenar entidades, relaciones, curvaturas personalizadas (`controlPoint`) y posiciones 2D (`relationshipPositions`).
 - [x] Refactorización modular completa de `RelationshipMapView.tsx` (de 1.218 líneas a submódulos de $\le 250$ líneas) dividida en `src/components/codex/relations/`.
 - [x] Curvas Bezier cuadráticas fluidas (`graphGeometry.ts`) con separación armónica automática entre múltiples enlaces del mismo par de entidades.
@@ -110,7 +110,7 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 
 ---
 
-## Fase 3: Planificación Narrativa & Línea Temporal **[PLANIFICADA]**
+## Fase 3: Planificación Narrativa & Línea Temporal **[SIGUIENTE / PLANIFICADA]**
 **Objetivo**: Proporcionar herramientas para el diseño dramático, temporal y rítmico de la historia.
 
 ### Subfase 3.1: Persistencia de Planificación (`planning.json`)
