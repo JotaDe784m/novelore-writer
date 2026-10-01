@@ -126,13 +126,13 @@ const mockProject: NovelProject = {
               title: "El despertar",
               content: "<p>Valeria abrió los ojos en la celda.</p>",
               order: 1,
-            },
+            } as any,
             {
               id: "sc-2",
               title: "La fuga",
               content: "<p>Val corrió por el pasillo oscuro gritando.</p>",
               order: 2,
-            },
+            } as any,
           ],
         },
       ],
@@ -152,19 +152,19 @@ const mockProject: NovelProject = {
               title: "El encuentro",
               content: "<p>Valeria se reunió con los rebeldes en la taberna.</p>",
               order: 1,
-            },
+            } as any,
             {
               id: "sc-4",
               title: "Tregua",
               content: "<p>La noche transcurrió en silencio sin sobresaltos.</p>",
               order: 2,
-            },
+            } as any,
           ],
         },
       ],
     },
   ],
-};
+} as any;
 
 const mockEntity: WorldEntity = {
   id: "ent-val",

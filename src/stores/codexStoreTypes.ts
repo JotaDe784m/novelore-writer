@@ -1,8 +1,10 @@
-import { EntityCategory, Relationship, RelationshipType, WorldEntity } from "../types";
+import { EntityCategory, Relationship, RelationshipCategory, RelationshipType, WorldEntity } from "../types";
 
 export interface CodexStoreState {
   entities: WorldEntity[];
   relationships: Relationship[];
+  relationshipPositions: Record<string, { x: number; y: number }>;
+  customRelationshipCategories: RelationshipCategory[];
   selectedEntityId: string | null;
   selectedCategory: EntityCategory | "all";
   searchQuery: string;
@@ -13,21 +15,44 @@ export interface CodexStoreState {
   errorMessage: string | null;
 
   // Acciones principales de datos
-  loadCodex: (entities: WorldEntity[], relationships?: Relationship[]) => void;
+  loadCodex: (
+    entities: WorldEntity[],
+    relationships?: Relationship[],
+    relationshipPositions?: Record<string, { x: number; y: number }>,
+    customRelationshipCategories?: RelationshipCategory[]
+  ) => void;
   addEntity: (category: EntityCategory, name?: string) => WorldEntity;
   updateEntity: (id: string, updates: Partial<WorldEntity>) => void;
   deleteEntity: (id: string) => void;
   duplicateEntity: (id: string) => WorldEntity | null;
 
-  // Acciones de relaciones
+  // Acciones de relaciones y grafo
   addRelationship: (
     sourceEntityId: string,
     targetEntityId: string,
     type: RelationshipType,
-    label?: string
+    label?: string,
+    sentiment?: "positive" | "neutral" | "negative" | "complex",
+    description?: string
   ) => Relationship;
   updateRelationship: (id: string, updates: Partial<Relationship>) => void;
   deleteRelationship: (id: string) => void;
+  updateNodePosition: (entityId: string, position: { x: number; y: number }, save?: boolean) => void;
+  updateNodePositions: (positions: Record<string, { x: number; y: number }>, save?: boolean) => void;
+  updateRelationshipControlPoint: (
+    relationshipId: string,
+    point?: { x: number; y: number },
+    save?: boolean
+  ) => void;
+  resetRelationshipControlPoints: () => void;
+  addRelationshipCategory: (
+    category: Omit<RelationshipCategory, "id" | "isCustom">
+  ) => RelationshipCategory;
+  updateRelationshipCategory: (
+    id: string,
+    updates: Partial<RelationshipCategory>
+  ) => void;
+  deleteRelationshipCategory: (id: string) => void;
 
   // Acciones de UI y filtros
   setSelectedEntityId: (id: string | null) => void;

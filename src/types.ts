@@ -65,6 +65,18 @@ export interface Act {
   chapters: Chapter[];
 }
 
+export type RelationshipLineStyle = "solid" | "dashed" | "dotted";
+
+export interface RelationshipCategory {
+  id: string;
+  label: string;
+  badge: string;
+  color: string;
+  lineStyle: RelationshipLineStyle;
+  isCustom?: boolean;
+  description?: string;
+}
+
 export type RelationshipType =
   | "ally"
   | "enemy"
@@ -78,7 +90,9 @@ export type RelationshipType =
   | "friendly"
   | "hostile"
   | "romantic"
-  | "friend";
+  | "friend"
+  | "other"
+  | (string & {});
 
 export interface Relationship {
   id: string;
@@ -89,6 +103,8 @@ export interface Relationship {
   notes?: string;
   description?: string;
   sentiment?: "positive" | "neutral" | "negative" | "complex";
+  lineStyle?: RelationshipLineStyle;
+  color?: string;
   controlPoint?: { x: number; y: number }; // Posición del punto de control / curva arrastrable
 }
 
@@ -289,6 +305,7 @@ export interface NovelProject {
   timelineEvents: TimelineEvent[];
   storyBeats: StoryBeat[];
   relationshipPositions?: Record<string, { x: number; y: number }>;
+  relationshipCategories?: RelationshipCategory[];
   whiteboard?: MoodboardCanvas; // Pizarra interactiva de imágenes, notas, formas y flechas
   /**
    * Versión del esquema de persistencia cloud (Fase 2.2 y 2.2.1):

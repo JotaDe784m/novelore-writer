@@ -76,7 +76,12 @@ export interface ElectronAPI {
     success: boolean;
     error?: string;
   }>;
-  saveCodex: (data: { entities: any[]; relationships: any[] }) => Promise<{
+  saveCodex: (data: {
+    entities: any[];
+    relationships: any[];
+    relationshipPositions?: Record<string, { x: number; y: number }>;
+    customRelationshipCategories?: any[];
+  }) => Promise<{
     success: boolean;
     error?: string;
   }>;
@@ -84,6 +89,8 @@ export interface ElectronAPI {
     success: boolean;
     entities?: any[];
     relationships?: any[];
+    relationshipPositions?: Record<string, { x: number; y: number }>;
+    customRelationshipCategories?: any[];
     error?: string;
   }>;
   saveAssetImage: (options: {

@@ -94,15 +94,23 @@ declare global {
       saveCodex: (data: {
         entities: any[];
         relationships: any[];
+        relationshipPositions?: Record<string, { x: number; y: number }>;
+        customRelationshipCategories?: any[];
       }) => Promise<{
         success: boolean;
         error?: string;
       }>;
       readCodex: () => Promise<{
         success: boolean;
+        entities?: any[];
+        relationships?: any[];
+        relationshipPositions?: Record<string, { x: number; y: number }>;
+        customRelationshipCategories?: any[];
         codex?: {
           entities: any[];
           relationships: any[];
+          relationshipPositions?: Record<string, { x: number; y: number }>;
+          customRelationshipCategories?: any[];
         };
         error?: string;
       }>;
@@ -420,6 +428,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       const codexData = {
         entities: targetProject.entities || [],
         relationships: targetProject.relationships || [],
+        relationshipPositions: targetProject.relationshipPositions || {},
       };
 
       const planningData = {

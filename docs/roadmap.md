@@ -99,7 +99,14 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Criterio de ordenación y filtrado rápido en el Códice para entidades sin menciones aún en el manuscrito (`unmentioned` en `CodexFilterBar.tsx`).
 
 ### Subfase 2.5: Grafo Visual de Relaciones
-- Adaptar `RelationshipMapView.tsx` con curvas Bezier orgánicas, nodos redondos limpios y sentimientos emocionales.
+- [x] Persistencia atómica integrada en `codex.json` con canales IPC (`fs:saveCodex`, `fs:readCodex`) para almacenar entidades, relaciones, curvaturas personalizadas (`controlPoint`) y posiciones 2D (`relationshipPositions`).
+- [x] Refactorización modular completa de `RelationshipMapView.tsx` (de 1.218 líneas a submódulos de $\le 250$ líneas) dividida en `src/components/codex/relations/`.
+- [x] Curvas Bezier cuadráticas fluidas (`graphGeometry.ts`) con separación armónica automática entre múltiples enlaces del mismo par de entidades.
+- [x] Nodos circulares orgánicos con avatares, anillos de acento y colores semánticos por categoría (`RelationshipNodesLayer.tsx`).
+- [x] Categorización flexible con arquetipos base y creación ilimitada de categorías personalizadas por el autor (`RelationshipCategorySelector.tsx`, `useCodexStore.ts`), permitiendo configurar nombre, color personalizado y estilos de línea de enlace (`solid` / continua, `dashed` / discontinua, `dotted` / punteada) aplicables a cualquier tipo de entidad (personajes, lugares, facciones, magia).
+- [x] Insignias interactivas arrastrables para arquear enlaces manualmente y evitar cruces visuales en redes densas (`RelationshipLinksLayer.tsx`).
+- [x] Inspector lateral deslizable (`RelationshipDetailSidebar.tsx`) con sumario, atributos, acceso directo a la pizarra visual de la entidad y gestión de conexiones.
+- [x] Barra de herramientas con diseño tonal suave, controles de zoom, "Distribuir en Círculo" y "Alinear Curvas" (`RelationshipMapHeader.tsx`).
 
 ---
 

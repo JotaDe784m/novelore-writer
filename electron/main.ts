@@ -152,6 +152,7 @@ async function initOrLoadProject(
         acts,
         entities: codexMeta.entities || [],
         relationships: codexMeta.relationships || [],
+        relationshipPositions: codexMeta.relationshipPositions || projectMeta.relationshipPositions || {},
         timelineTracks: planningMeta.timelineTracks || [],
         timelineEvents: planningMeta.timelineEvents || [],
         storyBeats: planningMeta.storyBeats || [],
@@ -253,7 +254,7 @@ async function initOrLoadProject(
       ],
     };
 
-    const initialCodex = { entities: [], relationships: [] };
+    const initialCodex = { entities: [], relationships: [], relationshipPositions: {} };
     const initialPlanning = {
       timelineTracks: [
         { id: "trk-main", name: "Trama Principal", color: "#3b82f6", description: "Línea principal", isMainPlot: true },
@@ -273,6 +274,7 @@ async function initOrLoadProject(
       acts: initialManuscript.acts,
       entities: initialCodex.entities,
       relationships: initialCodex.relationships,
+      relationshipPositions: initialCodex.relationshipPositions,
       timelineTracks: initialPlanning.timelineTracks,
       timelineEvents: initialPlanning.timelineEvents,
       storyBeats: initialPlanning.storyBeats,
@@ -611,13 +613,20 @@ ipcMain.handle("fs:saveProjectJson", async (_event, projectData: any) => {
 });
 
 // 8. Guardado y lectura atómica del Códice (codex.json)
-ipcMain.handle("fs:saveCodex", async (_event, data: { entities?: any[]; relationships?: any[] }) => {
+ipcMain.handle("fs:saveCodex", async (_event, data: { entities?: any[]; relationships?: any[]; relationshipPositions?: any; customRelationshipCategories?: any[] }) => {
   if (!currentProjectPath) return { success: false, error: "No hay proyecto abierto." };
   try {
     const codexJsonPath = path.join(currentProjectPath, "codex.json");
     const codexPayload = {
       entities: Array.isArray(data?.entities) ? data.entities : [],
       relationships: Array.isArray(data?.relationships) ? data.relationships : [],
+      relationshipPositions:
+        data?.relationshipPositions && typeof data.relationshipPositions === "object"
+          ? data.relationshipPositions
+          : {},
+      customRelationshipCategories: Array.isArray(data?.customRelationshipCategories)
+        ? data.customRelationshipCategories
+        : [],
     };
     await writeAtomic(codexJsonPath, JSON.stringify(codexPayload, null, 2));
 
@@ -647,9 +656,11 @@ ipcMain.handle("fs:readCodex", async () => {
         success: true,
         entities: parsed.entities || [],
         relationships: parsed.relationships || [],
+        relationshipPositions: parsed.relationshipPositions || {},
+        customRelationshipCategories: parsed.customRelationshipCategories || [],
       };
     }
-    return { success: true, entities: [], relationships: [] };
+    return { success: true, entities: [], relationships: [], relationshipPositions: {}, customRelationshipCategories: [] };
   } catch (err: any) {
     return { success: false, error: err.message };
   }

@@ -1,10 +1,6 @@
 import { create } from "zustand";
-import { Relationship, WorldEntity } from "../types";
-import {
-  filterAndSortEntities,
-  getDefaultCategoryColor,
-  getDefaultEntityName,
-} from "../utils/codexDefaults";
+import { Relationship, RelationshipCategory, WorldEntity } from "../types";
+import { filterAndSortEntities, getDefaultCategoryColor, getDefaultEntityName } from "../utils/codexDefaults";
 import { CodexStoreState } from "./codexStoreTypes";
 import { useProjectStore } from "./useProjectStore";
 
@@ -12,32 +8,29 @@ export type { CodexStoreState };
 
 let codexSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 
-const getElectronAPI = () => {
-  if (typeof window !== "undefined" && window.electronAPI) {
-    return window.electronAPI;
-  }
-  return undefined;
-};
+const getElectronAPI = () => (typeof window !== "undefined" ? window.electronAPI : undefined);
 
 export const useCodexStore = create<CodexStoreState>((set, get) => {
-  // Función auxiliar interna para persistencia con debounce y sincronización
   const triggerDebouncedSave = (
-    updatedEntities: WorldEntity[],
-    updatedRelationships: Relationship[]
+    entities: WorldEntity[],
+    relationships: Relationship[],
+    updatedPositions?: Record<string, { x: number; y: number }>,
+    updatedCategories?: RelationshipCategory[]
   ) => {
-    // 1. Sincronizar en memoria con useProjectStore para reactividad inmediata en toda la app
+    const positions = updatedPositions ?? get().relationshipPositions;
+    const customRelationshipCategories = updatedCategories ?? get().customRelationshipCategories;
     const projectStore = useProjectStore.getState();
-    const currentProj = projectStore.project;
-    if (currentProj) {
+    if (projectStore.project) {
       projectStore.setProject({
-        ...currentProj,
-        entities: updatedEntities,
-        relationships: updatedRelationships,
+        ...projectStore.project,
+        entities,
+        relationships,
+        relationshipPositions: positions,
+        relationshipCategories: customRelationshipCategories,
         updatedAt: new Date().toISOString(),
       });
     }
 
-    // 2. Debounce de 500 ms para guardado atómico en codex.json
     set({ isSaving: true });
     if (codexSaveTimeout) clearTimeout(codexSaveTimeout);
 
@@ -46,16 +39,13 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
       if (electronAPI?.saveCodex) {
         try {
           const res = await electronAPI.saveCodex({
-            entities: updatedEntities,
-            relationships: updatedRelationships,
+            entities,
+            relationships,
+            relationshipPositions: positions,
+            customRelationshipCategories,
           });
-          if (res.success) {
-            set({ isSaving: false, lastSavedAt: new Date(), errorMessage: null });
-          } else {
-            set({ isSaving: false, errorMessage: res.error || "Error al guardar códice" });
-          }
+          set({ isSaving: false, lastSavedAt: res.success ? new Date() : get().lastSavedAt, errorMessage: res.error || null });
         } catch (err: any) {
-          console.error("Error al persistir codex.json:", err);
           set({ isSaving: false, errorMessage: err.message });
         }
       } else {
@@ -67,6 +57,8 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
   return {
     entities: [],
     relationships: [],
+    relationshipPositions: {},
+    customRelationshipCategories: [],
     selectedEntityId: null,
     selectedCategory: "all",
     searchQuery: "",
@@ -76,152 +68,178 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
     lastSavedAt: null,
     errorMessage: null,
 
-    loadCodex: (entities, relationships = []) => {
+    loadCodex: (entities, relationships = [], relationshipPositions = {}, customRelationshipCategories = []) => {
       set({
         entities: Array.isArray(entities) ? entities : [],
         relationships: Array.isArray(relationships) ? relationships : [],
+        relationshipPositions: relationshipPositions && typeof relationshipPositions === "object" ? relationshipPositions : {},
+        customRelationshipCategories: Array.isArray(customRelationshipCategories) ? customRelationshipCategories : [],
         errorMessage: null,
       });
     },
 
     addEntity: (category, name) => {
-      const { entities, relationships } = get();
+      const { entities, relationships, relationshipPositions } = get();
       const id = `ent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const newEntity: WorldEntity = {
-        id,
-        category,
-        name: name?.trim() || getDefaultEntityName(category),
-        summary: "",
-        tags: [],
-        aliases: [],
-        attributes: {},
-        notes: "",
-        color: getDefaultCategoryColor(category),
-        relationships: [],
+        id, category, name: name?.trim() || getDefaultEntityName(category),
+        summary: "", tags: [], aliases: [], attributes: {}, notes: "",
+        color: getDefaultCategoryColor(category), relationships: [],
       };
-
-      const nextEntities = [...entities, newEntity];
-      set({ entities: nextEntities, selectedEntityId: id });
-      triggerDebouncedSave(nextEntities, relationships);
+      const next = [...entities, newEntity];
+      set({ entities: next, selectedEntityId: id });
+      triggerDebouncedSave(next, relationships, relationshipPositions);
       return newEntity;
     },
 
     updateEntity: (id, updates) => {
-      const { entities, relationships } = get();
-      const nextEntities = entities.map((ent) =>
-        ent.id === id ? { ...ent, ...updates } : ent
-      );
-      set({ entities: nextEntities });
-      triggerDebouncedSave(nextEntities, relationships);
+      const { entities, relationships, relationshipPositions } = get();
+      const next = entities.map((ent) => (ent.id === id ? { ...ent, ...updates } : ent));
+      set({ entities: next });
+      triggerDebouncedSave(next, relationships, relationshipPositions);
     },
 
     deleteEntity: (id) => {
-      const { entities, relationships, selectedEntityId } = get();
+      const { entities, relationships, relationshipPositions, selectedEntityId } = get();
       const nextEntities = entities.filter((ent) => ent.id !== id);
-      // Limpieza en cascada: eliminar relaciones asociadas
-      const nextRelationships = relationships.filter(
-        (rel) => rel.sourceEntityId !== id && rel.targetEntityId !== id
-      );
-
+      const nextRelationships = relationships.filter((r) => r.sourceEntityId !== id && r.targetEntityId !== id);
+      const nextPositions = { ...relationshipPositions };
+      delete nextPositions[id];
       set({
-        entities: nextEntities,
-        relationships: nextRelationships,
+        entities: nextEntities, relationships: nextRelationships, relationshipPositions: nextPositions,
         selectedEntityId: selectedEntityId === id ? null : selectedEntityId,
       });
-      triggerDebouncedSave(nextEntities, nextRelationships);
+      triggerDebouncedSave(nextEntities, nextRelationships, nextPositions);
     },
 
     duplicateEntity: (id) => {
-      const { entities, relationships } = get();
-      const original = entities.find((e) => e.id === id);
-      if (!original) return null;
-
+      const { entities, relationships, relationshipPositions } = get();
+      const orig = entities.find((e) => e.id === id);
+      if (!orig) return null;
       const newId = `ent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      const duplicate: WorldEntity = {
-        ...original,
-        id: newId,
-        name: `${original.name} (Copia)`,
-        relationships: [],
-      };
-
-      const nextEntities = [...entities, duplicate];
-      set({ entities: nextEntities, selectedEntityId: newId });
-      triggerDebouncedSave(nextEntities, relationships);
+      const duplicate: WorldEntity = { ...orig, id: newId, name: `${orig.name} (Copia)`, relationships: [] };
+      const next = [...entities, duplicate];
+      set({ entities: next, selectedEntityId: newId });
+      triggerDebouncedSave(next, relationships, relationshipPositions);
       return duplicate;
     },
 
-    addRelationship: (sourceEntityId, targetEntityId, type, label) => {
-      const { entities, relationships } = get();
-      const id = `rel-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    addRelationship: (sourceEntityId, targetEntityId, type, label, sentiment, description) => {
+      const { entities, relationships, relationshipPositions } = get();
       const newRel: Relationship = {
-        id,
-        sourceEntityId,
-        targetEntityId,
-        type,
+        id: `rel-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        sourceEntityId, targetEntityId, type,
         label: label || type,
-        sentiment: "neutral",
+        sentiment: sentiment || "neutral",
+        description: description || undefined,
       };
-
-      const nextRelationships = [...relationships, newRel];
-      set({ relationships: nextRelationships });
-      triggerDebouncedSave(entities, nextRelationships);
+      const next = [...relationships, newRel];
+      set({ relationships: next });
+      triggerDebouncedSave(entities, next, relationshipPositions);
       return newRel;
     },
 
     updateRelationship: (id, updates) => {
-      const { entities, relationships } = get();
-      const nextRelationships = relationships.map((rel) =>
-        rel.id === id ? { ...rel, ...updates } : rel
-      );
-      set({ relationships: nextRelationships });
-      triggerDebouncedSave(entities, nextRelationships);
+      const { entities, relationships, relationshipPositions } = get();
+      const next = relationships.map((rel) => (rel.id === id ? { ...rel, ...updates } : rel));
+      set({ relationships: next });
+      triggerDebouncedSave(entities, next, relationshipPositions);
     },
 
     deleteRelationship: (id) => {
-      const { entities, relationships } = get();
-      const nextRelationships = relationships.filter((rel) => rel.id !== id);
-      set({ relationships: nextRelationships });
-      triggerDebouncedSave(entities, nextRelationships);
+      const { entities, relationships, relationshipPositions } = get();
+      const next = relationships.filter((rel) => rel.id !== id);
+      set({ relationships: next });
+      triggerDebouncedSave(entities, next, relationshipPositions);
     },
 
-    setSelectedEntityId: (id) => set({ selectedEntityId: id }),
-    setSelectedCategory: (category) => set({ selectedCategory: category }),
-    setSearchQuery: (query) => set({ searchQuery: query }),
-    setSelectedTag: (tag) => set({ selectedTag: tag }),
+    updateNodePosition: (entityId, pos, save = true) => {
+      const { entities, relationships, relationshipPositions } = get();
+      const next = { ...relationshipPositions, [entityId]: pos };
+      set({ relationshipPositions: next });
+      if (save) {
+        triggerDebouncedSave(entities, relationships, next);
+      }
+    },
+
+    updateNodePositions: (positions, save = true) => {
+      const { entities, relationships, relationshipPositions } = get();
+      const next = { ...relationshipPositions, ...positions };
+      set({ relationshipPositions: next });
+      if (save) {
+        triggerDebouncedSave(entities, relationships, next);
+      }
+    },
+
+    updateRelationshipControlPoint: (relId, point, save = true) => {
+      const { entities, relationships, relationshipPositions } = get();
+      const next = relationships.map((r) => (r.id === relId ? { ...r, controlPoint: point } : r));
+      set({ relationships: next });
+      if (save) {
+        triggerDebouncedSave(entities, next, relationshipPositions);
+      }
+    },
+
+    resetRelationshipControlPoints: () => {
+      const { entities, relationships, relationshipPositions, customRelationshipCategories } = get();
+      const next = relationships.map((r) => ({ ...r, controlPoint: undefined }));
+      set({ relationships: next });
+      triggerDebouncedSave(entities, next, relationshipPositions, customRelationshipCategories);
+    },
+
+    addRelationshipCategory: (category) => {
+      const { entities, relationships, relationshipPositions, customRelationshipCategories } = get();
+      const id = `rcat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const newCategory: RelationshipCategory = {
+        ...category,
+        id,
+        isCustom: true,
+      };
+      const next = [...customRelationshipCategories, newCategory];
+      set({ customRelationshipCategories: next });
+      triggerDebouncedSave(entities, relationships, relationshipPositions, next);
+      return newCategory;
+    },
+
+    updateRelationshipCategory: (id, updates) => {
+      const { entities, relationships, relationshipPositions, customRelationshipCategories } = get();
+      const next = customRelationshipCategories.map((c) => (c.id === id ? { ...c, ...updates } : c));
+      set({ customRelationshipCategories: next });
+      triggerDebouncedSave(entities, relationships, relationshipPositions, next);
+    },
+
+    deleteRelationshipCategory: (id) => {
+      const { entities, relationships, relationshipPositions, customRelationshipCategories } = get();
+      const next = customRelationshipCategories.filter((c) => c.id !== id);
+      set({ customRelationshipCategories: next });
+      triggerDebouncedSave(entities, relationships, relationshipPositions, next);
+    },
+
+    setSelectedEntityId: (selectedEntityId) => set({ selectedEntityId }),
+    setSelectedCategory: (selectedCategory) => set({ selectedCategory }),
+    setSearchQuery: (searchQuery) => set({ searchQuery }),
+    setSelectedTag: (selectedTag) => set({ selectedTag }),
     setSortBy: (sortBy) => set({ sortBy }),
 
     getEntityById: (id) => get().entities.find((e) => e.id === id),
-    getEntitiesByCategory: (category) =>
-      get().entities.filter((e) => e.category === category),
-    getRelationshipsForEntity: (entityId) =>
-      get().relationships.filter(
-        (r) => r.sourceEntityId === entityId || r.targetEntityId === entityId
-      ),
+    getEntitiesByCategory: (category) => get().entities.filter((e) => e.category === category),
+    getRelationshipsForEntity: (id) =>
+      get().relationships.filter((r) => r.sourceEntityId === id || r.targetEntityId === id),
 
     getCategoriesSummary: () => {
-      const { entities } = get();
+      const counts: Record<string, number> = { all: get().entities.length };
+      for (const e of get().entities) counts[e.category] = (counts[e.category] || 0) + 1;
       return {
-        all: entities.length,
-        character: entities.filter((e) => e.category === "character").length,
-        location: entities.filter((e) => e.category === "location").length,
-        faction: entities.filter((e) => e.category === "faction").length,
-        item: entities.filter((e) => e.category === "item").length,
-        concept: entities.filter((e) => e.category === "concept").length,
-        event: entities.filter((e) => e.category === "event").length,
-        other: entities.filter((e) => e.category === "other").length,
+        all: counts.all,
+        character: counts.character || 0, location: counts.location || 0,
+        faction: counts.faction || 0, item: counts.item || 0,
+        concept: counts.concept || 0, event: counts.event || 0, other: counts.other || 0,
       };
     },
 
     getFilteredEntities: (mentionsMap = {}) => {
       const { entities, selectedCategory, searchQuery, selectedTag, sortBy } = get();
-      return filterAndSortEntities(
-        entities,
-        selectedCategory,
-        searchQuery,
-        selectedTag,
-        sortBy,
-        mentionsMap
-      );
+      return filterAndSortEntities(entities, selectedCategory, searchQuery, selectedTag, sortBy, mentionsMap);
     },
   };
 });

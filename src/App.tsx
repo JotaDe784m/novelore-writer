@@ -365,6 +365,10 @@ export const App: React.FC = () => {
                       setDossierInitialTab("whiteboard");
                       setDossierEntityId(entityId);
                     }}
+                    onOpenEntityDossier={(entityId) => {
+                      setDossierInitialTab("details");
+                      setDossierEntityId(entityId);
+                    }}
                   />
                 )}
 
