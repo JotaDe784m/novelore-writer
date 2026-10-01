@@ -153,7 +153,6 @@ async function initOrLoadProject(
         entities: codexMeta.entities || [],
         relationships: codexMeta.relationships || [],
         relationshipPositions: codexMeta.relationshipPositions || projectMeta.relationshipPositions || {},
-        relationshipCategories: codexMeta.relationshipCategories || projectMeta.relationshipCategories || [],
         timelineTracks: planningMeta.timelineTracks || [],
         timelineEvents: planningMeta.timelineEvents || [],
         storyBeats: planningMeta.storyBeats || [],
@@ -276,7 +275,6 @@ async function initOrLoadProject(
       entities: initialCodex.entities,
       relationships: initialCodex.relationships,
       relationshipPositions: initialCodex.relationshipPositions,
-      relationshipCategories: [],
       timelineTracks: initialPlanning.timelineTracks,
       timelineEvents: initialPlanning.timelineEvents,
       storyBeats: initialPlanning.storyBeats,
@@ -355,29 +353,6 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }
-
-  let isClosing = false;
-  mainWindow.on("close", async (e) => {
-    if (isClosing) return;
-    e.preventDefault();
-    isClosing = true;
-    try {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        await Promise.race([
-          mainWindow.webContents.executeJavaScript(
-            "typeof window.__noveloreFlushSaves === 'function' ? window.__noveloreFlushSaves() : Promise.resolve()"
-          ),
-          new Promise((resolve) => setTimeout(resolve, 800)),
-        ]);
-      }
-    } catch (err) {
-      console.error("[Electron] Error al vaciar guardados antes de cerrar:", err);
-    } finally {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.destroy();
-      }
-    }
-  });
 
   mainWindow.on("closed", () => {
     mainWindow = null;

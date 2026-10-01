@@ -67,15 +67,12 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
     if (exists) {
       updateEntity(saved.id, saved);
     } else {
-      const codexStore = useCodexStore.getState();
       const next = [...entities, saved];
-      codexStore.loadCodex(
-        next,
-        relationships,
-        codexStore.relationshipPositions,
-        codexStore.customRelationshipCategories
-      );
-      codexStore.saveCodexImmediately();
+      useCodexStore.getState().loadCodex(next, relationships);
+      const electronAPI = typeof window !== "undefined" ? window.electronAPI : undefined;
+      if (electronAPI?.saveCodex) {
+        electronAPI.saveCodex({ entities: next, relationships });
+      }
     }
 
     // Sincronizar hacia project por retrocompatibilidad
