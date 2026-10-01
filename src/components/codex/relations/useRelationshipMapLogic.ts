@@ -37,26 +37,39 @@ export function useRelationshipMapLogic({ project }: UseRelationshipMapLogicProp
   const relDragClientStartRef = useRef<Point2D>({ x: 0, y: 0 });
 
   // Inicializar posiciones de nodos si faltan
+  const entitiesKey = useMemo(() => entities.map((e) => e.id).sort().join(","), [entities]);
+
   useEffect(() => {
-    const currentPositions = store.relationshipPositions || project.relationshipPositions || {};
+    if (entities.length === 0) return;
+    const currentPositions = useCodexStore.getState().relationshipPositions || {};
     const missing = entities.filter((e) => !currentPositions[e.id]);
-    if (missing.length > 0) {
-      const allIds = entities.map((e) => e.id);
+    if (missing.length === 0) return;
+
+    const allIds = entities.map((e) => e.id);
+    if (Object.keys(currentPositions).length === 0) {
       const generated = generateCircularLayout(allIds);
-      const merged = { ...generated, ...currentPositions };
-      store.updateNodePositions(merged);
+      useCodexStore.getState().updateNodePositions(generated, true);
+    } else {
+      const generated = generateCircularLayout(allIds);
+      const updated = { ...currentPositions };
+      missing.forEach((m) => {
+        if (!updated[m.id]) {
+          updated[m.id] = generated[m.id] || { x: 500, y: 400 };
+        }
+      });
+      useCodexStore.getState().updateNodePositions(updated, true);
     }
-  }, [entities, store, project.relationshipPositions]);
+  }, [entitiesKey]);
 
   const handleRearrangeCircle = useCallback(() => {
     const allIds = entities.map((e) => e.id);
     const layout = generateCircularLayout(allIds);
-    store.updateNodePositions(layout);
-  }, [entities, store]);
+    useCodexStore.getState().updateNodePositions(layout, true);
+  }, [entities]);
 
   const handleResetCurves = useCallback(() => {
-    store.resetRelationshipControlPoints();
-  }, [store]);
+    useCodexStore.getState().resetRelationshipControlPoints();
+  }, []);
 
   // Manejadores de Canvas Pan / Zoom
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
@@ -112,59 +125,81 @@ export function useRelationshipMapLogic({ project }: UseRelationshipMapLogicProp
     dragRelOffsetRef.current = { x: mouseCanvasX - currentBadgeX, y: mouseCanvasY - currentBadgeY };
   };
 
-  // Movimiento global del ratón
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (draggingNodeId) {
-      hasMovedNodeRef.current = true;
-      const mouseCanvasX = (e.clientX - pan.x) / zoom;
-      const mouseCanvasY = (e.clientY - pan.y) / zoom;
-      const newX = Math.round(mouseCanvasX - dragNodeOffsetRef.current.x);
-      const newY = Math.round(mouseCanvasY - dragNodeOffsetRef.current.y);
-      store.updateNodePosition(draggingNodeId, { x: newX, y: newY }, false);
-    } else if (draggingRelId) {
-      const dist = Math.hypot(e.clientX - relDragClientStartRef.current.x, e.clientY - relDragClientStartRef.current.y);
-      if (dist > 4) hasMovedRelRef.current = true;
+  // Movimiento del ratón
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent | MouseEvent) => {
+      if (draggingNodeId) {
+        hasMovedNodeRef.current = true;
+        const mouseCanvasX = (e.clientX - pan.x) / zoom;
+        const mouseCanvasY = (e.clientY - pan.y) / zoom;
+        const newX = Math.round(mouseCanvasX - dragNodeOffsetRef.current.x);
+        const newY = Math.round(mouseCanvasY - dragNodeOffsetRef.current.y);
+        useCodexStore.getState().updateNodePosition(draggingNodeId, { x: newX, y: newY }, false);
+      } else if (draggingRelId) {
+        const dist = Math.hypot(e.clientX - relDragClientStartRef.current.x, e.clientY - relDragClientStartRef.current.y);
+        if (dist > 4) hasMovedRelRef.current = true;
 
-      const mouseCanvasX = (e.clientX - pan.x) / zoom;
-      const mouseCanvasY = (e.clientY - pan.y) / zoom;
-      const newBadgeX = mouseCanvasX - dragRelOffsetRef.current.x;
-      const newBadgeY = mouseCanvasY - dragRelOffsetRef.current.y;
+        const mouseCanvasX = (e.clientX - pan.x) / zoom;
+        const mouseCanvasY = (e.clientY - pan.y) / zoom;
+        const newBadgeX = mouseCanvasX - dragRelOffsetRef.current.x;
+        const newBadgeY = mouseCanvasY - dragRelOffsetRef.current.y;
 
-      const rel = relationships.find((r) => r.id === draggingRelId);
-      if (rel) {
-        const posA = store.relationshipPositions[rel.sourceEntityId];
-        const posB = store.relationshipPositions[rel.targetEntityId];
-        if (posA && posB) {
-          const cp = calculateBezierControlPoint(
-            posA,
-            posB,
-            { x: newBadgeX, y: newBadgeY }
-          );
-          store.updateRelationshipControlPoint(draggingRelId, cp, false);
+        const rel = relationships.find((r) => r.id === draggingRelId);
+        if (rel) {
+          const codexState = useCodexStore.getState();
+          const posA = codexState.relationshipPositions[rel.sourceEntityId];
+          const posB = codexState.relationshipPositions[rel.targetEntityId];
+          if (posA && posB) {
+            const cp = calculateBezierControlPoint(posA, posB, { x: newBadgeX, y: newBadgeY });
+            codexState.updateRelationshipControlPoint(draggingRelId, cp, false);
+          }
         }
+      } else if (isPanning) {
+        setPan({ x: e.clientX - panStartRef.current.x, y: e.clientY - panStartRef.current.y });
       }
-    } else if (isPanning) {
-      setPan({ x: e.clientX - panStartRef.current.x, y: e.clientY - panStartRef.current.y });
-    }
-  };
+    },
+    [draggingNodeId, draggingRelId, isPanning, pan.x, pan.y, relationships, zoom]
+  );
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     if (draggingNodeId && hasMovedNodeRef.current) {
-      const currentPos = store.relationshipPositions[draggingNodeId];
+      const codexState = useCodexStore.getState();
+      const currentPos = codexState.relationshipPositions[draggingNodeId];
       if (currentPos) {
-        store.updateNodePosition(draggingNodeId, currentPos, true);
+        codexState.updateNodePosition(draggingNodeId, currentPos, true);
       }
     }
     if (draggingRelId && hasMovedRelRef.current) {
-      const rel = store.relationships.find((r) => r.id === draggingRelId);
+      const codexState = useCodexStore.getState();
+      const rel = codexState.relationships.find((r) => r.id === draggingRelId);
       if (rel) {
-        store.updateRelationshipControlPoint(draggingRelId, rel.controlPoint, true);
+        codexState.updateRelationshipControlPoint(draggingRelId, rel.controlPoint, true);
       }
     }
     setDraggingNodeId(null);
     setDraggingRelId(null);
     setIsPanning(false);
-  };
+  }, [draggingNodeId, draggingRelId]);
+
+  // Registrar eventos en window para arrastre fluido incluso fuera del canvas
+  useEffect(() => {
+    if (!draggingNodeId && !draggingRelId && !isPanning) return;
+
+    const onGlobalMouseMove = (e: MouseEvent) => {
+      handleMouseMove(e);
+    };
+    const onGlobalMouseUp = () => {
+      handleMouseUp();
+    };
+
+    window.addEventListener("mousemove", onGlobalMouseMove);
+    window.addEventListener("mouseup", onGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", onGlobalMouseMove);
+      window.removeEventListener("mouseup", onGlobalMouseUp);
+    };
+  }, [draggingNodeId, draggingRelId, isPanning, handleMouseMove, handleMouseUp]);
 
   const selectedEntity = useMemo(
     () => entities.find((e) => e.id === selectedEntityId) || null,
