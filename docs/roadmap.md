@@ -110,25 +110,35 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 
 ---
 
-## Fase 3: Planificación Narrativa & Línea Temporal **[SIGUIENTE / PLANIFICADA]**
-**Objetivo**: Proporcionar herramientas para el diseño dramático, temporal y rítmico de la historia.
+## Fase 3: Planificación Narrativa & Línea Temporal **[EN PROCESO]**
+**Objetivo**: Proporcionar herramientas orgánicas para el diseño temporal, estructural y panorámico de la novela, bajo la filosofía de soberanía autoral y libertad creativa (sin imposición de fórmulas dramáticas matemáticas prefabricadas).
 
-### Subfase 3.1: Persistencia de Planificación (`planning.json`)
-- Implementar `usePlanningStore` para persistir pistas cronológicas, eventos temporales y arcos narrativos.
+### Subfase 3.1: Persistencia de Planificación (`planning.json`), Rediseño Zen y Tarjetas de Entidad [COMPLETADA]
+- [x] Persistencia atómica local en `planning.json` coordinada por Electron (`fs:savePlanning`, `fs:readPlanning`).
+- [x] Store modular Zustand (`usePlanningStore.ts`, $\le 250$ líneas) con guardado incremental debounced (500 ms) y vaciado preventivo inmediato en salida (`savePlanningImmediately`).
+- [x] Modelo enriquecido con planos temporales (`past`, `present`, `future` y planos personalizados ilimitados con soberanía de edición/eliminación total) y vinculación directa con el Códice (`codexEntityId`).
+- [x] Supresión total de la sección restrictiva "Estructura Dramática" en `PlanningDashboard.tsx`, conservando la tríada de planificación libre: Línea de Tiempo, Tablero de Corcho y Matriz de Esquema.
+- [x] Modularización completa de la Línea de Tiempo (`TimelineView.tsx` descompuesto de 1.346 líneas en submódulos de $\le 250$ líneas en `src/components/planning/timeline/`).
+- [x] Cabecera zen de 1 nivel con selector tonal de planos temporales, filtro por pista, buscador y botones de acción limpios.
+- [x] Carriles horizontales fluidos (*swimlanes*) y tarjetas de evento respirables sin números artificiales `#1`, sin flechas `< >` y sin emojis.
+- [x] Reordenación fluida mediante arrastrar y soltar (*drag & drop*) tanto entre pistas distintas como dentro de la misma pista con detección espacial (`before`/`after`) e indicador visual de inserción.
+- [x] Ficha de evento narrativo ampliada (`TimelineEventModal.tsx`, `max-w-4xl`) con gestión de planos, pistas, fechas y consecuencias narrativas.
+- [x] Sistema de tarjetas de entidad en el dossier (`DossierEntityCard.tsx` Opción 1 principal, `CompactEntityCard.tsx` Opción 3 compacta, `AvatarEntityCard.tsx` Opción 2 de elenco) con popover interactivo enriquecido (`EntityHoverPopover.tsx`).
+- [x] Conmutador de densidad de participantes en la cabecera del dossier con detección inteligente de volumen de elenco.
+- [x] Apertura de ficha de entidad y pizarra interactiva como ventana flotante (`z-[70]`) sin navegar forzadamente al Códex, manteniendo la permanencia en planificación.
+- [x] Batería de pruebas automatizadas (`src/tests/test-phase-3-1.ts`) validando límites de líneas, persistencia atómica, planos temporales, reordenación espacial y cero emojis.
 
-### Subfase 3.2: Línea Temporal Multilínea (Timeline)
-- Pistas paralelas configurables (Trama principal, subtramas de personajes, historia previa/lore) con diseño horizontal espaciado.
-- Clasificación de eventos por importancia dramática: Menor, Clave, Punto de Giro, Clímax.
-- Vinculación bidireccional entre eventos cronológicos y escenas del manuscrito con navegación en 1 clic.
+### Subfase 3.2: Escala Temporal Zoomable y Filtros Avanzados [SIGUIENTE]
+- Vistas de escala temporal zoomable (vista panorámica de toda la novela vs vista detallada por capítulos).
+- Filtros avanzados multidimensionales por personajes participantes, locaciones y consecuencias.
 
-### Subfase 3.3: Tablón de Corcho (Corkboard)
-- Visualización de tarjetas de escena organizadas por columnas de actos y capítulos (estilo Scrivener) con elevaciones suaves y sin bordes toscos.
-- Edición ágil de sinopsis y reordenación de escenas mediante tarjetas indexables.
+### Subfase 3.3: Tablero de Corcho Literario Avanzado (Corkboard)
+- Fichas de cartulina con arrastre libre entre capítulos y actos.
+- Personalización de colores temáticos por tarjeta y filtros combinados.
 
-### Subfase 3.4: Arcos Narrativos (Story Beats) & Matriz de Esquema
-- Plantillas dramáticas clásicas integradas (Estructura en Tres Actos, Save the Cat!, El Viaje del Héroe).
-- Guía de porcentajes objetivo en el manuscrito y asignación de escenas para supervisión del ritmo.
-- Matriz tabular panorámica tipo hoja de cálculo (`OutlineGridView.tsx`).
+### Subfase 3.4: Matriz de Esquema Panorámica Avanzada
+- Edición rápida de sinopsis en celda expandible y ordenación multidimensional por columnas.
+- Estadísticas en tiempo real de avance frente a las metas de palabras de cada escena.
 
 ---
 
@@ -168,3 +178,20 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 
 ### Subfase 5.4: Conectores Opcionales para Nube Personal
 - Implementación de conectores opcionales para enlazar la carpeta del proyecto a cuentas personales del usuario (Google Drive, Dropbox, OneDrive/Outlook) mediante autenticación OAuth local de escritorio.
+
+---
+
+## Ideas y Mejoras Transversales (Planificadas Post-V1)
+
+### Tarjetas Interactivas de Entidades con Acceso Directo a Ficha y Pizarra
+- **Concepto Transversal**: Estandarizar la interacción visual con las entidades del Códice (personajes, escenarios, eventos, facciones) en todas las secciones del programa:
+  - Inspector de escenas del manuscrito.
+  - Notas de escena y notas dinámicas.
+  - Grafo y vista de relaciones.
+  - Ficha de eventos de la línea de tiempo.
+  - Tablero de corcho y esquemas.
+- **Acceso en 1 Clic**: Sustituir selectores desplegables o listas estáticas por tarjetas respirables que permitan abrir inmediatamente:
+  - La **Ficha / Dossier** de la entidad en la Biblia de Mundo.
+  - La **Pizarra Interactiva** de la entidad.
+- **Enfoque de Implementación**: Se introduce inicialmente como modelo funcional en la Ficha de Evento de la Línea de Tiempo, sirviendo de referencia orgánica para extenderse gradualmente por el resto de la aplicación tras consolidar la primera versión funcional.
+

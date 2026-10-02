@@ -137,13 +137,34 @@ export interface WorldEntity {
   involvedEntityIds?: string[]; // Personajes, facciones, lugares y objetos vinculados
 }
 
+export type CodexEntity = WorldEntity;
+
+export interface CorkboardColumn {
+  id: string;
+  title: string;
+  order: number;
+}
+
+export interface CorkboardCard {
+  id: string;
+  columnId: string;
+  title: string;
+  content: string;
+  order: number;
+  color?: string;
+  sceneId?: string;
+}
+
 export interface TimelineTrack {
   id: string;
   name: string;
   color: string;
   description: string;
-  isMainPlot: boolean;
+  isMainPlot?: boolean;
+  order?: number;
 }
+
+export type TemporalPlane = "past" | "present" | "future" | string;
 
 export interface TimelineEvent {
   id: string;
@@ -151,17 +172,22 @@ export interface TimelineEvent {
   title: string;
   summary: string;
   sceneId?: string; // Associated manuscript scene if any
-  position: number; // 0 to 100 or relative step in the chronological timeline
-  importance: "minor" | "key" | "turning_point" | "climax";
-  characterIds: string[];
+  position?: number; // 0 to 100 or relative step in the chronological timeline
+  importance?: "minor" | "key" | "turning_point" | "climax";
+  characterIds?: string[];
   locationId?: string;
   dateOrEpoch?: string;
-  entityId?: string; // ID de la entrada en la Biblia (Codex), especialmente categoría 'event'
-  isHistorical?: boolean; // True si es un acontecimiento histórico previo (Lore / Pasado)
-  era?: string; // e.g. "Primera Era", "Hace 50 años", "Preludio"
+  date?: string; // Fecha o marcador temporal legible
+  entityId?: string; // ID de la entrada en el Codice, especialmente categoria 'event'
+  codexEntityId?: string; // Alias semantico para sincronizacion directa con el Codice
+  temporalPlane?: TemporalPlane; // 'past' (lore previo), 'present' (trama activa), 'future' (prolepsis / consecuencias)
+  isHistorical?: boolean; // True si es un acontecimiento historico previo (Lore / Pasado)
+  era?: string; // e.g. "Primera Era", "Hace 50 anos", "Preludio"
   factionIds?: string[]; // Facciones participantes
   itemIds?: string[]; // Reliquias u objetos involucrados
   consequences?: string; // Consecuencias o impacto en el presente
+  tags?: string[];
+  order?: number; // Orden secuencial dentro de la pista
 }
 
 export interface StoryBeat {
@@ -304,6 +330,7 @@ export interface NovelProject {
   timelineTracks: TimelineTrack[];
   timelineEvents: TimelineEvent[];
   storyBeats: StoryBeat[];
+  planning?: any;
   relationshipPositions?: Record<string, { x: number; y: number }>;
   relationshipCategories?: RelationshipCategory[];
   whiteboard?: MoodboardCanvas; // Pizarra interactiva de imágenes, notas, formas y flechas

@@ -114,6 +114,23 @@ declare global {
         };
         error?: string;
       }>;
+      savePlanning?: (data: {
+        timeline?: any;
+        corkboard?: any;
+        matrix?: any;
+        beats?: any;
+      }) => Promise<{
+        success: boolean;
+        error?: string;
+      }>;
+      readPlanning?: () => Promise<{
+        success: boolean;
+        timeline?: any;
+        corkboard?: any;
+        matrix?: any;
+        beats?: any;
+        error?: string;
+      }>;
       saveProjectJson: (projectData: any) => Promise<{
         success: boolean;
         error?: string;

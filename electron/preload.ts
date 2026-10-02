@@ -93,6 +93,23 @@ export interface ElectronAPI {
     customRelationshipCategories?: any[];
     error?: string;
   }>;
+  savePlanning: (data: {
+    timeline?: any;
+    corkboard?: any;
+    matrix?: any;
+    beats?: any;
+  }) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+  readPlanning: () => Promise<{
+    success: boolean;
+    timeline?: any;
+    corkboard?: any;
+    matrix?: any;
+    beats?: any;
+    error?: string;
+  }>;
   saveAssetImage: (options: {
     subfolder: "gallery" | "covers" | "fonts" | "documents";
     fileName?: string;
@@ -134,6 +151,8 @@ const api: ElectronAPI = {
     ipcRenderer.invoke("fs:saveProjectJson", projectData),
   saveCodex: (data) => ipcRenderer.invoke("fs:saveCodex", data),
   readCodex: () => ipcRenderer.invoke("fs:readCodex"),
+  savePlanning: (data) => ipcRenderer.invoke("fs:savePlanning", data),
+  readPlanning: () => ipcRenderer.invoke("fs:readPlanning"),
   saveAssetImage: (options) => ipcRenderer.invoke("assets:saveImage", options),
   deleteAssetImage: (relativePath, projectPath) =>
     ipcRenderer.invoke("assets:deleteImage", { relativePath, projectPath }),

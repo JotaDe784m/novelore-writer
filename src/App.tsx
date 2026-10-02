@@ -24,6 +24,7 @@ import { useProjectStore } from "./stores/useProjectStore";
 import { useThemeStore } from "./stores/useThemeStore";
 import { useManuscriptStore } from "./stores/useManuscriptStore";
 import { useCodexStore } from "./stores/useCodexStore";
+import { usePlanningStore } from "./stores/usePlanningStore";
 
 export const App: React.FC = () => {
   const projectStore = useProjectStore();
@@ -45,6 +46,15 @@ export const App: React.FC = () => {
         projectStore.project.relationshipPositions || {},
         projectStore.project.relationshipCategories || []
       );
+      usePlanningStore.getState().initPlanning(
+        projectStore.project.planning || {
+          timeline: {
+            tracks: projectStore.project.timelineTracks || [],
+            events: projectStore.project.timelineEvents || [],
+          },
+          beats: projectStore.project.storyBeats || [],
+        }
+      );
       if (first) {
         setSelectedSceneId(first.id);
       }
@@ -55,7 +65,10 @@ export const App: React.FC = () => {
   useEffect(() => {
     const flushAllSaves = async () => {
       try {
-        await useCodexStore.getState().saveCodexImmediately();
+        await Promise.all([
+          useCodexStore.getState().saveCodexImmediately(),
+          usePlanningStore.getState().savePlanningImmediately(),
+        ]);
       } catch (err) {
         console.error("Error al vaciar guardados en salida:", err);
       }
@@ -212,6 +225,15 @@ export const App: React.FC = () => {
       newProj.relationshipPositions || {},
       newProj.relationshipCategories || []
     );
+    usePlanningStore.getState().initPlanning(
+      newProj.planning || {
+        timeline: {
+          tracks: newProj.timelineTracks || [],
+          events: newProj.timelineEvents || [],
+        },
+        beats: newProj.storyBeats || [],
+      }
+    );
     if (first) setSelectedSceneId(first.id);
     setActiveView("manuscript");
   };
@@ -232,6 +254,8 @@ export const App: React.FC = () => {
   // Cerrar novela activa y volver a taller
   const handleCloseProject = () => {
     useCodexStore.getState().saveCodexImmediately();
+    usePlanningStore.getState().savePlanningImmediately();
+    usePlanningStore.getState().resetPlanning();
     setProject(null);
     projectStore.clearProject();
     setActiveView("home");
@@ -369,8 +393,12 @@ export const App: React.FC = () => {
                     onUpdateProject={handleUpdateProject}
                     onSelectScene={handleSelectScene}
                     onOpenEntityDossier={(id) => {
+                      setDossierInitialTab("details");
                       setDossierEntityId(id);
-                      setActiveView("codex");
+                    }}
+                    onOpenEntityWhiteboard={(id) => {
+                      setDossierInitialTab("whiteboard");
+                      setDossierEntityId(id);
                     }}
                   />
                 )}
@@ -459,6 +487,10 @@ export const App: React.FC = () => {
                   : [...p.entities, saved],
               };
             });
+            const codexStore = useCodexStore.getState();
+            if (codexStore.entities.some((e) => e.id === saved.id)) {
+              codexStore.updateEntity(saved.id, saved);
+            }
             if (isCreatingCharacterFromInspector && currentScene) {
               handleUpdateScene(currentScene.id, {
                 characterIds: Array.from(new Set([...currentScene.characterIds, saved.id])),
@@ -473,6 +505,7 @@ export const App: React.FC = () => {
               ...p,
               entities: p.entities.filter((e) => e.id !== id),
             }));
+            useCodexStore.getState().deleteEntity(id);
             setDossierEntityId(null);
             setDossierInitialTab("details");
             setIsCreatingCharacterFromInspector(false);

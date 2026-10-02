@@ -154,9 +154,18 @@ async function initOrLoadProject(
         relationships: codexMeta.relationships || [],
         relationshipPositions: codexMeta.relationshipPositions || projectMeta.relationshipPositions || {},
         relationshipCategories: codexMeta.relationshipCategories || projectMeta.relationshipCategories || [],
-        timelineTracks: planningMeta.timelineTracks || [],
-        timelineEvents: planningMeta.timelineEvents || [],
-        storyBeats: planningMeta.storyBeats || [],
+        timelineTracks: planningMeta.timeline?.tracks || planningMeta.timelineTracks || [],
+        timelineEvents: planningMeta.timeline?.events || planningMeta.timelineEvents || [],
+        storyBeats: planningMeta.beats || planningMeta.storyBeats || [],
+        planning: {
+          timeline: planningMeta.timeline || {
+            tracks: planningMeta.timelineTracks || [],
+            events: planningMeta.timelineEvents || [],
+          },
+          corkboard: planningMeta.corkboard || { columns: [], cards: [] },
+          outlineGrid: planningMeta.matrix || planningMeta.outlineGrid || { rows: [] },
+          storyBeats: planningMeta.beats || planningMeta.storyBeats || [],
+        },
         projectPath: folderPath,
       };
 
@@ -280,6 +289,15 @@ async function initOrLoadProject(
       timelineTracks: initialPlanning.timelineTracks,
       timelineEvents: initialPlanning.timelineEvents,
       storyBeats: initialPlanning.storyBeats,
+      planning: {
+        timeline: {
+          tracks: initialPlanning.timelineTracks,
+          events: initialPlanning.timelineEvents,
+        },
+        corkboard: { columns: [], cards: [] },
+        outlineGrid: { rows: [] },
+        storyBeats: initialPlanning.storyBeats,
+      },
       projectPath: folderPath,
     };
 
@@ -686,6 +704,75 @@ ipcMain.handle("fs:readCodex", async () => {
       };
     }
     return { success: true, entities: [], relationships: [], relationshipPositions: {}, customRelationshipCategories: [] };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+});
+
+// 8b. Guardado y lectura atómica de Planificación (planning.json)
+ipcMain.handle(
+  "fs:savePlanning",
+  async (
+    _event,
+    data: {
+      timeline?: any;
+      corkboard?: any;
+      matrix?: any;
+      beats?: any;
+    }
+  ) => {
+    if (!currentProjectPath) return { success: false, error: "No hay proyecto abierto." };
+    try {
+      const planningJsonPath = path.join(currentProjectPath, "planning.json");
+      const planningPayload = {
+        timeline: data?.timeline || { tracks: [], events: [] },
+        corkboard: data?.corkboard || { columns: [], cards: [] },
+        matrix: data?.matrix || { rows: [] },
+        beats: data?.beats || [],
+      };
+      await writeAtomic(planningJsonPath, JSON.stringify(planningPayload, null, 2));
+
+      // Mantener sincronizado updatedAt en project.json
+      const projectJsonPath = path.join(currentProjectPath, "project.json");
+      if (await fileExists(projectJsonPath)) {
+        try {
+          const meta = JSON.parse(await fs.readFile(projectJsonPath, "utf-8"));
+          meta.updatedAt = new Date().toISOString();
+          await writeAtomic(projectJsonPath, JSON.stringify(meta, null, 2));
+        } catch {}
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+);
+
+ipcMain.handle("fs:readPlanning", async () => {
+  if (!currentProjectPath) return { success: false, error: "No hay proyecto abierto." };
+  try {
+    const planningJsonPath = path.join(currentProjectPath, "planning.json");
+    if (await fileExists(planningJsonPath)) {
+      const parsed = JSON.parse(await fs.readFile(planningJsonPath, "utf-8"));
+      return {
+        success: true,
+        timeline: parsed.timeline || {
+          tracks: parsed.timelineTracks || [],
+          events: parsed.timelineEvents || [],
+        },
+        corkboard: parsed.corkboard || { columns: [], cards: [] },
+        matrix: parsed.matrix || { rows: [] },
+        beats: parsed.beats || parsed.storyBeats || [],
+      };
+    }
+    return {
+      success: true,
+      timeline: { tracks: [], events: [] },
+      corkboard: { columns: [], cards: [] },
+      matrix: { rows: [] },
+      beats: [],
+    };
   } catch (err: any) {
     return { success: false, error: err.message };
   }

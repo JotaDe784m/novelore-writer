@@ -57,7 +57,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
   return (
     <div
       id="entity-modal-backdrop"
-      className="fixed inset-0 bg-black/65 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 z-50 animate-in fade-in select-none"
+      className="fixed inset-0 bg-black/65 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 z-[70] animate-in fade-in select-none"
     >
       <div
         id="entity-modal-container"
