@@ -134,3 +134,124 @@ En Novelore, un **Tema** no es simplemente un cambio de color, sino una **atmós
 * **Conectores Curvos Dinámicos**: Las líneas de relación y flechas no son rígidas; trazan curvas fluidas con puntos de flexión orgánicos.
 * **Microinteracciones Suaves**: Arrastre con inercia, transiciones fluidas de zoom y sombras de elevación dinámicas mientras se mueve un elemento.
 
+---
+
+## 7. Sistema Universal de Tarjetas de Entidad (Entity Cards System)
+
+El **Sistema Universal de Tarjetas de Entidad** es el patrón transversal de interacción que conecta los elementos del **Códice** (personajes, lugares, facciones, objetos, acontecimientos históricos) con el resto de módulos de Novelore:
+* **Línea de Tiempo**: Dossier de acontecimientos narrativos y listas de participantes/escenarios.
+* **Inspector de Escenas**: Personajes presentes en la escena y lugares vinculados en el manuscrito.
+* **Mapa de Relaciones**: Fichas contextuales e inspectores de nodos vinculados.
+* **Pizarras Visuales y Tablero de Corcho**: Fichas interactivas en lienzo infinito y cartulinas.
+* **Notas de Manuscrito y Menciones Rápidas**: Previsualización de personajes mencionados en el texto.
+
+### Principios Fundamentales del Sistema de Tarjetas:
+1. **Ausencia de Marcos Rígidos**: Las tarjetas se integran en el fondo mediante contraste tonal suave (`--bg-sidebar`, `--bg-card`), elevaciones ligeras y esquinas redondeadas generosas (`rounded-xl`).
+2. **Acceso Directo Sin Fricción**: Cada tarjeta ofrece accesos directos a **"Ficha"** (Códex) y **"Pizarra"** (lienzo interactivo de la entidad).
+3. **Permanencia en Contexto (Ventana Flotante `z-[70]`)**: Al abrir una ficha o pizarra desde una tarjeta, esta se despliega como un modal flotante por encima de la vista activa. Nunca se fuerza una navegación de pantalla completa que interrumpa el flujo del autor.
+4. **Respeto a la Densidad Visual**: La interfaz ofrece tres modos de visualización para que listas numerosas (ej. una batalla o banquete con más de 8 personajes) no colapsen el espacio respirable.
+
+---
+
+### Las 3 Variaciones de Tarjeta de Entidad
+
+#### Variación 1: Tarjeta Estándar Completa (Opción 1 — Principal por Defecto)
+Diseñada para un acceso inmediato en un solo clic, sin esperas ni dependencias de interacción por cursor.
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ ┌───────┐  Nombre del Elemento                  [Desvincular]│
+│ │ FOTO  │  Subtítulo / Rol / Arquetipo                      │
+│ │   O   │                                                   │
+│ │COLOR  │  ┌───────────┐  ┌───────────┐                     │
+│ └───────┘  │  Pizarra  │  │   Ficha   │                     │
+│            └───────────┘  └───────────┘                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+* **Composición**:
+  * **Avatar circular** a la izquierda (`w-10 h-10 rounded-full`) con foto de perfil (`avatarUrl`) o iniciales en relieve sobre el color semántico de la entidad.
+  * **Jerarquía tipográfica**: Nombre en seminegrita (`text-xs font-semibold`) y subtítulo atenuado (`text-[11px] text-[var(--text-muted)]`).
+  * **Botones visibles directos**: Botones planos/ghost "Pizarra" y "Ficha" integrados en la tarjeta, con fondo sutil en hover (`hover:bg-[var(--bg-surface-hover)]`).
+* **Casos de uso ideales**:
+  * Listas de 1 a 4 participantes por escena o acontecimiento.
+  * Escenarios vinculados, eventos del Códice y escenas del manuscrito.
+  * Nodos desplegados en la Pizarra Visual y tarjetas principales del Inspector lateral.
+
+---
+
+#### Variación 2: Fila de Avatares / Elenco Compacto (Opción 2 — Modo Facepile)
+Diseñada para escenas corales y asambleas masivas donde intervienen muchos personajes y se requiere la máxima economía de espacio vertical (~40px de altura total).
+
+```text
+  ┌───────┐   ┌───────┐   ┌───────┐
+  │ (Foto)│   │ (Foto)│   │ (Foto)│  ...  +X más
+  └───┬───┘   └───────┘   └───────┘
+      │
+      ▼ (Aparece al pasar el cursor)
+  ┌───────────────────────────────────────────┐
+  │ Nombre del Elemento             [Quitar]  │
+  │ Subtítulo o Rol                           │
+  │                                           │
+  │ Extracto de lore o descripción corta      │
+  │ registrada en el Códice...                │
+  │                                           │
+  │              ┌───────────┐ ┌───────────┐  │
+  │              │  Pizarra  │ │   Ficha   │  │
+  │              └───────────┘ └───────────┘  │
+  └───────────────────────────────────────────┘
+```
+
+* **Composición**:
+  * Círculos de avatar limpios (`w-9 h-9 rounded-full`) alineados en fila horizontal continua con micro-animación de escalado (`scale-105`) al posar el cursor.
+  * **Popover Flotante Enriquecido (*Speech Bubble*)**: Al hacer hover sobre cualquier avatar, se despliega un globo flotante con flecha indicadora que contiene el nombre, la descripción/sinopsis corta del Códex y los botones "Pizarra" y "Ficha".
+* **Casos de uso ideales**:
+  * Escenas con 6 a 15+ participantes (batallas, consejos, cenas solemnes).
+  * Nodos tipo "pin" o chincheta de personaje en diagramas extensos de la Pizarra Visual.
+  * Barras de presencia rápida en cabeceras de capítulos del manuscrito.
+
+---
+
+#### Variación 3: Tarjeta Compacta con Popover (Opción 3 — Modo Lista Densa)
+Diseñada para equilibrar la lectura inmediata del nombre con una huella vertical mínima, permitiendo disponer los participantes en cuadrículas de 2 columnas.
+
+```text
+┌──────────────────────────────────────────┐
+│ (o) Nombre del Elemento     Subtítulo [x]│
+└──┬───────────────────────────────────────┘
+   │
+   ▼ (Aparece al pasar el cursor)
+┌───────────────────────────────────────────┐
+│ Nombre del Elemento             [Quitar]  │
+│ Subtítulo o Rol                           │
+│                                           │
+│ Extracto de lore o descripción corta      │
+│ registrada en el Códice...                │
+│                                           │
+│              ┌───────────┐ ┌───────────┐  │
+│              │  Pizarra  │ │   Ficha   │  │
+│              └───────────┘ └───────────┘  │
+└───────────────────────────────────────────┘
+```
+
+* **Composición**:
+  * Tarjeta horizontal estilizada de ~36px de altura con micro-avatar (`w-6 h-6`), nombre truncable y subtítulo inline.
+  * **Popover Flotante Enriquecido**: Despliega la sinopsis de trasfondo y los botones de acción al pasar el ratón.
+  * Botón de desvinculación discreto (`x`) visible al hacer hover en el extremo derecho.
+* **Casos de uso ideales**:
+  * Listas de participantes de tamaño medio (4 a 8 personajes) en cuadrícula de 2 columnas.
+  * Paneles estrechos como el Inspector lateral de escena (~260px a 300px).
+  * Tarjetas compactas de referencias cruzadas en el Códex.
+
+---
+
+### Componentes Base y Conmutador de Densidad
+
+El sistema se estructura en componentes desacoplados dentro del módulo de UI:
+* **`DossierEntityCard.tsx`**: Renderizado de la Variación 1 (Tarjeta completa).
+* **`AvatarEntityCard.tsx`**: Renderizado de la Variación 2 (Avatar con popover).
+* **`CompactEntityCard.tsx`**: Renderizado de la Variación 3 (Tarjeta fina con popover).
+* **`EntityHoverPopover.tsx`**: Globo flotante interactivo con tolerancia de puntero (150 ms) y botones de acción.
+* **`DossierParticipantsSection.tsx`**: Cabecera con conmutador de 3 estados (*Tarjetas*, *Compacto*, *Avatares*) que adapta la densidad según la preferencia del autor o el tamaño del elenco.
+
+

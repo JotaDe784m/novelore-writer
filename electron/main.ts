@@ -421,7 +421,113 @@ ipcMain.handle("dialog:openFolder", async () => {
   return { canceled: false, ...loadResult };
 });
 
-// 2. Crear nueva carpeta de proyecto con diálogo
+// 2a. Inspeccionar carpeta para creación de proyecto (proporciona estado detallado a la UI)
+ipcMain.handle("dialog:inspectProjectFolder", async (_event, options?: { title?: string }) => {
+  if (!mainWindow) return { canceled: true };
+
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: `Seleccionar ubicación para la novela "${options?.title || 'Nueva Novela'}"`,
+    properties: ["openDirectory", "createDirectory"],
+    buttonLabel: "Seleccionar Carpeta",
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return { canceled: true };
+  }
+
+  const baseDir = result.filePaths[0];
+
+  // 1. ¿Ya tiene un project.json?
+  const hasExistingProject = await fileExists(path.join(baseDir, "project.json"));
+  if (hasExistingProject) {
+    let existingTitle = "existente";
+    try {
+      const existingMeta = JSON.parse(await fs.readFile(path.join(baseDir, "project.json"), "utf-8"));
+      if (existingMeta.title) existingTitle = existingMeta.title;
+    } catch {}
+
+    return {
+      canceled: false,
+      status: "existing_project",
+      existingTitle,
+      folderPath: baseDir,
+      folderName: path.basename(baseDir),
+      error: `La carpeta seleccionada ya contiene la novela "${existingTitle}" de Novelore.`,
+    };
+  }
+
+  // 2. ¿Tiene otros archivos o carpetas existentes?
+  try {
+    const files = await fs.readdir(baseDir);
+    if (files.length > 0) {
+      const sanitizedName = (options?.title || "Novela")
+        .trim()
+        .replace(/[\\/:*?"<>|]/g, "")
+        .replace(/\s+/g, "-");
+      const candidateSubfolder = path.join(baseDir, sanitizedName || `novela-${Date.now()}`);
+
+      return {
+        canceled: false,
+        status: "non_empty_folder",
+        folderPath: baseDir,
+        folderName: path.basename(baseDir),
+        fileCount: files.length,
+        candidateSubfolder,
+      };
+    }
+  } catch (err: any) {
+    return {
+      canceled: false,
+      status: "error",
+      error: `Error al inspeccionar la carpeta: ${err.message}`,
+    };
+  }
+
+  // 3. Carpeta vacía
+  return {
+    canceled: false,
+    status: "empty",
+    folderPath: baseDir,
+    folderName: path.basename(baseDir),
+  };
+});
+
+// 2b. Crear proyecto en una ruta física directa
+ipcMain.handle("dialog:createProjectInPath", async (_event, payload: {
+  targetPath: string;
+  options: {
+    title: string;
+    subtitle?: string;
+    author?: string;
+    genre?: string;
+    synopsis?: string;
+    logline?: string;
+    targetWords?: number;
+    coverUrl?: string;
+  };
+}) => {
+  const { targetPath, options } = payload;
+  if (!targetPath) {
+    return { success: false, error: "Ruta de destino no válida." };
+  }
+
+  if (await fileExists(path.join(targetPath, "project.json"))) {
+    return {
+      success: false,
+      error: "La carpeta de destino ya contiene una novela de Novelore.",
+    };
+  }
+
+  try {
+    await fs.mkdir(targetPath, { recursive: true });
+    const loadResult = await initOrLoadProject(targetPath, options);
+    return { canceled: false, ...loadResult };
+  } catch (err: any) {
+    return { success: false, error: `Error inicializando proyecto: ${err.message}` };
+  }
+});
+
+// 2c. Crear nueva carpeta de proyecto con diálogo directo
 ipcMain.handle("dialog:createProjectFolder", async (_event, options: {
   title: string;
   subtitle?: string;
@@ -446,17 +552,31 @@ ipcMain.handle("dialog:createProjectFolder", async (_event, options: {
 
   const baseDir = result.filePaths[0];
 
-  // Si la carpeta seleccionada ya tiene un project.json, no sobreescribir sin confirmación
+  // 1. Si la carpeta seleccionada ya tiene un project.json, advertir y no sobreescribir
   const hasExistingProject = await fileExists(path.join(baseDir, "project.json"));
   if (hasExistingProject) {
+    let existingTitle = "existente";
+    try {
+      const existingMeta = JSON.parse(await fs.readFile(path.join(baseDir, "project.json"), "utf-8"));
+      if (existingMeta.title) existingTitle = `"${existingMeta.title}"`;
+    } catch {}
+
+    await dialog.showMessageBox(mainWindow, {
+      type: "warning",
+      title: "Carpeta no disponible",
+      message: `La carpeta seleccionada ya contiene la novela ${existingTitle} de Novelore.`,
+      detail: "Para abrirla, utiliza 'Abrir Carpeta' en el taller de novelas. Si deseas crear una novela nueva, por favor elige una carpeta vacía distinta.",
+      buttons: ["Aceptar"],
+    });
+
     return {
       canceled: false,
       success: false,
-      error: "La carpeta seleccionada ya contiene un proyecto Novelore. Por favor elige una carpeta vacía.",
+      error: `La carpeta seleccionada ya contiene la novela ${existingTitle}. Elige una carpeta vacía.`,
     };
   }
 
-  // Verificar si la carpeta tiene otros archivos; si los tiene, crear subcarpeta con el título
+  // 2. Si la carpeta seleccionada contiene otros archivos / elementos existentes
   let targetPath = baseDir;
   try {
     const files = await fs.readdir(baseDir);
@@ -465,15 +585,54 @@ ipcMain.handle("dialog:createProjectFolder", async (_event, options: {
         .trim()
         .replace(/[\\/:*?"<>|]/g, "")
         .replace(/\s+/g, "-");
-      targetPath = path.join(baseDir, sanitizedName || `novela-${Date.now()}`);
+      const subfolderCandidate = path.join(baseDir, sanitizedName || `novela-${Date.now()}`);
+
+      const choice = await dialog.showMessageBox(mainWindow, {
+        type: "question",
+        title: "Carpeta con elementos existentes",
+        message: `La carpeta "${path.basename(baseDir)}" contiene elementos (${files.length} archivo${files.length > 1 ? "s o carpetas" : ""}).`,
+        detail: `Para no mezclar tus archivos personales, Novelore creará una subcarpeta dedicada para tu novela:\n\n${subfolderCandidate}\n\n¿Deseas continuar y crear la novela dentro de esa subcarpeta?`,
+        buttons: ["Crear subcarpeta dedicada", "Cancelar y elegir otra"],
+        defaultId: 0,
+        cancelId: 1,
+      });
+
+      if (choice.response === 1) {
+        return {
+          canceled: true,
+          error: "Creación cancelada para elegir otra carpeta.",
+        };
+      }
+
+      targetPath = subfolderCandidate;
+      if (await fileExists(path.join(targetPath, "project.json"))) {
+        await dialog.showMessageBox(mainWindow, {
+          type: "warning",
+          title: "Subcarpeta no disponible",
+          message: "La subcarpeta ya contiene una novela de Novelore.",
+          buttons: ["Aceptar"],
+        });
+        return {
+          canceled: false,
+          success: false,
+          error: "La subcarpeta ya contiene una novela existente.",
+        };
+      }
+
       await fs.mkdir(targetPath, { recursive: true });
     }
   } catch (err: any) {
-    return { canceled: false, success: false, error: `Error creando directorio: ${err.message}` };
+    return { canceled: false, success: false, error: `Error verificando directorio: ${err.message}` };
   }
 
   const loadResult = await initOrLoadProject(targetPath, options);
   return { canceled: false, ...loadResult };
+});
+
+// 2b. Cerrar proyecto activo en Electron (evita sobreescritura accidental)
+ipcMain.handle("project:closeCurrent", async () => {
+  currentProjectPath = null;
+  return { success: true };
 });
 
 // 3. Cargar directamente desde una ruta conocida (p. ej. Proyectos Recientes)

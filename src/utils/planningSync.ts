@@ -1,6 +1,7 @@
 import { CodexEntity, NovelProject, TimelineEvent, TimelineTrack } from "../types";
 import { PlanningDataPayload } from "../stores/planningStoreTypes";
 import { sortTimelineEvents } from "./planningDefaults";
+import { useProjectStore } from "../stores/useProjectStore";
 
 export interface ResolvedEventEntities {
   codexEvent?: CodexEntity;
@@ -182,6 +183,10 @@ export const executePlanningSave = async (
   payload: PlanningDataPayload
 ): Promise<{ success: boolean; error?: string }> => {
   try {
+    const projectStore = useProjectStore.getState();
+    if (projectStore.project?.isDemo || !projectStore.projectPath) {
+      return { success: true };
+    }
     if (typeof window !== "undefined" && window.electronAPI?.savePlanning) {
       const res = await window.electronAPI.savePlanning(payload);
       if (!res.success) throw new Error(res.error || "Error al persistir planning.json");

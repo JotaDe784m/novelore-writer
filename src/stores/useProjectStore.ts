@@ -12,6 +12,17 @@ export interface CreateProjectDialogOptions {
   coverUrl?: string;
 }
 
+export interface InspectFolderResult {
+  canceled: boolean;
+  status?: "empty" | "existing_project" | "non_empty_folder" | "error";
+  folderPath?: string;
+  folderName?: string;
+  existingTitle?: string;
+  fileCount?: number;
+  candidateSubfolder?: string;
+  error?: string;
+}
+
 export interface ProjectStoreState {
   projectPath: string | null;
   project: NovelProject | null;
@@ -28,6 +39,8 @@ export interface ProjectStoreState {
   loadRecentProjects: () => Promise<void>;
   removeRecentProject: (path: string) => Promise<void>;
   openProjectFolder: () => Promise<NovelProject | null>;
+  inspectProjectFolder: (options?: { title?: string }) => Promise<InspectFolderResult>;
+  createProjectInPath: (targetPath: string, options: CreateProjectDialogOptions) => Promise<NovelProject | null>;
   createProjectFolder: (options: CreateProjectDialogOptions) => Promise<NovelProject | null>;
   initOrLoadFromPath: (folderPath: string) => Promise<NovelProject | null>;
   updateProjectMeta: (folderPath: string, updates: any) => Promise<boolean>;
@@ -49,6 +62,16 @@ declare global {
         project?: NovelProject;
         error?: string;
       }>;
+      inspectProjectFolder?: (options?: { title?: string }) => Promise<InspectFolderResult>;
+      createProjectInPath?: (
+        targetPath: string,
+        options: CreateProjectDialogOptions
+      ) => Promise<{
+        success: boolean;
+        projectPath?: string;
+        project?: NovelProject;
+        error?: string;
+      }>;
       createProjectFolder: (options: CreateProjectDialogOptions) => Promise<{
         canceled: boolean;
         success?: boolean;
@@ -56,6 +79,7 @@ declare global {
         project?: NovelProject;
         error?: string;
       }>;
+      closeProject?: () => Promise<{ success: boolean }>;
       initOrLoadProject: (folderPath: string) => Promise<{
         success: boolean;
         projectPath: string;
@@ -185,7 +209,8 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   setProject: (project) => {
-    const resolvedPath = project ? (project as any).projectPath || get().projectPath : null;
+    const isDemoProject = Boolean(project?.isDemo || (project as any)?.id === "demo-ecos-del-vacio");
+    const resolvedPath = project && !isDemoProject ? (project as any).projectPath || (get().project?.isDemo ? null : get().projectPath) : null;
     if (typeof window !== "undefined") {
       (window as any).__novelore_current_project_path = resolvedPath;
     }
@@ -263,6 +288,56 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     }
   },
 
+  inspectProjectFolder: async (options?: { title?: string }) => {
+    const electronAPI = getElectronAPI();
+    if (!electronAPI?.inspectProjectFolder) {
+      return {
+        canceled: false,
+        status: "error",
+        error: "Electron API no está disponible en este entorno.",
+      };
+    }
+    return await electronAPI.inspectProjectFolder(options);
+  },
+
+  createProjectInPath: async (targetPath: string, options: CreateProjectDialogOptions) => {
+    const electronAPI = getElectronAPI();
+    if (!electronAPI?.createProjectInPath) {
+      const msg = "Electron API no está disponible en este entorno.";
+      set({ errorMessage: msg });
+      return null;
+    }
+
+    set({ isLoading: true, errorMessage: null });
+    try {
+      const result = await electronAPI.createProjectInPath(targetPath, options);
+      if (!result.success || result.error || !result.projectPath) {
+        const errMsg = result.error || "No se pudo inicializar la novela en la carpeta indicada.";
+        set({ isLoading: false, errorMessage: errMsg });
+        return null;
+      }
+
+      if (typeof window !== "undefined") {
+        (window as any).__novelore_current_project_path = result.projectPath;
+      }
+
+      set({
+        projectPath: result.projectPath,
+        project: result.project,
+        isLoaded: true,
+        isLoading: false,
+        errorMessage: null,
+      });
+
+      get().loadRecentProjects();
+      return result.project || null;
+    } catch (err: any) {
+      console.error("Error al crear novela en ruta:", err);
+      set({ isLoading: false, errorMessage: err.message });
+      return null;
+    }
+  },
+
   createProjectFolder: async (options: CreateProjectDialogOptions) => {
     const electronAPI = getElectronAPI();
     if (!electronAPI?.createProjectFolder) {
@@ -275,13 +350,14 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     set({ isLoading: true, errorMessage: null });
     try {
       const result = await electronAPI.createProjectFolder(options);
-      if (result.canceled || !result.projectPath) {
-        set({ isLoading: false });
+      if (result.canceled) {
+        set({ isLoading: false, errorMessage: null });
         return null;
       }
 
-      if (result.error || !result.success) {
-        set({ isLoading: false, errorMessage: result.error || "No se pudo crear el proyecto." });
+      if (!result.success || result.error || !result.projectPath) {
+        const errMsg = result.error || "No se pudo crear el proyecto en la carpeta seleccionada.";
+        set({ isLoading: false, errorMessage: errMsg });
         return null;
       }
 
@@ -387,6 +463,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   saveSceneMarkdown: async (relativePath: string, content: string) => {
+    if (get().project?.isDemo || !get().projectPath) return false;
     const electronAPI = getElectronAPI();
     if (!electronAPI?.writeSceneMarkdown) return false;
     try {
@@ -406,10 +483,10 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   saveProjectData: async (projectData?: NovelProject) => {
+    const targetProject = projectData || get().project;
+    if (!targetProject || targetProject.isDemo || !get().projectPath) return false;
     const electronAPI = getElectronAPI();
     if (!electronAPI?.saveProjectData) return false;
-    const targetProject = projectData || get().project;
-    if (!targetProject) return false;
 
     try {
       set({ isSaving: true });
@@ -455,8 +532,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
         storyBeats: targetProject.storyBeats || [],
       };
 
-      const electronAPI = getElectronAPI();
-      const result = await electronAPI!.saveProjectData({
+      const result = await electronAPI.saveProjectData({
         projectMeta,
         manuscript: cleanManuscript,
         codex: codexData,
@@ -477,6 +553,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   debouncedSaveScene: (relativePath: string, content: string) => {
+    if (get().project?.isDemo || !get().projectPath) return;
     if (sceneSaveTimeout) clearTimeout(sceneSaveTimeout);
     set({ isSaving: true });
     sceneSaveTimeout = setTimeout(() => {
@@ -485,6 +562,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   },
 
   debouncedSaveProjectData: (projectData: NovelProject) => {
+    if (projectData.isDemo || !get().projectPath) return;
     if (projectSaveTimeout) clearTimeout(projectSaveTimeout);
     set({ isSaving: true });
     projectSaveTimeout = setTimeout(() => {
@@ -492,7 +570,14 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     }, 500);
   },
 
-  clearProject: () =>
+  clearProject: () => {
+    const electronAPI = getElectronAPI();
+    if (electronAPI?.closeProject) {
+      electronAPI.closeProject();
+    }
+    if (typeof window !== "undefined") {
+      (window as any).__novelore_current_project_path = null;
+    }
     set({
       projectPath: null,
       project: null,
@@ -500,5 +585,6 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       isLoading: false,
       isSaving: false,
       errorMessage: null,
-    }),
+    });
+  },
 }));

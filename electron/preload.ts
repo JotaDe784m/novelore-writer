@@ -21,6 +21,34 @@ export interface ElectronAPI {
     project?: any;
     error?: string;
   }>;
+  inspectProjectFolder: (options?: { title?: string }) => Promise<{
+    canceled: boolean;
+    status?: "empty" | "existing_project" | "non_empty_folder" | "error";
+    folderPath?: string;
+    folderName?: string;
+    existingTitle?: string;
+    fileCount?: number;
+    candidateSubfolder?: string;
+    error?: string;
+  }>;
+  createProjectInPath: (
+    targetPath: string,
+    options: {
+      title: string;
+      subtitle?: string;
+      author?: string;
+      genre?: string;
+      synopsis?: string;
+      logline?: string;
+      targetWords?: number;
+      coverUrl?: string;
+    }
+  ) => Promise<{
+    success: boolean;
+    projectPath?: string;
+    project?: any;
+    error?: string;
+  }>;
   createProjectFolder: (options: {
     title: string;
     subtitle?: string;
@@ -127,12 +155,19 @@ export interface ElectronAPI {
     success: boolean;
     error?: string;
   }>;
+  closeProject: () => Promise<{
+    success: boolean;
+  }>;
 }
 
 const api: ElectronAPI = {
   isElectron: true,
   openProjectFolder: () => ipcRenderer.invoke("dialog:openFolder"),
+  inspectProjectFolder: (options) => ipcRenderer.invoke("dialog:inspectProjectFolder", options),
+  createProjectInPath: (targetPath, options) =>
+    ipcRenderer.invoke("dialog:createProjectInPath", { targetPath, options }),
   createProjectFolder: (options) => ipcRenderer.invoke("dialog:createProjectFolder", options),
+  closeProject: () => ipcRenderer.invoke("project:closeCurrent"),
   initOrLoadProject: (folderPath: string) =>
     ipcRenderer.invoke("project:initOrLoad", folderPath),
   getRecentProjects: () => ipcRenderer.invoke("projects:getRecent"),

@@ -239,7 +239,16 @@ export const App: React.FC = () => {
   };
 
   // Probar novela de ejemplo
-  const handleLoadDemo = () => {
+  const handleLoadDemo = async () => {
+    if (project && !project.isDemo) {
+      useCodexStore.getState().saveCodexImmediately();
+      usePlanningStore.getState().savePlanningImmediately();
+    }
+    usePlanningStore.getState().resetPlanning();
+    if (window.electronAPI?.closeProject) {
+      await window.electronAPI.closeProject();
+    }
+    useProjectStore.getState().clearProject();
     handleSelectProject(demoProject);
   };
 
@@ -252,10 +261,15 @@ export const App: React.FC = () => {
   };
 
   // Cerrar novela activa y volver a taller
-  const handleCloseProject = () => {
-    useCodexStore.getState().saveCodexImmediately();
-    usePlanningStore.getState().savePlanningImmediately();
+  const handleCloseProject = async () => {
+    if (project && !project.isDemo) {
+      useCodexStore.getState().saveCodexImmediately();
+      usePlanningStore.getState().savePlanningImmediately();
+    }
     usePlanningStore.getState().resetPlanning();
+    if (window.electronAPI?.closeProject) {
+      await window.electronAPI.closeProject();
+    }
     setProject(null);
     projectStore.clearProject();
     setActiveView("home");

@@ -24,6 +24,7 @@ import { NovelProject, ProjectView, RecentProjectMeta } from "../../types";
 import { demoProject } from "../../data/demoProject";
 import { calculateTotalWords } from "../../utils/storage";
 import { NovelCover } from "../project/NovelCover";
+import { CreateNovelModal } from "./CreateNovelModal";
 
 interface HomeDashboardProps {
   currentProject: NovelProject | null;
@@ -68,16 +69,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       return next;
     });
   };
-
-  // Formulario de nueva novela
-  const [newTitle, setNewTitle] = useState("");
-  const [newSubtitle, setNewSubtitle] = useState("");
-  const [newAuthor, setNewAuthor] = useState("");
-  const [newGenre, setNewGenre] = useState("Fantasía");
-  const [newLogline, setNewLogline] = useState("");
-  const [newSynopsis, setNewSynopsis] = useState("");
-  const [newTargetWords, setNewTargetWords] = useState(50000);
-  const [newCoverUrl, setNewCoverUrl] = useState("");
 
   // Formulario de edición de novela existente
   const [editingProject, setEditingProject] = useState<RecentProjectMeta | null>(null);
@@ -198,49 +189,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     }
   };
 
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) {
-      showToast("Por favor ingresa un título para la novela", "error");
-      return;
-    }
-
-    if (!window.electronAPI?.createProjectFolder) {
-      showToast("La creación nativa requiere ejecutar Novelore en Electron", "error");
-      return;
-    }
-
-    const createdProject = await useProjectStore.getState().createProjectFolder({
-      title: newTitle.trim(),
-      subtitle: newSubtitle.trim(),
-      author: newAuthor.trim() || "Autor",
-      genre: newGenre.trim() || "Ficción",
-      synopsis: newSynopsis.trim(),
-      logline: newLogline.trim(),
-      targetWords: newTargetWords || 50000,
-      coverUrl: newCoverUrl,
-    });
-
-    if (createdProject) {
-      onSelectProject(createdProject);
-      setIsCreateModalOpen(false);
-      // Reset form
-      setNewTitle("");
-      setNewSubtitle("");
-      setNewAuthor("");
-      setNewLogline("");
-      setNewSynopsis("");
-      setNewCoverUrl("");
-      showToast(`¡Novela "${createdProject.title}" creada en tu equipo!`);
-      onNavigateView("manuscript");
-    } else {
-      const errorMsg = useProjectStore.getState().errorMessage;
-      if (errorMsg) {
-        showToast(errorMsg, "error");
-      }
-    }
-  };
-
   const demoWords = useMemo(() => calculateTotalWords(demoProject), []);
 
   const demoMeta = useMemo<RecentProjectMeta & { isDemo: boolean }>(
@@ -322,7 +270,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             initial={{ opacity: 0, y: -16, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -16, scale: 0.96 }}
-            className={`fixed top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold shadow-xl border backdrop-blur-md ${
+            className={`fixed top-14 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold shadow-xl border backdrop-blur-md ${
               feedbackMsg.type === "error"
                 ? "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30"
                 : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
@@ -365,17 +313,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             id="btn-new-novel"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => {
-              setNewTitle("");
-              setNewSubtitle("");
-              setNewAuthor(currentProject?.author || "");
-              setNewGenre("Fantasía");
-              setNewLogline("");
-              setNewSynopsis("");
-              setNewTargetWords(50000);
-              setNewCoverUrl("");
-              setIsCreateModalOpen(true);
-            }}
+            onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold bg-[var(--accent)] text-[var(--accent-contrast)] rounded-xl shadow-md hover:opacity-95 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4 text-[var(--accent-contrast)]" />
@@ -635,178 +573,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         )}
       </div>
 
-      {/* MODAL: NUEVA NOVELA (CON SELECTOR DE CARPETA NATIVO) */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div
-            className="w-full max-w-lg rounded-2xl border p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              borderColor: "var(--border-color)",
-            }}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
-              <div>
-                <h3 className="font-bold text-lg text-[var(--text-main)] font-novel-display">
-                  Crear Nueva Novela
-                </h3>
-                <p className="text-xs text-[var(--text-muted)]">
-                  Se creará la estructura local en la carpeta que tú elijas.
-                </p>
-              </div>
-              <button
-                onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSubmit} className="space-y-4">
-              {/* Portada Opcional */}
-              <div className="flex items-center gap-4 p-3 rounded-xl bg-[var(--bg-input)]/60">
-                <NovelCover
-                  title={newTitle || "Nueva Novela"}
-                  author={newAuthor || "Autor"}
-                  genre={newGenre}
-                  coverUrl={newCoverUrl}
-                  size="sm"
-                  editable={true}
-                  onCoverChange={setNewCoverUrl}
-                  onRemoveCover={() => setNewCoverUrl("")}
-                />
-                <div className="text-xs space-y-1">
-                  <span className="font-semibold text-[var(--text-main)] block">Portada del Libro (Opcional)</span>
-                  <p className="text-[11px] text-[var(--text-muted)]">
-                    Pasa el cursor para subir una imagen o deja que Novelore genere una portada tipográfica con la paleta de {newGenre}.
-                  </p>
-                </div>
-              </div>
-
-              {/* Título */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] block">
-                  Título de la Obra *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: Crónica del Viento de Obsidiana"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-sm text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)] font-serif"
-                  autoFocus
-                />
-              </div>
-
-              {/* Subtítulo & Autor */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
-                    Subtítulo (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej: Libro Primero de las Sombras"
-                    value={newSubtitle}
-                    onChange={(e) => setNewSubtitle(e.target.value)}
-                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
-                    Nombre del Autor
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Tu nombre o seudónimo"
-                    value={newAuthor}
-                    onChange={(e) => setNewAuthor(e.target.value)}
-                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-                  />
-                </div>
-              </div>
-
-              {/* Género & Meta de Palabras */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
-                    Género Literario
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Fantasía, Ciencia Ficción, Thriller..."
-                    value={newGenre}
-                    onChange={(e) => setNewGenre(e.target.value)}
-                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
-                    Meta de Palabras Global
-                  </label>
-                  <input
-                    type="number"
-                    min={1000}
-                    step={1000}
-                    value={newTargetWords}
-                    onChange={(e) => setNewTargetWords(parseInt(e.target.value) || 0)}
-                    className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs font-mono text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-                  />
-                </div>
-              </div>
-
-              {/* Sinopsis */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-[var(--text-muted)] block">
-                  Premisa / Sinopsis Breve
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="¿De qué trata la historia? (puedes cambiarla después)"
-                  value={newSynopsis}
-                  onChange={(e) => setNewSynopsis(e.target.value)}
-                  className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)] resize-none"
-                />
-              </div>
-
-              {/* Advertencia explícita sobre modificación de la carpeta - Alto Contraste y Totalmente Legible */}
-              <div className="p-3.5 rounded-xl border border-amber-500/40 bg-[var(--bg-input)] space-y-1.5 shadow-2xs">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
-                  <span className="font-semibold text-xs text-[var(--text-main)]">
-                    Aviso: Se modificará la carpeta seleccionada
-                  </span>
-                </div>
-                <p className="text-xs text-[var(--text-main)] leading-relaxed">
-                  Novelore <strong>creará y escribirá archivos</strong> dentro del directorio que elijas (inicializando la estructura <code>project.json</code>, capítulos y escenas <code>.md</code> en <code>manuscript/</code>, y subcarpetas en <code>assets/</code>).
-                </p>
-                <p className="text-xs text-[var(--text-muted)] font-medium">
-                  👉 Te recomendamos seleccionar una <strong>carpeta vacía o una carpeta dedicada</strong> exclusivamente para esta novela.
-                </p>
-              </div>
-
-              {/* Footer */}
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--border-color)]">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-bold hover:opacity-95 shadow-xs transition-opacity cursor-pointer flex items-center gap-2"
-                >
-                  <FolderOpen className="w-4 h-4 text-[var(--accent-contrast)]" />
-                  <span>Elegir Carpeta y Crear</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* MODAL: NUEVA NOVELA (CON SELECTOR DE CARPETA NATIVO Y GESTIÓN DE ADVERTENCIAS) */}
+      <CreateNovelModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onProjectCreated={(createdProject) => {
+          onSelectProject(createdProject);
+          showToast(`¡Novela "${createdProject.title}" creada en tu equipo!`);
+          onNavigateView("manuscript");
+        }}
+      />
 
       {/* MODAL: EDITAR DATOS DE NOVELA EXISTENTE */}
       {editingProject && (

@@ -30,19 +30,16 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
     entities: WorldEntity[], relationships: Relationship[],
     updatedPositions?: Record<string, { x: number; y: number }>, updatedCategories?: RelationshipCategory[]
   ): Promise<boolean> => {
-    if (codexSaveTimeout) {
-      clearTimeout(codexSaveTimeout);
-      codexSaveTimeout = null;
-    }
+    if (codexSaveTimeout) { clearTimeout(codexSaveTimeout); codexSaveTimeout = null; }
     const positions = updatedPositions ?? get().relationshipPositions;
     const customRelationshipCategories = updatedCategories ?? get().customRelationshipCategories;
     syncToProjectStore(entities, relationships, positions, customRelationshipCategories);
 
+    const projectStore = useProjectStore.getState();
+    if (projectStore.project?.isDemo) { set({ isSaving: false }); return true; }
+
     const electronAPI = getElectronAPI();
-    if (!electronAPI?.saveCodex) {
-      set({ isSaving: false });
-      return false;
-    }
+    if (!electronAPI?.saveCodex) { set({ isSaving: false }); return false; }
 
     try {
       set({ isSaving: true });
