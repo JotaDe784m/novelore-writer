@@ -1,4 +1,4 @@
-export type EntityCategory =
+export type BaseEntityCategory =
   | "character"
   | "location"
   | "faction"
@@ -6,6 +6,16 @@ export type EntityCategory =
   | "concept"
   | "event"
   | "other";
+
+export type EntityCategory = BaseEntityCategory | (string & {});
+
+export interface CustomEntityCategory {
+  id: string;
+  label: string;
+  color: string;
+  icon?: string;
+  description?: string;
+}
 
 export type SceneStatus = "idea" | "draft" | "revised" | "polished" | "final";
 
@@ -115,6 +125,12 @@ export interface EntityImage {
   createdAt: string;
 }
 
+export interface AvatarCropData {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
 export interface WorldEntity {
   id: string;
   category: EntityCategory;
@@ -126,7 +142,9 @@ export interface WorldEntity {
   attributes: Record<string, string>; // Dynamic key-value pairs (e.g. "Edad", "Rol", "Motivación", "Miedo")
   notes: string;
   avatarIcon?: string;
-  avatarUrl?: string; // Imagen de perfil de la entrada
+  avatarUrl?: string; // Imagen de perfil de la entrada (recortada a 3:4)
+  avatarOriginalUrl?: string; // Imagen original completa sin recortar
+  avatarCrop?: AvatarCropData; // Parámetros del encuadre para re-edición
   gallery?: EntityImage[]; // Galería de imágenes
   color?: string;
   relationships?: string[]; // IDs of relationships
@@ -333,6 +351,7 @@ export interface NovelProject {
   planning?: any;
   relationshipPositions?: Record<string, { x: number; y: number }>;
   relationshipCategories?: RelationshipCategory[];
+  customEntityCategories?: CustomEntityCategory[];
   whiteboard?: MoodboardCanvas; // Pizarra interactiva de imágenes, notas, formas y flechas
   /**
    * Versión del esquema de persistencia cloud (Fase 2.2 y 2.2.1):

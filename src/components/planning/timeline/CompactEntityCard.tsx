@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { EntityHoverPopover } from "./EntityHoverPopover";
+import { resolveAssetUrl } from "../../../utils/imageUtils";
 
 export interface CompactEntityCardProps {
   name: string;
@@ -11,6 +12,7 @@ export interface CompactEntityCardProps {
   onOpenWhiteboard?: () => void;
   onRemove?: () => void;
   removeLabel?: string;
+  align?: "center" | "left" | "right";
 }
 
 export const CompactEntityCard: React.FC<CompactEntityCardProps> = ({
@@ -23,6 +25,7 @@ export const CompactEntityCard: React.FC<CompactEntityCardProps> = ({
   onOpenWhiteboard,
   onRemove,
   removeLabel = "Quitar",
+  align = "center",
 }) => {
   const [showPopover, setShowPopover] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -48,7 +51,7 @@ export const CompactEntityCard: React.FC<CompactEntityCardProps> = ({
 
   return (
     <div
-      className="relative"
+      className={`relative ${showPopover ? "z-40" : "z-10"}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -60,7 +63,7 @@ export const CompactEntityCard: React.FC<CompactEntityCardProps> = ({
           {/* Avatar pequeño */}
           {avatarUrl ? (
             <img
-              src={avatarUrl}
+              src={resolveAssetUrl(avatarUrl)}
               alt={name}
               className="w-6 h-6 rounded-full object-cover shrink-0"
             />
@@ -109,6 +112,7 @@ export const CompactEntityCard: React.FC<CompactEntityCardProps> = ({
           subtitle={subtitle}
           summary={summary}
           color={color}
+          align={align}
           onOpenDossier={onOpenDossier}
           onOpenWhiteboard={onOpenWhiteboard}
           onRemove={onRemove}

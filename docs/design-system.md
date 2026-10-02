@@ -160,19 +160,20 @@ Diseñada para un acceso inmediato en un solo clic, sin esperas ni dependencias 
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ ┌───────┐  Nombre del Elemento                  [Desvincular]│
-│ │ FOTO  │  Subtítulo / Rol / Arquetipo                      │
-│ │   O   │                                                   │
-│ │COLOR  │  ┌───────────┐  ┌───────────┐                     │
-│ └───────┘  │  Pizarra  │  │   Ficha   │                     │
-│            └───────────┘  └───────────┘                     │
+│ ┌─────────┐  Nombre del Elemento                [Desvincular]│
+│ │         │  Subtítulo / Rol / Arquetipo                     │
+│ │ RETRATO │                                                  │
+│ │   3:4   │  ┌───────────┐  ┌───────────┐                    │
+│ │         │  │  Pizarra  │  │   Ficha   │                    │
+│ └─────────┘  └───────────┘  └───────────┘                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 * **Composición**:
-  * **Avatar circular** a la izquierda (`w-10 h-10 rounded-full`) con foto de perfil (`avatarUrl`) o iniciales en relieve sobre el color semántico de la entidad.
-  * **Jerarquía tipográfica**: Nombre en seminegrita (`text-xs font-semibold`) y subtítulo atenuado (`text-[11px] text-[var(--text-muted)]`).
-  * **Botones visibles directos**: Botones planos/ghost "Pizarra" y "Ficha" integrados en la tarjeta, con fondo sutil en hover (`hover:bg-[var(--bg-surface-hover)]`).
+  * **Retrato vertical en proporción 3:4**: Marco de fotografía o avatar (`aspect-[3/4]`, `w-14 sm:w-16`) con esquinas suavizadas (`rounded-xl`), borde con el color semántico de la entidad y micro-animación de zoom al posar el cursor. Mantiene coherencia visual 1:1 con las fichas principales y dossiers del Códex.
+  * **Fallback elegante**: En ausencia de foto, despliega un bloque 3:4 con las iniciales en relieve sobre el color semántico.
+  * **Jerarquía tipográfica**: Nombre destacado (`text-xs sm:text-sm font-bold`) y subtítulo atenuado (`text-[11px] text-[var(--text-muted)]`).
+  * **Botones visibles directos**: Botones "Pizarra" y "Ficha" integrados en la tarjeta, con fondo sutil en hover y botón principal acentuado.
 * **Casos de uso ideales**:
   * Listas de 1 a 4 participantes por escena o acontecimiento.
   * Escenarios vinculados, eventos del Códice y escenas del manuscrito.

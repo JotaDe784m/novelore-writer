@@ -44,7 +44,8 @@ export const App: React.FC = () => {
         projectStore.project.entities || [],
         projectStore.project.relationships || [],
         projectStore.project.relationshipPositions || {},
-        projectStore.project.relationshipCategories || []
+        projectStore.project.relationshipCategories || [],
+        projectStore.project.customEntityCategories || []
       );
       usePlanningStore.getState().initPlanning(
         projectStore.project.planning || {
@@ -223,7 +224,8 @@ export const App: React.FC = () => {
       newProj.entities || [],
       newProj.relationships || [],
       newProj.relationshipPositions || {},
-      newProj.relationshipCategories || []
+      newProj.relationshipCategories || [],
+      newProj.customEntityCategories || []
     );
     usePlanningStore.getState().initPlanning(
       newProj.planning || {

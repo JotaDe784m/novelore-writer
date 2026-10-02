@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { EntityHoverPopover } from "./EntityHoverPopover";
+import { resolveAssetUrl } from "../../../utils/imageUtils";
 
 export interface AvatarEntityCardProps {
   name: string;
@@ -64,7 +65,7 @@ export const AvatarEntityCard: React.FC<AvatarEntityCardProps> = ({
       >
         {avatarUrl ? (
           <img
-            src={avatarUrl}
+            src={resolveAssetUrl(avatarUrl)}
             alt={name}
             className="w-full h-full object-cover"
           />

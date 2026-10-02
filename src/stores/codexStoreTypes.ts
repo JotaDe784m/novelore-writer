@@ -1,10 +1,11 @@
-import { EntityCategory, Relationship, RelationshipCategory, RelationshipType, WorldEntity } from "../types";
+import { CustomEntityCategory, EntityCategory, Relationship, RelationshipCategory, RelationshipType, WorldEntity } from "../types";
 
 export interface CodexStoreState {
   entities: WorldEntity[];
   relationships: Relationship[];
   relationshipPositions: Record<string, { x: number; y: number }>;
   customRelationshipCategories: RelationshipCategory[];
+  customEntityCategories: CustomEntityCategory[];
   selectedEntityId: string | null;
   selectedCategory: EntityCategory | "all";
   searchQuery: string;
@@ -19,13 +20,18 @@ export interface CodexStoreState {
     entities: WorldEntity[],
     relationships?: Relationship[],
     relationshipPositions?: Record<string, { x: number; y: number }>,
-    customRelationshipCategories?: RelationshipCategory[]
+    customRelationshipCategories?: RelationshipCategory[],
+    customEntityCategories?: CustomEntityCategory[]
   ) => void;
   saveCodexImmediately: () => Promise<boolean>;
   addEntity: (category: EntityCategory, name?: string) => WorldEntity;
   updateEntity: (id: string, updates: Partial<WorldEntity>) => void;
   deleteEntity: (id: string) => void;
   duplicateEntity: (id: string) => WorldEntity | null;
+  addCustomEntityCategory: (
+    category: Omit<CustomEntityCategory, "id">
+  ) => CustomEntityCategory;
+  deleteCustomEntityCategory: (id: string) => void;
 
   // Acciones de relaciones y grafo
   addRelationship: (
@@ -66,6 +72,6 @@ export interface CodexStoreState {
   getEntityById: (id: string) => WorldEntity | undefined;
   getEntitiesByCategory: (category: EntityCategory) => WorldEntity[];
   getRelationshipsForEntity: (entityId: string) => Relationship[];
-  getCategoriesSummary: () => Record<EntityCategory | "all", number>;
+  getCategoriesSummary: () => Record<string, number>;
   getFilteredEntities: (mentionsMap?: Record<string, { totalCount: number }>) => WorldEntity[];
 }

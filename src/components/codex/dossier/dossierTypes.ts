@@ -53,6 +53,7 @@ export interface DossierIdentityTabProps {
   avatarUrl: string;
   onRemoveAvatar: () => void;
   onUploadAvatarClick: () => void;
+  onOpenCropModal?: () => void;
   onOpenWhiteboard: () => void;
   onNavigateToGallery?: () => void;
   whiteboardItemsCount: number;
@@ -62,10 +63,12 @@ export interface DossierIdentityTabProps {
 export interface DossierGalleryTabProps {
   gallery: EntityImage[];
   avatarUrl: string;
+  avatarOriginalUrl?: string;
   onAddImages: (files: FileList | File[]) => void;
   onRemoveImage: (id: string, url: string) => void;
   onUpdateCaption: (id: string, caption: string) => void;
   onSetAsAvatar: (url: string) => void;
+  onOpenCropForImage?: (url: string) => void;
   onOpenLightbox: (index: number) => void;
 }
 

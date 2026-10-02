@@ -1,6 +1,6 @@
-import { EntityCategory } from "../types";
+import { CustomEntityCategory, EntityCategory } from "../types";
 
-export const DEFAULT_CATEGORY_COLORS: Record<EntityCategory, string> = {
+export const DEFAULT_CATEGORY_COLORS: Record<string, string> = {
   character: "#3B82F6", // Azul
   location: "#10B981",  // Esmeralda
   faction: "#8B5CF6",   // Violeta
@@ -10,7 +10,7 @@ export const DEFAULT_CATEGORY_COLORS: Record<EntityCategory, string> = {
   other: "#64748B",     // Pizarra / Neutral
 };
 
-const CATEGORY_LABELS: Record<EntityCategory, string> = {
+const CATEGORY_LABELS: Record<string, string> = {
   character: "Personajes",
   location: "Lugares",
   faction: "Facciones",
@@ -20,7 +20,7 @@ const CATEGORY_LABELS: Record<EntityCategory, string> = {
   other: "Libre / General",
 };
 
-const CATEGORY_DESCRIPTIONS: Record<EntityCategory, string> = {
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   character: "Protagonistas, antagonistas y personajes secundarios del elenco.",
   location: "Reinos, ciudades, fortalezas, regiones y biomas geográficos.",
   faction: "Gremios, órdenes militares, casas dinásticas y organizaciones.",
@@ -30,11 +30,25 @@ const CATEGORY_DESCRIPTIONS: Record<EntityCategory, string> = {
   other: "Fichas abiertas, notas de trasfondo, criaturas o elementos inclasificables.",
 };
 
-export function getDefaultCategoryColor(category: EntityCategory): string {
+export function getDefaultCategoryColor(
+  category: EntityCategory,
+  customCategories?: CustomEntityCategory[]
+): string {
+  if (customCategories) {
+    const found = customCategories.find((c) => c.id === category);
+    if (found?.color) return found.color;
+  }
   return DEFAULT_CATEGORY_COLORS[category] || DEFAULT_CATEGORY_COLORS.other;
 }
 
-export function getDefaultEntityName(category: EntityCategory): string {
+export function getDefaultEntityName(
+  category: EntityCategory,
+  customCategories?: CustomEntityCategory[]
+): string {
+  if (customCategories) {
+    const found = customCategories.find((c) => c.id === category);
+    if (found?.label) return `Nuevo ${found.label}`;
+  }
   switch (category) {
     case "character":
       return "Nuevo Personaje";
@@ -54,7 +68,14 @@ export function getDefaultEntityName(category: EntityCategory): string {
   }
 }
 
-export function getCategoryLabel(category: EntityCategory): string {
+export function getCategoryLabel(
+  category: EntityCategory,
+  customCategories?: CustomEntityCategory[]
+): string {
+  if (customCategories) {
+    const found = customCategories.find((c) => c.id === category);
+    if (found?.label) return found.label;
+  }
   return CATEGORY_LABELS[category] || "Elemento";
 }
 

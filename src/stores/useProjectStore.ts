@@ -120,6 +120,7 @@ declare global {
         relationships: any[];
         relationshipPositions?: Record<string, { x: number; y: number }>;
         customRelationshipCategories?: any[];
+        customEntityCategories?: any[];
       }) => Promise<{
         success: boolean;
         error?: string;
@@ -130,11 +131,13 @@ declare global {
         relationships?: any[];
         relationshipPositions?: Record<string, { x: number; y: number }>;
         customRelationshipCategories?: any[];
+        customEntityCategories?: any[];
         codex?: {
           entities: any[];
           relationships: any[];
           relationshipPositions?: Record<string, { x: number; y: number }>;
           customRelationshipCategories?: any[];
+          customEntityCategories?: any[];
         };
         error?: string;
       }>;

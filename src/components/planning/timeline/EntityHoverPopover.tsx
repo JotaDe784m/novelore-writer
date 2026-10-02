@@ -10,6 +10,7 @@ export interface EntityHoverPopoverProps {
   onRemove?: () => void;
   removeLabel?: string;
   placement?: "top" | "bottom";
+  align?: "center" | "left" | "right";
 }
 
 export const EntityHoverPopover: React.FC<EntityHoverPopoverProps> = ({
@@ -22,18 +23,31 @@ export const EntityHoverPopover: React.FC<EntityHoverPopoverProps> = ({
   onRemove,
   removeLabel = "Quitar",
   placement = "top",
+  align = "center",
 }) => {
   const isTop = placement === "top";
 
   return (
     <div
-      className={`absolute left-1/2 -translate-x-1/2 z-50 w-64 p-3 rounded-xl shadow-xl bg-[var(--bg-card)] border border-[var(--border-subtle)]/50 text-[var(--text-primary)] pointer-events-auto transition-all duration-150 animate-in fade-in zoom-in-95 ${
+      className={`absolute z-50 w-64 p-3 rounded-xl shadow-xl bg-[var(--bg-card)] border border-[var(--border-subtle)]/50 text-[var(--text-primary)] pointer-events-auto transition-all duration-150 animate-in fade-in zoom-in-95 ${
+        align === "left"
+          ? "left-0"
+          : align === "right"
+          ? "right-0"
+          : "left-1/2 -translate-x-1/2"
+      } ${
         isTop ? "bottom-full mb-2.5" : "top-full mt-2.5"
       }`}
     >
       {/* Flecha de bocadillo (speech bubble) */}
       <div
-        className={`absolute left-1/2 -translate-x-1/2 w-2.5 h-2.5 rotate-45 bg-[var(--bg-card)] border-[var(--border-subtle)]/50 ${
+        className={`absolute w-2.5 h-2.5 rotate-45 bg-[var(--bg-card)] border-[var(--border-subtle)]/50 ${
+          align === "left"
+            ? "left-6"
+            : align === "right"
+            ? "right-6"
+            : "left-1/2 -translate-x-1/2"
+        } ${
           isTop
             ? "bottom-[-5px] border-r border-b"
             : "top-[-5px] border-l border-t"

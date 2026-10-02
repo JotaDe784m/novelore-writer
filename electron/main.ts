@@ -154,6 +154,7 @@ async function initOrLoadProject(
         relationships: codexMeta.relationships || [],
         relationshipPositions: codexMeta.relationshipPositions || projectMeta.relationshipPositions || {},
         relationshipCategories: codexMeta.relationshipCategories || projectMeta.relationshipCategories || [],
+        customEntityCategories: codexMeta.customEntityCategories || projectMeta.customEntityCategories || [],
         timelineTracks: planningMeta.timeline?.tracks || planningMeta.timelineTracks || [],
         timelineEvents: planningMeta.timeline?.events || planningMeta.timelineEvents || [],
         storyBeats: planningMeta.beats || planningMeta.storyBeats || [],
@@ -815,7 +816,13 @@ ipcMain.handle("fs:saveProjectJson", async (_event, projectData: any) => {
 });
 
 // 8. Guardado y lectura atómica del Códice (codex.json)
-ipcMain.handle("fs:saveCodex", async (_event, data: { entities?: any[]; relationships?: any[]; relationshipPositions?: any; customRelationshipCategories?: any[] }) => {
+ipcMain.handle("fs:saveCodex", async (_event, data: {
+  entities?: any[];
+  relationships?: any[];
+  relationshipPositions?: any;
+  customRelationshipCategories?: any[];
+  customEntityCategories?: any[];
+}) => {
   if (!currentProjectPath) return { success: false, error: "No hay proyecto abierto." };
   try {
     const codexJsonPath = path.join(currentProjectPath, "codex.json");
@@ -828,6 +835,9 @@ ipcMain.handle("fs:saveCodex", async (_event, data: { entities?: any[]; relation
           : {},
       customRelationshipCategories: Array.isArray(data?.customRelationshipCategories)
         ? data.customRelationshipCategories
+        : [],
+      customEntityCategories: Array.isArray(data?.customEntityCategories)
+        ? data.customEntityCategories
         : [],
     };
     await writeAtomic(codexJsonPath, JSON.stringify(codexPayload, null, 2));
@@ -860,9 +870,17 @@ ipcMain.handle("fs:readCodex", async () => {
         relationships: parsed.relationships || [],
         relationshipPositions: parsed.relationshipPositions || {},
         customRelationshipCategories: parsed.customRelationshipCategories || [],
+        customEntityCategories: parsed.customEntityCategories || [],
       };
     }
-    return { success: true, entities: [], relationships: [], relationshipPositions: {}, customRelationshipCategories: [] };
+    return {
+      success: true,
+      entities: [],
+      relationships: [],
+      relationshipPositions: {},
+      customRelationshipCategories: [],
+      customEntityCategories: [],
+    };
   } catch (err: any) {
     return { success: false, error: err.message };
   }
@@ -991,12 +1009,51 @@ ipcMain.handle(
 ipcMain.handle(
   "assets:deleteImage",
   async (_event, data: { relativePath: string; projectPath?: string }) => {
-    const targetProject = data.projectPath || currentProjectPath;
-    if (!targetProject) return { success: false, error: "No hay proyecto especificado." };
+    let targetProject = data.projectPath || currentProjectPath;
+    if (!data.relativePath) return { success: true };
 
     try {
-      const fullPath = path.resolve(targetProject, data.relativePath);
+      let relPath = data.relativePath.trim();
+      if (relPath.startsWith("novelore-asset://")) {
+        try {
+          const parsed = new URL(relPath);
+          if (parsed.hostname === "project-asset") {
+            const proj = parsed.searchParams.get("projectPath");
+            const rel = parsed.searchParams.get("relPath");
+            if (proj) targetProject = proj;
+            if (rel) relPath = decodeURIComponent(rel);
+          } else {
+            const host = parsed.hostname ? decodeURIComponent(parsed.hostname) : "";
+            const pathname = decodeURIComponent(parsed.pathname || "");
+            relPath = `${host}${pathname}`;
+          }
+        } catch {
+          // Ignorar error de parseo de URL
+        }
+      }
+
+      // Eliminar barras iniciales para evitar que path.resolve lo considere ruta absoluta a nivel de SO
+      relPath = relPath.replace(/^[/\\]+/, "");
+
+      if (!targetProject) {
+        const recent = await getRecentProjectsList();
+        if (recent && recent.length > 0 && recent[0].path) {
+          targetProject = recent[0].path;
+        }
+      }
+
+      if (!targetProject) return { success: false, error: "No hay proyecto especificado." };
+
+      let fullPath = path.resolve(targetProject, relPath);
       const assetsRoot = path.resolve(targetProject, "assets");
+
+      if (!(await fileExists(fullPath)) && !relPath.startsWith("assets")) {
+        const withAssets = path.resolve(targetProject, "assets", relPath);
+        if (await fileExists(withAssets)) {
+          fullPath = withAssets;
+        }
+      }
+
       if (!fullPath.startsWith(assetsRoot)) {
         return { success: false, error: "Operación denegada fuera del directorio assets." };
       }

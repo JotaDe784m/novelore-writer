@@ -1,15 +1,17 @@
 import React from "react";
 import { ArrowUpDown, Search } from "lucide-react";
-import { EntityCategory } from "../../../types";
+import { CustomEntityCategory, EntityCategory } from "../../../types";
+import { useCodexStore } from "../../../stores/useCodexStore";
 
 export interface CodexFilterBarProps {
   activeCategory: EntityCategory | "all";
   onSelectCategory: (category: EntityCategory | "all") => void;
-  categoriesSummary: Record<EntityCategory | "all", number>;
+  categoriesSummary: Record<string, number>;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   sortBy: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc";
   onSortByChange: (sort: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc") => void;
+  customCategories?: CustomEntityCategory[];
 }
 
 export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
@@ -20,8 +22,12 @@ export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
   onSearchChange,
   sortBy,
   onSortByChange,
+  customCategories,
 }) => {
-  const categories: { id: EntityCategory | "all"; label: string; count: number }[] = [
+  const storeCustomCategories = useCodexStore((state) => state.customEntityCategories);
+  const activeCustomCategories = customCategories || storeCustomCategories;
+
+  const baseCategories: { id: EntityCategory | "all"; label: string; count: number; color?: string }[] = [
     { id: "all", label: "Todo el Lore", count: categoriesSummary.all || 0 },
     { id: "character", label: "Personajes", count: categoriesSummary.character || 0 },
     { id: "location", label: "Lugares", count: categoriesSummary.location || 0 },
@@ -29,8 +35,21 @@ export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
     { id: "item", label: "Objetos & Reliquias", count: categoriesSummary.item || 0 },
     { id: "concept", label: "Magia & Leyes", count: categoriesSummary.concept || 0 },
     { id: "event", label: "Eventos Históricos", count: categoriesSummary.event || 0 },
-    { id: "other", label: "Libre / General", count: categoriesSummary.other || 0 },
   ];
+
+  const customPills = activeCustomCategories.map((c) => ({
+    id: c.id as EntityCategory,
+    label: c.label,
+    count: categoriesSummary[c.id] || 0,
+    color: c.color,
+  }));
+
+  const otherCount = categoriesSummary.other || 0;
+  const legacyOtherPill = otherCount > 0
+    ? [{ id: "other" as EntityCategory, label: "Libre / General", count: otherCount, color: undefined }]
+    : [];
+
+  const categories = [...baseCategories, ...customPills, ...legacyOtherPill];
 
   return (
     <div
@@ -48,12 +67,18 @@ export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
               key={c.id}
               type="button"
               onClick={() => onSelectCategory(c.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                 isActive
                   ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-xs"
                   : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5"
               }`}
             >
+              {c.color && (
+                <span
+                  className="w-2 h-2 rounded-full shrink-0 mr-1.5"
+                  style={{ backgroundColor: c.color }}
+                />
+              )}
               <span>{c.label}</span>
               <span className="ml-1 opacity-75">({c.count})</span>
             </button>
@@ -93,4 +118,3 @@ export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
     </div>
   );
 };
-

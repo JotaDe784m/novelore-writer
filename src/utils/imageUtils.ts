@@ -181,9 +181,21 @@ export async function deleteLocalImage(
   relativePath: string,
   projectPath?: string
 ): Promise<{ success: boolean; error?: string }> {
-  if (!relativePath || typeof window === "undefined" || !window.electronAPI?.deleteAssetImage) {
+  if (
+    !relativePath ||
+    relativePath.startsWith("data:") ||
+    relativePath.startsWith("blob:") ||
+    relativePath.startsWith("http://") ||
+    relativePath.startsWith("https://")
+  ) {
     return { success: true };
   }
-  return await window.electronAPI.deleteAssetImage(relativePath, projectPath);
+  if (typeof window === "undefined" || !window.electronAPI?.deleteAssetImage) {
+    return { success: true };
+  }
+  const effectiveProjectPath =
+    projectPath ||
+    (typeof window !== "undefined" ? (window as any).__novelore_current_project_path : undefined);
+  return await window.electronAPI.deleteAssetImage(relativePath, effectiveProjectPath);
 }
 

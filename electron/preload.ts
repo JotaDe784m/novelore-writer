@@ -109,6 +109,7 @@ export interface ElectronAPI {
     relationships: any[];
     relationshipPositions?: Record<string, { x: number; y: number }>;
     customRelationshipCategories?: any[];
+    customEntityCategories?: any[];
   }) => Promise<{
     success: boolean;
     error?: string;
@@ -119,6 +120,7 @@ export interface ElectronAPI {
     relationships?: any[];
     relationshipPositions?: Record<string, { x: number; y: number }>;
     customRelationshipCategories?: any[];
+    customEntityCategories?: any[];
     error?: string;
   }>;
   savePlanning: (data: {

@@ -4,6 +4,7 @@ import { Relationship, WorldEntity } from "../../../types";
 import { resolveAssetUrl } from "../../../utils/imageUtils";
 import { getRelationshipColor, getRelationshipLineStyle } from "./relationTypes";
 import { useCodexStore } from "../../../stores/useCodexStore";
+import { getCategoryLabel } from "../../../utils/codexDefaults";
 
 export interface RelationshipDetailSidebarProps {
   entity: WorldEntity | null;
@@ -32,6 +33,7 @@ export const RelationshipDetailSidebar: React.FC<RelationshipDetailSidebarProps>
 
   const store = useCodexStore();
   const customCategories = store.customRelationshipCategories || [];
+  const customEntityCategories = store.customEntityCategories || [];
   const connectedRelationships = relationships.filter(
     (r) => r.sourceEntityId === entity.id || r.targetEntityId === entity.id
   );
@@ -62,7 +64,7 @@ export const RelationshipDetailSidebar: React.FC<RelationshipDetailSidebarProps>
                 {entity.name}
               </h3>
               <span className="text-[11px] text-[var(--text-muted)] capitalize truncate block">
-                {entity.category} {entity.subtitle ? `• ${entity.subtitle}` : ""}
+                {getCategoryLabel(entity.category, customEntityCategories)} {entity.subtitle ? `• ${entity.subtitle}` : ""}
               </span>
             </div>
           </div>

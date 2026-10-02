@@ -12,10 +12,12 @@ import {
   Sparkles,
   User,
   Zap,
+  Tag,
 } from "lucide-react";
 import { EntityCategory, WorldEntity } from "../../../types";
 import { getCategoryLabel } from "../../../utils/codexDefaults";
 import { resolveAssetUrl } from "../../../utils/imageUtils";
+import { useCodexStore } from "../../../stores/useCodexStore";
 
 export interface CodexEntityCardProps {
   entity: WorldEntity;
@@ -39,8 +41,9 @@ const getCategoryIcon = (cat: EntityCategory) => {
     case "event":
       return Calendar;
     case "other":
-    default:
       return Sparkles;
+    default:
+      return Tag;
   }
 };
 
@@ -50,6 +53,7 @@ export const CodexEntityCard: React.FC<CodexEntityCardProps> = ({
   mentionCount,
   onEdit,
 }) => {
+  const customCategories = useCodexStore((state) => state.customEntityCategories);
   const [avatarError, setAvatarError] = useState(false);
 
   useEffect(() => {
@@ -118,7 +122,7 @@ export const CodexEntityCard: React.FC<CodexEntityCardProps> = ({
                   style={{ backgroundColor: color }}
                 />
                 <span className="inline-block text-[11px] font-medium text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--bg-surface)]">
-                  {getCategoryLabel(entity.category)}
+                  {getCategoryLabel(entity.category, customCategories)}
                 </span>
               </div>
             </div>

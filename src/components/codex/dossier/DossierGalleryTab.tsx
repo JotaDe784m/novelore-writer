@@ -6,10 +6,12 @@ import { resolveAssetUrl } from "../../../utils/imageUtils";
 export const DossierGalleryTab: React.FC<DossierGalleryTabProps> = ({
   gallery,
   avatarUrl,
+  avatarOriginalUrl,
   onAddImages,
   onRemoveImage,
   onUpdateCaption,
   onSetAsAvatar,
+  onOpenCropForImage,
   onOpenLightbox,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -108,7 +110,7 @@ export const DossierGalleryTab: React.FC<DossierGalleryTabProps> = ({
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
           {gallery.map((img, idx) => {
-            const isAvatar = avatarUrl === img.url;
+            const isAvatar = (avatarOriginalUrl && avatarOriginalUrl === img.url) || avatarUrl === img.url;
             const isEditing = editingCaptionId === img.id;
             const resolvedSrc = resolveAssetUrl(img.url);
             const hasError = failedIds.has(img.id);
@@ -168,13 +170,16 @@ export const DossierGalleryTab: React.FC<DossierGalleryTabProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => onSetAsAvatar(img.url)}
+                          onClick={() => {
+                            if (onOpenCropForImage) onOpenCropForImage(img.url);
+                            else onSetAsAvatar(img.url);
+                          }}
                           className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                             isAvatar
                               ? "bg-amber-500 text-black"
                               : "bg-white/20 hover:bg-white/30 text-white"
                           }`}
-                          title={isAvatar ? "Foto de perfil actual" : "Establecer como foto de perfil"}
+                          title={isAvatar ? "Encuadrar foto de perfil" : "Establecer como foto de perfil"}
                         >
                           <Star className={`w-4 h-4 ${isAvatar ? "fill-black" : ""}`} />
                         </button>

@@ -57,7 +57,7 @@ export const DossierParticipantsSection: React.FC<DossierParticipantsSectionProp
                     ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-2xs"
                     : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                 }`}
-                title="Modo Tarjetas (Opcion 1)"
+                title="Modo Tarjetas"
               >
                 <LayoutGrid className="w-3 h-3" />
               </button>
@@ -69,7 +69,7 @@ export const DossierParticipantsSection: React.FC<DossierParticipantsSectionProp
                     ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-2xs"
                     : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                 }`}
-                title="Modo Compacto (Opcion 3)"
+                title="Modo Compacto"
               >
                 <List className="w-3 h-3" />
               </button>
@@ -81,7 +81,7 @@ export const DossierParticipantsSection: React.FC<DossierParticipantsSectionProp
                     ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-2xs"
                     : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                 }`}
-                title="Modo Avatares (Opcion 2)"
+                title="Modo Avatares"
               >
                 <Users className="w-3 h-3" />
               </button>
@@ -147,8 +147,8 @@ export const DossierParticipantsSection: React.FC<DossierParticipantsSectionProp
           ))}
         </div>
       ) : densityMode === "compact" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-          {charactersList.map((char) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 py-1">
+          {charactersList.map((char, idx) => (
             <CompactEntityCard
               key={char.id}
               name={char.name}
@@ -156,6 +156,7 @@ export const DossierParticipantsSection: React.FC<DossierParticipantsSectionProp
               color={char.color || "var(--accent)"}
               subtitle={char.subtitle || char.attributes?.["Rol"] || "Personaje"}
               summary={char.summary}
+              align={idx % 2 === 0 ? "left" : "right"}
               onOpenDossier={onOpenEntityDossier ? () => onOpenEntityDossier(char.id) : undefined}
               onOpenWhiteboard={onOpenEntityWhiteboard ? () => onOpenEntityWhiteboard(char.id) : undefined}
               onRemove={() => onRemoveChar(char.id)}
