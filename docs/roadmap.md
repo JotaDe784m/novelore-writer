@@ -4,13 +4,27 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 
 ---
 
-## Estado Actual del Proyecto: **FASE 2 COMPLETADA — PREPARANDO FASE 3**
+## Estado Actual del Proyecto: **REESTRUCTURACIÓN VISUAL & UX INTEGRAL — EN PROCESO**
 
 ```text
-[FASE 1: ESCRITURA] ──► [FASE 2: CÓDICE] ──► [FASE 3: PLANIFICACIÓN] ──► [FASE 4: PIZARRAS] ──► [FASE 5: MOTOR EDITORIAL]
-   (COMPLETADA)            (COMPLETADA)                    ▲
-                                                      (SIGUIENTE)
+[FASE 1: ESCRITURA] ──► [FASE 2: CÓDICE] ──► [FASE 3.1: CRONOLOGÍA] ──► [REESTRUCTURACIÓN VISUAL] ──► [PLANIFICACIÓN 3.2-3.4] ──► [PIZARRAS 4] ──► [EDITORIAL 5]
+   (COMPLETADA)            (COMPLETADA)            (COMPLETADA)                    ▲ (ACTUAL)
 ```
+
+---
+
+## Fase de Reestructuración Visual & UX Integral [EN PROCESO]
+**Objetivo**: Transformar toda la experiencia de Novelore Desktop bajo la nueva filosofía de diseño: simpleza, espacio respirable, anti-sobreexposición, erradicación de formularios burocráticos innecesarios, proporción 3:4 universal, modo Zen transversal y respeto al ritmo del escritor.
+
+- [x] **Fase 1: Documentación Maestra (`docs/design-system.md` & `docs/roadmap.md`)**: Blindaje de reglas de diseño, tokens, modos inmersivos, proporciones 3:4, taller literario de inicio y arquitectura modular.
+- [ ] **Fase 2: Núcleo Visual Global, Barra Superior & Modo Zen Universal**: `UnderlineTabs`, `SectionHelpModal` (proporción 16:9 con placeholder para GIFs), `TopNavigation` modular ($\le 250$ líneas), `SettingsModal`, y estado/hook global de Modo Zen para todas las vistas.
+- [ ] **Fase 3: Rediseño de la Página de Inicio (Taller Literario)**: Hero acogedor con novela activa, botón directo "Continuar Escribiendo", ritmo literario humano, atajos cápsula, retratos 3:4 destacados del Códex y taller local modular ($\le 250$ líneas por submódulo).
+- [ ] **Fase 4: Rediseño del Códex Hub**: Tarjetas 3:4, búsqueda maestra multi-criterio, exclusión de eventos del filtro de categorías y CRUD completo de categorías personalizadas.
+- [ ] **Fase 5: Suite de Dossiers Unificada**: Sustitución de tablas rígidas por bloques visuales de detalles con CRUD (*Añadir detalle*, *Eliminar bloque*, redacción *inline*) y pestaña "Relacionados" agrupada semánticamente.
+- [ ] **Fase 6: Planeación & Línea de Tiempo**: Cabecera con tabs apilados, CRUD de planos temporales, tarjetas de eventos y modal unificado con selector híbrido de fechas.
+- [ ] **Fase 7: Manuscrito, Editor & Ergonomía Literaria**: Cabecera del editor con Zen y ayuda `?`, árbol de manuscrito limpio e inspector con tarjetas visuales *inline*.
+- [ ] **Fase 8: Pizarra & Maquetación (Armonización Estética Ligera)**: Armonización visual de la Pizarra Global Infinita (cabecera con `?` y Zen, tarjetas 3:4 y barra cápsula, preservando todas las funciones ya implementadas) y Maquetación/Compilación (diseño formuláico técnico limpio y botones cápsula de salida, sin adelantar backends futuros).
+- [ ] **Fase 9: Mapa de Relaciones & Verificación Final**: Cabecera unificada, filtros discretos de tipos de nodos, inspector con tarjetas 3:4 y suite de verificación integral (`tsc`, `npm test`, `knip`).
 
 ---
 
@@ -128,7 +142,7 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 - [x] Apertura de ficha de entidad y pizarra interactiva como ventana flotante (`z-[70]`) sin navegar forzadamente al Códex, manteniendo la permanencia en planificación.
 - [x] Batería de pruebas automatizadas (`src/tests/test-phase-3-1.ts`) validando límites de líneas, persistencia atómica, planos temporales, reordenación espacial y cero emojis.
 
-### Subfase 3.2: Escala Temporal Zoomable y Filtros Avanzados [SIGUIENTE]
+### Subfase 3.2: Escala Temporal Zoomable y Filtros Avanzados [SIGUIENTE TRAS REESTRUCTURACIÓN]
 - Vistas de escala temporal zoomable (vista panorámica de toda la novela vs vista detallada por capítulos).
 - Filtros avanzados multidimensionales por personajes participantes, locaciones y consecuencias.
 
@@ -178,20 +192,3 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 
 ### Subfase 5.4: Conectores Opcionales para Nube Personal
 - Implementación de conectores opcionales para enlazar la carpeta del proyecto a cuentas personales del usuario (Google Drive, Dropbox, OneDrive/Outlook) mediante autenticación OAuth local de escritorio.
-
----
-
-## Ideas y Mejoras Transversales (Planificadas Post-V1)
-
-### Tarjetas Interactivas de Entidades con Acceso Directo a Ficha y Pizarra
-- **Concepto Transversal**: Estandarizar la interacción visual con las entidades del Códice (personajes, escenarios, eventos, facciones) en todas las secciones del programa:
-  - Inspector de escenas del manuscrito.
-  - Notas de escena y notas dinámicas.
-  - Grafo y vista de relaciones.
-  - Ficha de eventos de la línea de tiempo.
-  - Tablero de corcho y esquemas.
-- **Acceso en 1 Clic**: Sustituir selectores desplegables o listas estáticas por tarjetas respirables que permitan abrir inmediatamente:
-  - La **Ficha / Dossier** de la entidad en la Biblia de Mundo.
-  - La **Pizarra Interactiva** de la entidad.
-- **Enfoque de Implementación**: Se introduce inicialmente como modelo funcional en la Ficha de Evento de la Línea de Tiempo, sirviendo de referencia orgánica para extenderse gradualmente por el resto de la aplicación tras consolidar la primera versión funcional.
-

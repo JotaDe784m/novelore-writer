@@ -1,12 +1,12 @@
 # Sistema de Diseño y UI/UX — Novelore Desktop
 
-Este documento define la **filosofía visual, arquitectura de interfaz, sistema de tokens y ergonomía de lectura** de **Novelore**. Su objetivo es erradicar el aspecto de "panel administrativo / dashboard técnico" y consolidar un espacio creativo, minimalista, espacioso y estéticamente reconocible para largas jornadas de escritura.
+Este documento define la **filosofía visual, arquitectura de interfaz, sistema de tokens, componentes universales y ergonomía de lectura** de **Novelore**. Su propósito es erradicar de raíz el aspecto de "panel administrativo / dashboard técnico" y consolidar un espacio creativo, minimalista, espacioso y estéticamente reconocible para largas jornadas de creación literaria y worldbuilding.
 
 ---
 
-## 1. Filosofía de Diseño: "Libertad Creativa & Espacio Respirable"
+## 1. Filosofía Rectora: "Libertad Creativa, Espacio Respirable & Cero Redundancia"
 
-La experiencia de Novelore se inspira directamente en los referentes más refinados del software de autor y gestión de pensamiento:
+La experiencia de Novelore se inspira en los referentes más refinados del software de autor, gestión de pensamiento y tipografía editorial:
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -19,21 +19,27 @@ La experiencia de Novelore se inspira directamente en los referentes más refina
 │    (Jerarquía colapsable al 100%, pestañas sutiles, fondos limpios)   │
 │                                                                        │
 │  • Códice & Pizarras:     Heptabase / Milanote                         │
-│    (Tarjetas visuales orgánicas, conectores fluidos, sin rigidez)      │
+│    (Tarjetas visuales orgánicas, lienzo infinito, sin rigidez)         │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Reglas Rectoras del Lenguaje Visual:
 1. **La Muerte de las "Cajas y Marcos"**: Se prohíbe el exceso de líneas divisorias (`border border-[...]`) en paneles, botones y tarjetas. La jerarquía y separación se logran mediante **cambios sutiles de tono de fondo** (contraste de superficie) y **espaciado respirable** (*padding* y márgenes holgados).
-2. **Botones Sin Contorno (*Ghost & Flat Elements*)**: Los botones y herramientas flotan limpios sobre la superficie; reaccionan únicamente con un fondo suave (*hover tint*) y transiciones fluidas de opacidad.
-3. **El Texto como Protagonista**: La interfaz se desvanece para que la prosa literaria sea el centro visual de la pantalla.
+2. **Anti-Sobreexposición & Anti-Dashboard**: El autor es el dueño de su narrativa y comprende su flujo de trabajo. Quedan prohibidos los textos explicativos estáticos que saturan los encabezados y paneles ("Haz clic aquí para...", "Esta sección sirve para..."). La orientación se concentra exclusivamente **bajo demanda** en un botón contextual `?`.
+3. **Botones Limpios y Controles en Cápsula (*Pill Buttons*)**: Las acciones primarias y filtros secundarios adoptan forma de cápsula redondeada (`rounded-full` o `rounded-xl`) sin bordes pesados, reaccionando con elevaciones suaves y tonos traslúcidos (*hover tint*).
+4. **Pestañas de Texto con Indicador Animado (`UnderlineTabs`)**: La navegación entre secciones y categorías se realiza mediante texto limpio con una línea indicadora inferior animada suavemente (`motion.div` con `layoutId`), prescindiendo de cajas duras tipo pestaña de navegador antiguo.
+5. **Estructuras Visuales antes que Formularios**: Los campos rígidos organizados en tablas o listas de pares clave-valor se sustituyen por bloques o tarjetas temáticas con edición directa *inline*.
+6. **Coherencia Fotográfica 3:4 Universal**: La proporción vertical **3:4** es el estándar absoluto para todos los marcos fotográficos de la aplicación: retratos de personajes, postales de lugares, emblemas de facciones, acontecimientos de la línea de tiempo y recursos depositados en la pizarra.
+7. **Separación Quirúrgica en Menús Contextuales**:
+   - **Clic principal**: Abre directamente la ficha, dossier o editor de la entidad.
+   - **Clic derecho**: Despliega un menú contextual rápido de operaciones directas (*Abrir ficha*, *Ver en pizarra*, *Duplicar*, *Eliminar*). **Queda estrictamente prohibido incluir selectores de color en el menú contextual**; la personalización del color de identidad semántica pertenece de manera exclusiva a la cabecera del Dossier.
+8. **Cero Emojis**: Queda estrictamente prohibido el uso de emojis en código, componentes, interfaces, botones, mensajes predeterminados y nombres de entidades del sistema. La iconografía se resuelve exclusivamente mediante glifos vectoriales refinados (`lucide-react`).
 
 ---
 
-## 2. Arquitectura de Layout y Paneles (3 Columnas Fluidas)
+## 2. Arquitectura de Layout, Paneles & Modo Inmersivo Unificado
 
-La interfaz se estructura en tres zonas horizontales coordinadas:
-
+### 1. Las 3 Columnas Fluidas del Espacio de Trabajo
 ```text
 ┌─────────────────┬───────────────────────────────────┬─────────────────┐
 │ BARRA IZQUIERDA │          EDITOR CENTRAL           │ BARRA DERECHA   │
@@ -49,115 +55,113 @@ La interfaz se estructura en tres zonas horizontales coordinadas:
 └─────────────────┴───────────────────────────────────┴─────────────────┘
 ```
 
-### Comportamiento de los Paneles:
-* **Colapso Total hacia los Bordes**:
-  * La barra izquierda (manuscrito) y la derecha (inspector) pueden replegarse completamente mediante atajos de teclado (`Ctrl+\` o `Cmd+\` para el manuscrito; `Ctrl+I` o `Cmd+I` para el inspector) o botones discretos sin marco.
-  * Al colapsar los paneles, el editor central permanece perfectamente centrado y amplía sus márgenes laterales de forma natural.
-* **Redimensionamiento y Persistencia**:
-  * Los anchos de ambos paneles son redimensionables mediante arrastre sutil en su zona divisoria. Las dimensiones elegidas por el autor se persisten en las preferencias locales.
-* **Modo Zen / Enfoque Absoluto**:
-  * Oculta ambas barras laterales, la barra de estado superior e inferior, dejando exclusivamente el lienzo tipográfico en pantalla completa.
+- **Colapso Total hacia los Bordes**: La barra izquierda (`Ctrl+\` o `Cmd+\`) y el inspector derecho (`Ctrl+I` o `Cmd+I`) pueden replegarse completamente hasta el pixel 0. Al colapsar, el editor central amplía sus márgenes de manera armónica.
+- **Redimensionamiento Tonal**: Paneles redimensionables sin líneas de borde; la separación se basa en el contraste de superficie (`--bg-sidebar` vs `--bg-editor`).
+
+### 2. Modo Pantalla Completa / Zen Universal
+El modo Zen trasciende el editor de manuscrito y se convierte en un **estándar transversal unificado** para todas las secciones principales de Novelore (*Manuscrito*, *Códex*, *Planeación*, *Pizarra*, *Mapa de Relaciones*, *Maquetación*):
+- **Botón Unificado en Cabecera**: Cada módulo incluye un botón de maximización (`Maximize2` / `Minimize2`).
+- **Comportamiento Inmersivo**:
+  - Se oculta por completo la barra superior general de navegación (`TopNavigation`).
+  - Se oculta la cabecera principal del módulo activo.
+  - **Se conservan visibles las pestañas de navegación contextual (`UnderlineTabs`)** de la sección, permitiendo al autor alternar entre categorías, escenas o vistas sin salir del estado de inmersión.
+  - Se dispone un control flotante translúcido y sutil en una esquina de la pantalla para restaurar la interfaz estándar (o mediante la tecla `Escape`).
 
 ---
 
 ## 3. Ergonomía Tipográfica del Editor Central
 
-Diseñado para soportar sesiones de redacción continua de 4 a 8 horas sin fatiga visual:
+Diseñado para sostener jornadas de redacción profunda de 4 a 8 horas sin agotamiento visual:
 
 1. **Columna de Lectura Óptima (~720px)**:
-   - El texto nunca se desborda horizontalmente de borde a borde en monitores ultrapanorámicos.
-   - Se mantiene estrictamente en el ancho óptimo de lectura ergonómica: **entre 65 y 75 caracteres por línea**.
+   - Ancho centrado restringido ergonómicamente a **65-75 caracteres por línea**.
 2. **Scroll de Máquina de Escribir (*Typewriter Scrolling*)**:
-   - Mantiene la línea activa de escritura anclada suavemente en el tercio medio de la pantalla, evitando que el autor deba escribir con la mirada en el borde inferior del monitor.
+   - Ancla la línea activa de redacción en el tercio medio de la pantalla (`Alt+T` o botón en barra de herramientas).
 3. **Modo Foco por Párrafo (*Focus Mode*)**:
-   - Resalta el párrafo actual que el autor está redactando y atenúa suavemente con una opacidad reducida (40-50%) los párrafos anteriores y posteriores, aumentando la inmersión en la frase actual.
-4. **Respiración Vertical**:
-   - Altura de línea (*line-height*) generosa y configurable (1.6 a 1.8 en prosa estándar), con separación suave entre párrafos o sangría clásica de primera línea sin líneas en blanco.
+   - Resalta el párrafo bajo el cursor y atenúa al 40-50% de opacidad los párrafos precedentes y posteriores (`Alt+F`).
+4. **Formateador Tipográfico Literario en Español**:
+   - Raya de diálogo canónica (`—`, `Alt+-` o `Ctrl+Shift+M`) pegada al diálogo.
+   - Comillas latinas angulares (`« »`).
+   - Corte de escena clásico (`* * *`).
+   - Sangría literaria inteligente (`Tab`, `Shift+Tab` y sangría automática de primera línea).
 
 ---
 
 ## 4. Sistema de Tokens de Diseño y Variables CSS
 
-La interfaz utiliza variables CSS semánticas desacopladas de colores fijos:
-
 ### Tokens de Color y Superficie:
 | Token CSS | Propósito | Comportamiento Visual |
 | :--- | :--- | :--- |
 | `--bg-app` | Fondo base de la ventana de la aplicación. | Tono neutro más profundo. |
-| `--bg-sidebar` | Fondo de las barras laterales de navegación. | Contraste sutil (±2-3% de brillo respecto a `--bg-app`). |
-| `--bg-editor` | Fondo del lienzo de escritura central. | Superficie limpia y descansada para la vista. |
-| `--bg-surface-hover` | Realce interactivo de botones e ítems de lista. | Fondo traslúcido suave al pasar el cursor (5-10% opacidad). |
-| `--bg-surface-active`| Ítem seleccionado o escena activa en el árbol. | Tono ligeramente acentuado o con tinte sutil del acento. |
-| `--text-primary` | Prosa del editor y títulos principales. | Máximo contraste legible sin ser negro puro agresivo. |
+| `--bg-sidebar` | Fondo de las barras laterales y paneles. | Contraste sutil (±2-3% respecto a `--bg-app`). |
+| `--bg-editor` | Fondo del lienzo de escritura y lectura. | Superficie limpia y descansada para la vista. |
+| `--bg-card` | Fondo de tarjetas, bloques de detalle y dossiers. | Elevación tonal suave sin bordes rígidos. |
+| `--bg-surface-hover` | Realce interactivo de botones e ítems. | Tinte traslúcido suave al posar el cursor (5-10%). |
+| `--bg-surface-active`| Ítem seleccionado o escena activa. | Tono acentuado o con tinte sutil del acento. |
+| `--text-primary` | Prosa del editor y títulos principales. | Máximo contraste legible sin ser negro puro estridente. |
 | `--text-secondary` | Nombres de escenas en árbol, etiquetas y datos. | Contraste medio para información contextual. |
 | `--text-muted` | Conteo de palabras, atajos y pistas sutiles. | Atenuado para evitar saturación visual. |
-| `--accent` | Color de acento personalizable del autor. | Aplicado con parsimonia (indicadores de estado, cursor activo). |
+| `--accent` | Color de acento personalizable del autor. | Aplicado con parsimonia (indicadores, cursor activo). |
 | `--accent-subtle` | Fondos de etiquetas activas y selecciones. | Variación muy diluida del color de acento. |
 
-> **Regla de Oro**: Ningún panel debe tener `border: 1px solid [...]` visible por defecto. La delimitación entre la barra lateral y el editor se produce exclusivamente por la transición entre `--bg-sidebar` y `--bg-editor`.
-
-### Tokens de Espaciado y Curvatura:
-* **Espaciado**: Sistema basado en múltiplos de 4/8px. Márgenes internos de paneles: `16px` a `24px`. Espaciado de editor: `32px` a `64px` de margen superior/inferior.
-* **Curvaturas (*Border Radius*)**:
-  * Botones y campos de texto: `rounded-lg` (8px).
-  * Tarjetas y modales: `rounded-xl` (12px) a `rounded-2xl` (16px).
-  * Chips de estado y avatares: `rounded-full`.
+### Tokens de Curvatura y Espaciado:
+- **Botones y cápsulas**: `rounded-full` para botones de acción; `rounded-xl` (12px) para botones estándar.
+- **Tarjetas y bloques**: `rounded-2xl` (16px) a `rounded-3xl` (24px).
+- **Marcos fotográficos**: `aspect-[3/4]` con `rounded-xl` o `rounded-2xl`.
+- **Márgenes y paddings**: Cuadrícula modular basada en múltiplos de 4px/8px.
 
 ---
 
-## 5. El Sistema de Temas de Novelore: "Atmósferas Visuales"
+## 5. Atmósferas Visuales (Catálogo de Temas Desacoplado)
 
-En Novelore, un **Tema** no es simplemente un cambio de color, sino una **atmósfera estética completa** que acompaña el género y el estado de ánimo de la obra.
-
-### Componentes de un Tema:
-1. **Paleta Cromática de Superficie**: Fondos adaptados para `--bg-app`, `--bg-sidebar`, `--bg-editor`, `--text-primary` y `--text-muted`.
-2. **Color de Acento Personalizable**: El autor puede sustituir el acento sugerido por cualquier tonalidad propia (ej. oro antiguo, azul cobalto, burdeos, esmeralda, amatista).
-3. **Independencia Tipográfica**: La fuente tipográfica (Garamond, Lora, Merriweather, JetBrains Mono, etc.) y su tamaño son preferencias ergonómicas del autor y **no se ven forzadas por el tema cromático**.
-
-### Catálogo de Atmósferas Iniciales:
-* **Claro Editorial (Minimal)**: Lienzo blanco marfil neutro con texto grafito profundo. Máxima nitidez y luz natural.
-* **Carbón Nocturno (Dark)**: Superficie carbón mate profunda sin reflejos agresivos, diseñada para descansar la vista en la noche.
-* **Pergamino Fantasía (Sepia)**: Tono cálido de papel añejo y tinta sepia/nogalina, evocando crónicas históricas y fantasía.
-* **Bosque Brumoso (Forest)**: Verdes profundos y tonos musgo apagados para ambientaciones de misterio o naturaleza.
-* **Medianoche (Midnight)**: Azul marino abisal de baja saturación con acentos cian tenues para ciencia ficción y drama.
-* **Noir (Monocromo)**: Escala de grises pura de alto contraste y elegancia cinematográfica.
-
-### Jerarquía de Guardado de Temas:
-1. **Preferencia Global de la Aplicación**: El tema general que la aplicación utiliza por defecto al iniciarse.
-2. **Preferencia Específica por Novela (`project.settings.theme`)**: Cada proyecto puede guardar su propia atmósfera (por ejemplo, escribir una novela gótica en *Noir* y un ensayo en *Claro Editorial*), aplicándose automáticamente al abrir esa carpeta.
+En Novelore, un tema es una **atmósfera estética completa** desacoplada de la tipografía y del tamaño de fuente:
+- **Claro Editorial (Minimal)**: Lienzo blanco marfil neutro con texto grafito profundo.
+- **Carbón Nocturno (Dark)**: Superficie carbón mate profunda sin reflejos agresivos.
+- **Pergamino Fantasía (Sepia)**: Tono cálido de papel añejo y tinta sepia/nogalina.
+- **Bosque Brumoso (Forest)**: Verdes profundos y tonos musgo apagados.
+- **Medianoche (Midnight)**: Azul marino abisal de baja saturación con acentos tenues.
+- **Noir (Monocromo)**: Escala de grises pura de alto contraste cinematográfico.
 
 ---
 
-## 6. Códice y Pizarras Visuales (Heptabase / Milanote)
+## 6. Sistema Universal de Ayuda Contextual (`SectionHelpModal`)
 
-* **Tarjetas Orgánicas**: Las fichas de personajes, lugares y notas del lienzo infinito no tienen bordes duros; utilizan elevaciones sutiles y esquinas redondeadas generosas.
-* **Conectores Curvos Dinámicos**: Las líneas de relación y flechas no son rígidas; trazan curvas fluidas con puntos de flexión orgánicos.
-* **Microinteracciones Suaves**: Arrastre con inercia, transiciones fluidas de zoom y sombras de elevación dinámicas mientras se mueve un elemento.
-
----
-
-## 7. Sistema Universal de Tarjetas de Entidad (Entity Cards System)
-
-El **Sistema Universal de Tarjetas de Entidad** es el patrón transversal de interacción que conecta los elementos del **Códice** (personajes, lugares, facciones, objetos, acontecimientos históricos) con el resto de módulos de Novelore:
-* **Línea de Tiempo**: Dossier de acontecimientos narrativos y listas de participantes/escenarios.
-* **Inspector de Escenas**: Personajes presentes en la escena y lugares vinculados en el manuscrito.
-* **Mapa de Relaciones**: Fichas contextuales e inspectores de nodos vinculados.
-* **Pizarras Visuales y Tablero de Corcho**: Fichas interactivas en lienzo infinito y cartulinas.
-* **Notas de Manuscrito y Menciones Rápidas**: Previsualización de personajes mencionados en el texto.
-
-### Principios Fundamentales del Sistema de Tarjetas:
-1. **Ausencia de Marcos Rígidos**: Las tarjetas se integran en el fondo mediante contraste tonal suave (`--bg-sidebar`, `--bg-card`), elevaciones ligeras y esquinas redondeadas generosas (`rounded-xl`).
-2. **Acceso Directo Sin Fricción**: Cada tarjeta ofrece accesos directos a **"Ficha"** (Códex) y **"Pizarra"** (lienzo interactivo de la entidad).
-3. **Permanencia en Contexto (Ventana Flotante `z-[70]`)**: Al abrir una ficha o pizarra desde una tarjeta, esta se despliega como un modal flotante por encima de la vista activa. Nunca se fuerza una navegación de pantalla completa que interrumpa el flujo del autor.
-4. **Respeto a la Densidad Visual**: La interfaz ofrece tres modos de visualización para que listas numerosas (ej. una batalla o banquete con más de 8 personajes) no colapsen el espacio respirable.
+En sustitución de manuales densos o textos estáticos:
+- **Activación**: Botón discreto `?` ubicado junto al título de cada cabecera unificada.
+- **Contenedor Visual en Proporción 16:9 (`aspect-video`)**:
+  - Diseñado con gradiente temático sutil y distintivo de demostración visual.
+  - Soporta la propiedad `gifSrc?: string`: reproduce en bucle fluido los GIFs demostrativos grabados por el autor cuando estén disponibles; si no, despliega un placeholder estético.
+- **Contenido Concreto**:
+  - Explicación concisa del propósito creativo del módulo (2 a 3 líneas).
+  - Atajos de teclado clave asociados a la sección.
+  - Botón de cierre "Entendido" en formato cápsula. No requiere subpáginas complejas de "Saber más" ni dependencias de traducción.
 
 ---
 
-### Las 3 Variaciones de Tarjeta de Entidad
+## 7. Página de Inicio: "Taller Literario Respirable"
 
-#### Variación 1: Tarjeta Estándar Completa (Opción 1 — Principal por Defecto)
-Diseñada para un acceso inmediato en un solo clic, sin esperas ni dependencias de interacción por cursor.
+La página de inicio no es un cuadro de mando empresarial; es el **vestíbulo acogedor de la obra**:
 
+### Estado A: Novela Activa en Edición
+1. **Hero Acogedor**: Saludo sereno y título de la novela en tipografía display con su género y subtítulo.
+2. **Acceso Rápido "Continuar Escribiendo"**: Tarjeta destacada de reanudación inmediata que indica la última escena trabajada (título del capítulo y escena, conteo de palabras y tiempo relativo transcurrido) para volver a la prosa en 1 solo clic.
+3. **Ritmo Literario (Métricas Humanas)**: Barra estética de avance hacia la meta total del libro (ej. `42.500 / 80.000 palabras`) y palabras redactadas en la sesión actual, sin gráficas financieras complejas.
+4. **Atajos Creativos en Cápsula**: Enlaces directos a *Manuscrito*, *Códex*, *Planeación*, *Pizarra* y *Relaciones*.
+5. **Retratos Destacados (3:4)**: Carrusel o cuadrícula de personajes o elementos clave del universo ficticio con marcos 3:4.
+6. **Taller de Otras Novelas**: Sección inferior colapsable para abrir carpetas locales o conmutar de proyecto sin abarrotar la vista principal.
+
+### Estado B: Sin Novela Activa (o Taller Despejado)
+- Galería central de portadas en formato vertical de libro (2:3 o 3:4).
+- Botones cápsula principales: `+ Nueva Novela` y `Abrir Carpeta Local`.
+- Buscador ágil por título o autor, sin paneles administrativos redundantes.
+
+---
+
+## 8. Sistema Universal de Tarjetas de Entidad (Proporción 3:4)
+
+El estándar transversal para renderizar entidades en Códex, Cronología, Pizarras, Inspector y Relaciones:
+
+### Variación 1: Tarjeta Estándar Completa (Principal)
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │ ┌─────────┐  Nombre del Elemento                [Desvincular]│
@@ -168,91 +172,54 @@ Diseñada para un acceso inmediato en un solo clic, sin esperas ni dependencias 
 │ └─────────┘  └───────────┘  └───────────┘                    │
 └─────────────────────────────────────────────────────────────┘
 ```
+- Marco fotográfico vertical en proporción **3:4** con borde en color semántico y micro-animación de zoom.
+- Nombre destacado, subtítulo atenuado y botones directos *Pizarra* y *Ficha* en ventana flotante (`z-[70]`).
 
-* **Composición**:
-  * **Retrato vertical en proporción 3:4**: Marco de fotografía o avatar (`aspect-[3/4]`, `w-14 sm:w-16`) con esquinas suavizadas (`rounded-xl`), borde con el color semántico de la entidad y micro-animación de zoom al posar el cursor. Mantiene coherencia visual 1:1 con las fichas principales y dossiers del Códex.
-  * **Fallback elegante**: En ausencia de foto, despliega un bloque 3:4 con las iniciales en relieve sobre el color semántico.
-  * **Jerarquía tipográfica**: Nombre destacado (`text-xs sm:text-sm font-bold`) y subtítulo atenuado (`text-[11px] text-[var(--text-muted)]`).
-  * **Botones visibles directos**: Botones "Pizarra" y "Ficha" integrados en la tarjeta, con fondo sutil en hover y botón principal acentuado.
-* **Casos de uso ideales**:
-  * Listas de 1 a 4 participantes por escena o acontecimiento.
-  * Escenarios vinculados, eventos del Códice y escenas del manuscrito.
-  * Nodos desplegados en la Pizarra Visual y tarjetas principales del Inspector lateral.
+### Variación 2: Fila de Avatares / Elenco Compacto (Modo Facepile)
+- Círculos de avatar limpios (`w-9 h-9 rounded-full`) para escenas corales y asambleas numerosas.
+- Popover flotante enriquecido al hacer hover con sinopsis y botones de acción.
 
----
-
-#### Variación 2: Fila de Avatares / Elenco Compacto (Opción 2 — Modo Facepile)
-Diseñada para escenas corales y asambleas masivas donde intervienen muchos personajes y se requiere la máxima economía de espacio vertical (~40px de altura total).
-
-```text
-  ┌───────┐   ┌───────┐   ┌───────┐
-  │ (Foto)│   │ (Foto)│   │ (Foto)│  ...  +X más
-  └───┬───┘   └───────┘   └───────┘
-      │
-      ▼ (Aparece al pasar el cursor)
-  ┌───────────────────────────────────────────┐
-  │ Nombre del Elemento             [Quitar]  │
-  │ Subtítulo o Rol                           │
-  │                                           │
-  │ Extracto de lore o descripción corta      │
-  │ registrada en el Códice...                │
-  │                                           │
-  │              ┌───────────┐ ┌───────────┐  │
-  │              │  Pizarra  │ │   Ficha   │  │
-  │              └───────────┘ └───────────┘  │
-  └───────────────────────────────────────────┘
-```
-
-* **Composición**:
-  * Círculos de avatar limpios (`w-9 h-9 rounded-full`) alineados en fila horizontal continua con micro-animación de escalado (`scale-105`) al posar el cursor.
-  * **Popover Flotante Enriquecido (*Speech Bubble*)**: Al hacer hover sobre cualquier avatar, se despliega un globo flotante con flecha indicadora que contiene el nombre, la descripción/sinopsis corta del Códex y los botones "Pizarra" y "Ficha".
-* **Casos de uso ideales**:
-  * Escenas con 6 a 15+ participantes (batallas, consejos, cenas solemnes).
-  * Nodos tipo "pin" o chincheta de personaje en diagramas extensos de la Pizarra Visual.
-  * Barras de presencia rápida en cabeceras de capítulos del manuscrito.
+### Variación 3: Tarjeta Compacta con Popover (Modo Lista Densa)
+- Tarjeta horizontal de ~36px de altura con micro-avatar y nombre truncable para paneles estrechos.
 
 ---
 
-#### Variación 3: Tarjeta Compacta con Popover (Opción 3 — Modo Lista Densa)
-Diseñada para equilibrar la lectura inmediata del nombre con una huella vertical mínima, permitiendo disponer los participantes en cuadrículas de 2 columnas.
+## 9. Suite de Dossiers: Tarjetas Visuales y Pestaña "Relacionados"
 
-```text
-┌──────────────────────────────────────────┐
-│ (o) Nombre del Elemento     Subtítulo [x]│
-└──┬───────────────────────────────────────┘
-   │
-   ▼ (Aparece al pasar el cursor)
-┌───────────────────────────────────────────┐
-│ Nombre del Elemento             [Quitar]  │
-│ Subtítulo o Rol                           │
-│                                           │
-│ Extracto de lore o descripción corta      │
-│ registrada en el Códice...                │
-│                                           │
-│              ┌───────────┐ ┌───────────┐  │
-│              │  Pizarra  │ │   Ficha   │  │
-│              └───────────┘ └───────────┘  │
-└───────────────────────────────────────────┘
-```
+### 1. Bloques Visuales de Detalles (`DossierAttributesTab.tsx`)
+- Se erradican las tablas de pares clave-valor rígidas.
+- **Tarjetas Temáticas**: Bloques visuales configurables (*Inicio*, *Conflicto*, *Final*, *Motivación*, *Mayor Miedo*, *Aliados*).
+- **CRUD Completo**:
+  - Redacción directa *inline* de título y contenido con auto-guardado suave.
+  - Botón `+ Añadir detalle` para crear nuevos bloques temáticos.
+  - Botón de papelera en cada tarjeta para eliminar el bloque con confirmación sutil.
 
-* **Composición**:
-  * Tarjeta horizontal estilizada de ~36px de altura con micro-avatar (`w-6 h-6`), nombre truncable y subtítulo inline.
-  * **Popover Flotante Enriquecido**: Despliega la sinopsis de trasfondo y los botones de acción al pasar el ratón.
-  * Botón de desvinculación discreto (`x`) visible al hacer hover en el extremo derecho.
-* **Casos de uso ideales**:
-  * Listas de participantes de tamaño medio (4 a 8 personajes) en cuadrícula de 2 columnas.
-  * Paneles estrechos como el Inspector lateral de escena (~260px a 300px).
-  * Tarjetas compactas de referencias cruzadas en el Códex.
+### 2. Pestaña "Relacionados" (`DossierRelationsTab.tsx`)
+- Presente en todas las entidades del Códex y Acontecimientos de la Cronología.
+- Agrupación semántica por categorías: `Lugares +`, `Personajes +`, `Facciones +`, `Acontecimientos +`.
+- Selector de densidad de visualización (Tarjetas 3:4, Compactas, Avatares).
+- Botón directo para desenlazar o eliminar la relación.
 
 ---
 
-### Componentes Base y Conmutador de Densidad
+## 10. Pizarra Global Única e Infinita (`VisualBoardView`)
 
-El sistema se estructura en componentes desacoplados dentro del módulo de UI:
-* **`DossierEntityCard.tsx`**: Renderizado de la Variación 1 (Tarjeta completa).
-* **`AvatarEntityCard.tsx`**: Renderizado de la Variación 2 (Avatar con popover).
-* **`CompactEntityCard.tsx`**: Renderizado de la Variación 3 (Tarjeta fina con popover).
-* **`EntityHoverPopover.tsx`**: Globo flotante interactivo con tolerancia de puntero (150 ms) y botones de acción.
-* **`DossierParticipantsSection.tsx`**: Cabecera con conmutador de 3 estados (*Tarjetas*, *Compacto*, *Avatares*) que adapta la densidad según la preferencia del autor o el tamaño del elenco.
+- **Lienzo Espacial Único**: Una sola pizarra global infinita por proyecto, preservando todas las funcionalidades implementadas (pan/zoom infinito, notas adhesivas, conectores Bézier magnéticos, inserción de imágenes locales).
+- **Actualización Estética**: Cabecera unificada `[Layout] Pizarra [?] [Zen]`, barra de herramientas flotante en cápsula y tarjetas de entidades depositadas en formato **3:4**.
 
+---
 
+## 11. Maquetación, Compilación & Exportación (`ExportPageView`)
+
+- **Flexibilidad Formuláica Técnica**: Al tratarse de un área técnica donde se configuran parámetros milimétricos (márgenes, formato de página, títulos, compendio y glifos de corte), se mantiene una estructura formuláica modular limpia.
+- **Acabado Visual**: Espaciado respirable, contraste tonal suave, botones cápsula para formatos de salida (`DOCX`, `PDF`, `EPUB`, `Markdown`) y progreso de compilación claro.
+
+---
+
+## 12. Reglas de Ingeniería y Restricciones Inviolables
+
+1. **Modularidad Estricta ($\le 250$ líneas por archivo)**: Ningún componente o submódulo superará las ~250 líneas.
+2. **Cero Emojis**: Prohibidos en cualquier nivel de la aplicación o del repositorio.
+3. **Persistencia Local-First Absoluta**: Prohibidos servidores o nubes centralizadas; todo se persiste en archivos locales abiertos (`.md`, `.json`, `.png`/`.jpg`).
+4. **Verificación Continua**: Cada fase debe superar TypeScript (`tsc --noEmit`), pruebas (`npm test`) y auditoría (`knip`).
+5. **Prohibición Estricta de Commits Autónomos**: Solo se ejecuta `git commit` cuando el usuario dé la orden explícita.
