@@ -1,5 +1,5 @@
 import React, { useState, useRef, useId } from "react";
-import { Camera, Trash2 } from "lucide-react";
+import { Camera, Trash2, Maximize2 } from "lucide-react";
 import { resolveAssetUrl, saveLocalImage } from "../../utils/imageUtils";
 
 export interface NovelCoverProps {
@@ -8,11 +8,12 @@ export interface NovelCoverProps {
   genre?: string;
   coverUrl?: string;
   projectPath?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   editable?: boolean;
   className?: string;
   onCoverChange?: (newCoverUrl: string) => void;
   onRemoveCover?: () => void;
+  onViewLarge?: () => void;
 }
 
 const GENRE_GRADIENTS: Record<string, { bg: string; text: string; accent: string }> = {
@@ -37,6 +38,7 @@ export const NovelCover: React.FC<NovelCoverProps> = ({
   className = "",
   onCoverChange,
   onRemoveCover,
+  onViewLarge,
 }) => {
   const [imageError, setImageError] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -52,6 +54,7 @@ export const NovelCover: React.FC<NovelCoverProps> = ({
     sm: "w-16 h-24 text-[10px]",
     md: "w-28 h-40 text-xs",
     lg: "w-44 h-64 text-sm",
+    xl: "w-64 h-96 sm:w-72 sm:h-[432px] text-base",
   }[size];
 
   const resolvedUrl = coverUrl ? resolveAssetUrl(coverUrl, projectPath) : "";
@@ -85,7 +88,10 @@ export const NovelCover: React.FC<NovelCoverProps> = ({
 
   return (
     <div
-      className={`relative group rounded-xl overflow-hidden shrink-0 select-none shadow-sm transition-all duration-300 ${sizeClasses} ${className}`}
+      onClick={!editable && onViewLarge ? onViewLarge : undefined}
+      className={`relative group rounded-xl overflow-hidden shrink-0 select-none shadow-sm transition-all duration-300 ${sizeClasses} ${className} ${
+        !editable && onViewLarge ? "cursor-pointer hover:scale-[1.02]" : ""
+      }`}
     >
       {/* 1. Imagen física real */}
       {hasValidImage ? (
@@ -108,7 +114,7 @@ export const NovelCover: React.FC<NovelCoverProps> = ({
           <div className="pt-1 flex justify-center">
             <span
               className={`font-serif font-black tracking-widest opacity-80 ${matchedTheme.accent} ${
-                size === "sm" ? "text-base" : size === "md" ? "text-xl" : "text-3xl"
+                size === "sm" ? "text-base" : size === "md" ? "text-xl" : size === "lg" ? "text-3xl" : "text-4xl"
               }`}
             >
               {initialLetter}
@@ -119,7 +125,7 @@ export const NovelCover: React.FC<NovelCoverProps> = ({
           <div className="px-1 py-0.5">
             <h4
               className={`font-serif font-bold ${matchedTheme.text} line-clamp-3 leading-tight ${
-                size === "sm" ? "text-[10px]" : size === "md" ? "text-xs" : "text-sm"
+                size === "sm" ? "text-[10px]" : size === "md" ? "text-xs" : size === "lg" ? "text-sm" : "text-base"
               }`}
             >
               {title || "Sin título"}
@@ -130,7 +136,7 @@ export const NovelCover: React.FC<NovelCoverProps> = ({
           <div className="pb-1 px-0.5">
             <span
               className={`font-sans tracking-wider uppercase truncate block text-white/60 ${
-                size === "sm" ? "text-[8px]" : "text-[9px]"
+                size === "sm" ? "text-[8px]" : size === "xl" ? "text-[11px]" : "text-[9px]"
               }`}
             >
               {author || "Autor"}
@@ -141,6 +147,15 @@ export const NovelCover: React.FC<NovelCoverProps> = ({
 
       {/* Sombra de relieve interior de libro */}
       <div className="absolute inset-0 pointer-events-none ring-1 ring-black/10 dark:ring-white/10 rounded-xl" />
+
+      {/* Indicador sutil de ampliación si no es editable */}
+      {!editable && onViewLarge && (
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+          <div className="p-1.5 rounded-full bg-black/60 text-white shadow-md">
+            <Maximize2 className="w-4 h-4 text-white" />
+          </div>
+        </div>
+      )}
 
       {/* 3. Acciones de edición (Hover Overlay) */}
       {editable && (
@@ -162,7 +177,22 @@ export const NovelCover: React.FC<NovelCoverProps> = ({
             {isUploading ? (
               <span className="text-[10px] text-white font-medium animate-pulse">Guardando...</span>
             ) : (
-              <>
+              <div className="flex flex-wrap items-center justify-center gap-1">
+                {onViewLarge && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewLarge();
+                    }}
+                    className="px-2 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-[10px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Ver portada en grande"
+                  >
+                    <Maximize2 className="w-3 h-3 text-cyan-300" />
+                    <span>Ver</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -186,7 +216,7 @@ export const NovelCover: React.FC<NovelCoverProps> = ({
                     <Trash2 className="w-3 h-3" />
                   </button>
                 )}
-              </>
+              </div>
             )}
           </div>
         </>

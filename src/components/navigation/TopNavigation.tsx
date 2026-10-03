@@ -47,7 +47,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
   return (
     <header
       id="app-navbar"
-      className="h-12 border-b px-4 flex items-center justify-between gap-3 shrink-0 transition-colors relative z-40 select-none overflow-hidden"
+      className="h-12 border-b px-4 flex items-center justify-between gap-3 shrink-0 transition-colors relative z-50 select-none"
       style={{
         backgroundColor: "var(--bg-surface)",
         borderColor: "var(--border-color)",

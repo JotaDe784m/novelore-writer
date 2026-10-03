@@ -41,6 +41,7 @@ export interface ElectronAPI {
       synopsis?: string;
       logline?: string;
       targetWords?: number;
+      enableWordGoals?: boolean;
       coverUrl?: string;
     }
   ) => Promise<{
@@ -57,6 +58,7 @@ export interface ElectronAPI {
     synopsis?: string;
     logline?: string;
     targetWords?: number;
+    enableWordGoals?: boolean;
     coverUrl?: string;
   }) => Promise<{
     canceled: boolean;

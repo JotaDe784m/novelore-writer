@@ -9,6 +9,7 @@ export interface CreateProjectDialogOptions {
   synopsis?: string;
   logline?: string;
   targetWords?: number;
+  enableWordGoals?: boolean;
   coverUrl?: string;
 }
 
@@ -441,6 +442,12 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
               settings: {
                 ...current.settings,
                 ...(updates.settings || {}),
+                enableWordGoals:
+                  updates.enableWordGoals !== undefined
+                    ? updates.enableWordGoals
+                    : updates.settings?.enableWordGoals !== undefined
+                    ? updates.settings.enableWordGoals
+                    : current.settings?.enableWordGoals !== false,
                 targetTotalWords:
                   updates.targetWords !== undefined
                     ? updates.targetWords

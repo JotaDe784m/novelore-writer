@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { FolderOpen, X, AlertTriangle } from "lucide-react";
+import { createPortal } from "react-dom";
+import { FolderOpen, X, AlertTriangle, BookMarked } from "lucide-react";
 import { NovelProject } from "../../types";
 import { useProjectStore, InspectFolderResult } from "../../stores/useProjectStore";
 import { ExistingProjectAlert, NonEmptyFolderAlert } from "./CreateNovelAlerts";
@@ -22,6 +23,7 @@ export const CreateNovelModal: React.FC<CreateNovelModalProps> = ({
   const [genre, setGenre] = useState("Fantasía");
   const [synopsis, setSynopsis] = useState("");
   const [targetWords, setTargetWords] = useState(50000);
+  const [enableWordGoals, setEnableWordGoals] = useState(true);
   const [coverUrl, setCoverUrl] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,6 +48,7 @@ export const CreateNovelModal: React.FC<CreateNovelModalProps> = ({
     setGenre("Fantasía");
     setSynopsis("");
     setTargetWords(50000);
+    setEnableWordGoals(true);
     setCoverUrl("");
     setGeneralError(null);
     setExistingProjectWarning(null);
@@ -65,119 +68,108 @@ export const CreateNovelModal: React.FC<CreateNovelModalProps> = ({
     genre: genre.trim() || "Ficción",
     synopsis: synopsis.trim(),
     targetWords: targetWords || 50000,
+    enableWordGoals,
     coverUrl,
   });
 
   const handleSelectFolder = async () => {
     if (!title.trim()) {
-      setGeneralError("Por favor ingresa un título para la obra.");
+      setGeneralError("Por favor ingresa un título para la novela.");
       return;
     }
-
     setGeneralError(null);
     setExistingProjectWarning(null);
     setNonEmptyFolderPrompt(null);
-    setIsSubmitting(true);
 
-    try {
-      const store = useProjectStore.getState();
-      const inspectRes: InspectFolderResult = await store.inspectProjectFolder({ title: title.trim() });
+    const store = useProjectStore.getState();
+    const inspection: InspectFolderResult = await store.inspectProjectFolder({
+      title: title.trim(),
+    });
 
-      if (inspectRes.canceled) {
-        setIsSubmitting(false);
-        return;
-      }
+    if (inspection.canceled || !inspection.folderPath) return;
 
-      if (inspectRes.status === "existing_project") {
-        setIsSubmitting(false);
-        setExistingProjectWarning({
-          title: inspectRes.existingTitle || "existente",
-          folderPath: inspectRes.folderPath || "",
-        });
-        return;
-      }
+    if (inspection.status === "existing_project") {
+      setExistingProjectWarning({
+        title: inspection.existingTitle || "Novela existente",
+        folderPath: inspection.folderPath,
+      });
+      return;
+    }
 
-      if (inspectRes.status === "non_empty_folder") {
-        setIsSubmitting(false);
-        setNonEmptyFolderPrompt({
-          folderName: inspectRes.folderName || "seleccionada",
-          folderPath: inspectRes.folderPath || "",
-          fileCount: inspectRes.fileCount || 0,
-          candidateSubfolder: inspectRes.candidateSubfolder || "",
-        });
-        return;
-      }
+    if (inspection.status === "non_empty_folder") {
+      setNonEmptyFolderPrompt({
+        folderName: inspection.folderName || "Carpeta",
+        folderPath: inspection.folderPath,
+        fileCount: inspection.fileCount || 0,
+        candidateSubfolder: inspection.candidateSubfolder || title.trim(),
+      });
+      return;
+    }
 
-      if (inspectRes.status === "empty" && inspectRes.folderPath) {
-        const createdProject = await store.createProjectInPath(inspectRes.folderPath, buildPayload());
-        if (createdProject) {
+    if (inspection.status === "empty") {
+      setIsSubmitting(true);
+      try {
+        const created = await store.createProjectInPath(inspection.folderPath, buildPayload());
+        if (created) {
           resetForm();
-          onProjectCreated(createdProject);
-          onClose();
+          onProjectCreated(created);
         } else {
-          setIsSubmitting(false);
           setGeneralError(store.errorMessage || "No se pudo inicializar la novela.");
         }
-        return;
-      }
-
-      if (inspectRes.status === "error" || inspectRes.error) {
+      } catch (err: any) {
+        setGeneralError(err.message || "Error al crear la novela.");
+      } finally {
         setIsSubmitting(false);
-        setGeneralError(inspectRes.error || "Error al verificar la carpeta seleccionada.");
       }
-    } catch (err: any) {
-      setIsSubmitting(false);
-      setGeneralError(err.message || "Error inesperado al seleccionar carpeta.");
     }
   };
 
   const handleConfirmSubfolder = async () => {
-    if (!nonEmptyFolderPrompt?.candidateSubfolder) return;
+    if (!nonEmptyFolderPrompt) return;
     setIsSubmitting(true);
-    setGeneralError(null);
-
     try {
       const store = useProjectStore.getState();
-      const createdProject = await store.createProjectInPath(
-        nonEmptyFolderPrompt.candidateSubfolder,
-        buildPayload()
-      );
-
-      if (createdProject) {
+      const created = await store.createProjectInPath(nonEmptyFolderPrompt.candidateSubfolder, buildPayload());
+      if (created) {
         resetForm();
-        onProjectCreated(createdProject);
-        onClose();
+        onProjectCreated(created);
       } else {
-        setIsSubmitting(false);
         setGeneralError(store.errorMessage || "No se pudo crear la subcarpeta del proyecto.");
       }
     } catch (err: any) {
-      setIsSubmitting(false);
       setGeneralError(err.message || "Error al crear la subcarpeta.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+      onClick={handleClose}
+    >
       <div
-        className="w-full max-w-lg rounded-2xl border p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
-        style={{ backgroundColor: "var(--bg-card)", borderColor: "var(--border-color)" }}
+        className="w-full max-w-2xl rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto"
+        style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-color)" }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
-          <div>
-            <h3 className="font-bold text-lg text-[var(--text-main)] font-novel-display">Crear Nueva Novela</h3>
-            <p className="text-xs text-[var(--text-muted)]">Se creará la estructura local en la carpeta que tú elijas.</p>
+          <div className="flex items-center gap-2">
+            <BookMarked className="w-5 h-5 text-[var(--accent)]" />
+            <h3 className="font-bold text-lg text-[var(--text-main)] font-novel-display">
+              Crear Nueva Novela
+            </h3>
           </div>
           <button
             onClick={handleClose}
-            className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+            className="p-1.5 rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {generalError && (
-          <div className="p-3.5 rounded-xl border border-red-500/30 bg-red-500/10 text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
+          <div className="p-3.5 rounded-2xl border border-red-500/30 bg-red-500/10 text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
             <span>{generalError}</span>
           </div>
@@ -203,7 +195,7 @@ export const CreateNovelModal: React.FC<CreateNovelModalProps> = ({
           />
         )}
 
-        <form onSubmit={(e) => { e.preventDefault(); handleSelectFolder(); }} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); handleSelectFolder(); }} className="space-y-6">
           <CreateNovelFormFields
             title={title}
             setTitle={setTitle}
@@ -215,6 +207,8 @@ export const CreateNovelModal: React.FC<CreateNovelModalProps> = ({
             setGenre={setGenre}
             targetWords={targetWords}
             setTargetWords={setTargetWords}
+            enableWordGoals={enableWordGoals}
+            setEnableWordGoals={setEnableWordGoals}
             synopsis={synopsis}
             setSynopsis={setSynopsis}
             coverUrl={coverUrl}
@@ -222,25 +216,30 @@ export const CreateNovelModal: React.FC<CreateNovelModalProps> = ({
             onClearError={() => setGeneralError(null)}
           />
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--border-color)]">
+          <div className="flex justify-end gap-3 pt-2 border-t border-[var(--border-color)]">
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+              className="px-5 py-2.5 rounded-full text-xs font-serif text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-bold hover:opacity-95 shadow-xs transition-opacity cursor-pointer flex items-center gap-2 disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold font-serif shadow-md transition-all cursor-pointer disabled:opacity-50"
+              style={{
+                backgroundColor: "var(--accent)",
+                color: "var(--accent-contrast)",
+              }}
             >
-              <FolderOpen className="w-4 h-4 text-[var(--accent-contrast)]" />
+              <FolderOpen className="w-4 h-4" />
               <span>{isSubmitting ? "Comprobando..." : "Elegir Carpeta y Crear"}</span>
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

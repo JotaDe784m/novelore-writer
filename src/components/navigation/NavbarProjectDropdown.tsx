@@ -69,7 +69,7 @@ export const NavbarProjectDropdown: React.FC<NavbarProjectDropdownProps> = ({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: -4 }}
               transition={{ duration: 0.14, ease: "easeOut" }}
-              className="absolute left-0 top-full mt-1.5 w-80 rounded-2xl shadow-2xl border p-2 z-50 origin-top-left"
+              className="absolute left-0 top-full mt-1.5 w-80 rounded-2xl shadow-2xl border p-2 z-[100] origin-top-left"
               style={{
                 backgroundColor: "var(--bg-card)",
                 borderColor: "var(--border-color)",

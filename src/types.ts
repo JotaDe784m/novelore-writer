@@ -54,6 +54,7 @@ export interface Scene {
   historicalEventIds?: string[]; // IDs of WorldEntity (category: 'event') recalled, revealed, or discussed in this scene
   order: number;
   filePath?: string;
+  updatedAt?: string;
 }
 
 export interface Chapter {
@@ -340,6 +341,7 @@ export interface NovelProject {
   synopsis: string;
   createdAt: string;
   updatedAt: string;
+  path?: string; // Ruta física local en disco
   isDemo?: boolean; // Para identificar que es la novela de ejemplo y evitar subirla a la nube
   settings: ProjectSettings;
   acts: Act[];
@@ -449,4 +451,7 @@ export interface RecentProjectMeta {
   coverUrl?: string;
   updatedAt: string;
   wordCount?: number;
+  targetWords?: number;
+  enableWordGoals?: boolean;
 }
+

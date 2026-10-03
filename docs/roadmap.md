@@ -18,7 +18,7 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 
 - [x] **Fase 1: Documentación Maestra (`docs/design-system.md` & `docs/roadmap.md`)**: Blindaje de reglas de diseño, tokens, modos inmersivos, proporciones 3:4, taller literario de inicio y arquitectura modular.
 - [x] **Fase 2: Núcleo Visual Global, Barra Superior & Modo Zen Universal**: `UnderlineTabs`, `SectionHelpModal` (proporción 16:9 con placeholder para GIFs), `TopNavigation` modular ($\le 250$ líneas), `SettingsModal`, y estado/hook global de Modo Zen para todas las vistas.
-- [ ] **Fase 3: Rediseño de la Página de Inicio (Taller Literario)**: Hero acogedor con novela activa, botón directo "Continuar Escribiendo", ritmo literario humano, atajos cápsula, retratos 3:4 destacados del Códex y taller local modular ($\le 250$ líneas por submódulo).
+- [x] **Fase 3: Rediseño de la Página de Inicio (Taller Literario)**: Hero acogedor con novela activa, botón directo "Continuar Escribiendo", ritmo literario humano, atajos cápsula, retratos 3:4 destacados del Códex y taller local modular ($\le 250$ líneas por submódulo).
 - [ ] **Fase 4: Rediseño del Códex Hub**: Tarjetas 3:4, búsqueda maestra multi-criterio, exclusión de eventos del filtro de categorías y CRUD completo de categorías personalizadas.
 - [ ] **Fase 5: Suite de Dossiers Unificada**: Sustitución de tablas rígidas por bloques visuales de detalles con CRUD (*Añadir detalle*, *Eliminar bloque*, redacción *inline*) y pestaña "Relacionados" agrupada semánticamente.
 - [ ] **Fase 6: Planeación & Línea de Tiempo**: Cabecera con tabs apilados, CRUD de planos temporales, tarjetas de eventos y modal unificado con selector híbrido de fechas.

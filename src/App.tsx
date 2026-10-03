@@ -153,7 +153,9 @@ export const App: React.FC = () => {
   // Entidad de dossier activa
   const selectedDossierEntity = useMemo(() => {
     if (!project || !dossierEntityId) return null;
-    return (project.entities || []).find((e) => e.id === dossierEntityId) || null;
+    const fromProject = (project.entities || []).find((e) => e.id === dossierEntityId);
+    if (fromProject) return fromProject;
+    return useCodexStore.getState().entities.find((e) => e.id === dossierEntityId) || null;
   }, [project, dossierEntityId]);
 
   // Handlers de actualización de proyecto
@@ -353,6 +355,13 @@ export const App: React.FC = () => {
                 currentProject={project}
                 onSelectProject={handleSelectProject}
                 onNavigateView={(v) => setActiveView(v)}
+                onSelectScene={handleSelectScene}
+                onOpenEntityDossier={(entityId) => {
+                  setDossierInitialTab("details");
+                  setDossierEntityId(entityId);
+                  setActiveView("codex");
+                }}
+                onUpdateProject={handleUpdateProject}
               />
             ) : !project ? (
               <NoActiveProjectState

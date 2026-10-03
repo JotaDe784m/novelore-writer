@@ -32,6 +32,8 @@ export interface RecentProject {
   coverUrl?: string;
   updatedAt: string;
   wordCount?: number;
+  targetWords?: number;
+  enableWordGoals?: boolean;
 }
 
 async function writeAtomic(targetPath: string, data: string): Promise<void> {
@@ -97,6 +99,7 @@ async function initOrLoadProject(
     synopsis?: string;
     logline?: string;
     targetWords?: number;
+    enableWordGoals?: boolean;
     coverUrl?: string;
   }
 ): Promise<{
@@ -180,6 +183,8 @@ async function initOrLoadProject(
         synopsis: projectMeta.synopsis || "",
         logline: projectMeta.logline || "",
         coverUrl: projectMeta.coverUrl || "",
+        targetWords: projectMeta.settings?.targetTotalWords || 50000,
+        enableWordGoals: projectMeta.settings?.enableWordGoals !== false,
         updatedAt: projectMeta.updatedAt || new Date().toISOString(),
         wordCount: totalWords,
       });
@@ -212,6 +217,7 @@ async function initOrLoadProject(
       updatedAt: nowIso,
       settings: {
         targetTotalWords: initialOptions?.targetWords || 50000,
+        enableWordGoals: initialOptions?.enableWordGoals !== false,
         dialogueStyle: "dash",
         fontFamily: "serif",
         fontSize: 18,
@@ -312,6 +318,8 @@ async function initOrLoadProject(
       synopsis: initialProjectMeta.synopsis,
       logline: initialProjectMeta.logline,
       coverUrl: initialProjectMeta.coverUrl,
+      targetWords: initialProjectMeta.settings.targetTotalWords,
+      enableWordGoals: initialProjectMeta.settings.enableWordGoals,
       updatedAt: nowIso,
       wordCount: 0,
     });
@@ -746,6 +754,8 @@ ipcMain.handle("fs:saveProjectData", async (_event, data: {
         synopsis: data.projectMeta.synopsis || "",
         logline: data.projectMeta.logline || "",
         coverUrl: data.projectMeta.coverUrl || "",
+        targetWords: data.projectMeta.settings?.targetTotalWords || 50000,
+        enableWordGoals: data.projectMeta.settings?.enableWordGoals !== false,
         updatedAt: new Date().toISOString(),
         wordCount,
       });
@@ -772,6 +782,12 @@ ipcMain.handle("project:updateProjectMeta", async (_event, folderPath: string, u
       settings: {
         ...currentMeta.settings,
         ...(updates.settings || {}),
+        enableWordGoals:
+          updates.enableWordGoals !== undefined
+            ? updates.enableWordGoals
+            : updates.settings?.enableWordGoals !== undefined
+            ? updates.settings.enableWordGoals
+            : currentMeta.settings?.enableWordGoals !== false,
         targetTotalWords:
           updates.targetWords !== undefined
             ? updates.targetWords
@@ -794,6 +810,8 @@ ipcMain.handle("project:updateProjectMeta", async (_event, folderPath: string, u
       synopsis: updatedMeta.synopsis || "",
       logline: updatedMeta.logline || "",
       coverUrl: updatedMeta.coverUrl !== undefined ? updatedMeta.coverUrl : (existing?.coverUrl || ""),
+      targetWords: updatedMeta.settings?.targetTotalWords || 50000,
+      enableWordGoals: updatedMeta.settings?.enableWordGoals !== false,
       updatedAt: updatedMeta.updatedAt,
       wordCount: existing?.wordCount || 0,
     });

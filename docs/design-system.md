@@ -34,6 +34,10 @@ La experiencia de Novelore se inspira en los referentes más refinados del softw
    - **Clic principal**: Abre directamente la ficha, dossier o editor de la entidad.
    - **Clic derecho**: Despliega un menú contextual rápido de operaciones directas (*Abrir ficha*, *Ver en pizarra*, *Duplicar*, *Eliminar*). **Queda estrictamente prohibido incluir selectores de color en el menú contextual**; la personalización del color de identidad semántica pertenece de manera exclusiva a la cabecera del Dossier.
 8. **Cero Emojis**: Queda estrictamente prohibido el uso de emojis en código, componentes, interfaces, botones, mensajes predeterminados y nombres de entidades del sistema. La iconografía se resuelve exclusivamente mediante glifos vectoriales refinados (`lucide-react`).
+9. **Campos en Cápsula con Símbolo e Indicador Semántico (*Capsule Dossier Fields*)**:
+   - Tanto en la Ficha de Obra como en los dossiers de personajes, locaciones y entidades del Códice, los campos y atributos clave se estructuran como **filas horizontales encapsuladas** (`rounded-2xl` o `rounded-xl` sobre `--bg-input` con delimitación tonal suave).
+   - Cada cápsula engloba su **símbolo vectorial temático** (`lucide-react`) y su **etiqueta o subtítulo descriptivo en el lado izquierdo**, integrando la **entrada de texto limpio y fluido en el lado derecho**.
+   - Se erradica la disposición en formularios administrativos tradicionales de etiquetas flotantes o tablas rígidas; los campos se apilan armónicamente uno sobre otro con espacio respirable, consolidando la estética de un expediente o cuaderno editorial refinado.
 
 ---
 

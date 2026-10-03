@@ -1,6 +1,8 @@
-import React from "react";
-import { AlertTriangle } from "lucide-react";
+import React, { useState } from "react";
+import { Feather, Sparkles, BookOpen } from "lucide-react";
 import { NovelCover } from "../project/NovelCover";
+import { CoverLightboxModal } from "../project/CoverLightboxModal";
+import { NovelWordGoalsSection } from "./NovelWordGoalsSection";
 
 interface CreateNovelFormFieldsProps {
   title: string;
@@ -13,6 +15,8 @@ interface CreateNovelFormFieldsProps {
   setGenre: (val: string) => void;
   targetWords: number;
   setTargetWords: (val: number) => void;
+  enableWordGoals: boolean;
+  setEnableWordGoals: (val: boolean) => void;
   synopsis: string;
   setSynopsis: (val: string) => void;
   coverUrl: string;
@@ -31,111 +35,128 @@ export const CreateNovelFormFields: React.FC<CreateNovelFormFieldsProps> = ({
   setGenre,
   targetWords,
   setTargetWords,
+  enableWordGoals,
+  setEnableWordGoals,
   synopsis,
   setSynopsis,
   coverUrl,
   setCoverUrl,
   onClearError,
 }) => {
+  const [isCoverLightboxOpen, setIsCoverLightboxOpen] = useState(false);
+
   return (
-    <>
-      <div className="flex items-center gap-4 p-3 rounded-xl bg-[var(--bg-input)]/60">
-        <NovelCover
-          title={title || "Nueva Novela"}
-          author={author || "Autor"}
-          genre={genre}
-          coverUrl={coverUrl}
-          size="sm"
-          editable={true}
-          onCoverChange={setCoverUrl}
-          onRemoveCover={() => setCoverUrl("")}
-        />
-        <div className="text-xs space-y-1">
-          <span className="font-semibold text-[var(--text-main)] block">Portada del Libro (Opcional)</span>
-          <p className="text-[11px] text-[var(--text-muted)]">Sube una imagen o deja que Novelore genere una portada tipográfica.</p>
+    <div className="space-y-5">
+      {/* Bloque Hero: Portada a la izquierda + Identidad a la derecha */}
+      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+        {/* Portada física del libro */}
+        <div className="shrink-0 flex flex-col items-center">
+          <div className="shadow-lg rounded-xl overflow-hidden ring-1 ring-black/10 dark:ring-white/10">
+            <NovelCover
+              title={title || "Nueva Novela"}
+              author={author || "Autor"}
+              genre={genre || "Fantasía"}
+              coverUrl={coverUrl}
+              size="md"
+              editable={true}
+              onCoverChange={setCoverUrl}
+              onRemoveCover={() => setCoverUrl("")}
+              onViewLarge={() => setIsCoverLightboxOpen(true)}
+            />
+          </div>
+        </div>
+
+        {/* Identidad y Metadatos estilo Dossier */}
+        <div className="flex-1 w-full space-y-3.5">
+          {/* Título editorial orgánico */}
+          <div className="space-y-1">
+            <input
+              type="text"
+              required
+              placeholder="Título de la Obra..."
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                onClearError();
+              }}
+              className="w-full text-2xl sm:text-3xl font-bold font-novel-display text-[var(--text-main)] placeholder:text-[var(--text-muted)]/40 bg-transparent border-b border-transparent hover:border-[var(--border-color)] focus:border-[var(--accent)] focus:outline-hidden pb-1 transition-colors leading-tight"
+              autoFocus
+            />
+            <input
+              type="text"
+              placeholder="Subtítulo o lema literario (opcional)..."
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              className="w-full text-sm font-serif italic text-[var(--text-muted)] placeholder:text-[var(--text-muted)]/40 bg-transparent border-b border-transparent hover:border-[var(--border-color)] focus:border-[var(--accent)] focus:outline-hidden pb-0.5 transition-colors"
+            />
+          </div>
+
+          {/* Campos horizontales apilados uno sobre otro (como en las fichas) */}
+          <div className="space-y-2">
+            {/* Campo Autor */}
+            <div className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-[var(--bg-input)] border border-[var(--border-color)]/60">
+              <div className="flex items-center gap-2 w-20 shrink-0 text-xs font-serif text-[var(--text-muted)]">
+                <Feather className="w-3.5 h-3.5 text-[var(--accent)]" />
+                <span>Autor</span>
+              </div>
+              <input
+                type="text"
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                placeholder="Tu nombre o seudónimo"
+                className="flex-1 min-w-0 text-xs sm:text-sm font-serif font-medium text-[var(--text-main)] bg-transparent focus:outline-hidden truncate"
+              />
+            </div>
+
+            {/* Campo Género */}
+            <div className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-[var(--bg-input)] border border-[var(--border-color)]/60">
+              <div className="flex items-center gap-2 w-20 shrink-0 text-xs font-serif text-[var(--text-muted)]">
+                <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
+                <span>Género</span>
+              </div>
+              <input
+                type="text"
+                value={genre}
+                onChange={(e) => setGenre(e.target.value)}
+                placeholder="Fantasía, Ciencia Ficción, Drama..."
+                className="flex-1 min-w-0 text-xs sm:text-sm font-serif font-medium text-[var(--text-main)] bg-transparent focus:outline-hidden truncate"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-1">
-        <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] block">Título de la Obra *</label>
-        <input
-          type="text"
-          required
-          placeholder="Ej: Crónica del Viento de Obsidiana"
-          value={title}
-          onChange={(e) => { setTitle(e.target.value); onClearError(); }}
-          className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-sm text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)] font-serif"
-          autoFocus
-        />
-      </div>
+      {/* Meta de Escritura Sincronizada con modo libre */}
+      <NovelWordGoalsSection
+        enableWordGoals={enableWordGoals}
+        setEnableWordGoals={setEnableWordGoals}
+        targetWords={targetWords}
+        setTargetWords={setTargetWords}
+      />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-[11px] font-semibold text-[var(--text-muted)] block">Subtítulo (Opcional)</label>
-          <input
-            type="text"
-            placeholder="Ej: Libro Primero de las Sombras"
-            value={subtitle}
-            onChange={(e) => setSubtitle(e.target.value)}
-            className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-          />
+      {/* Sinopsis estilo Cuaderno Literario */}
+      <div className="p-4 rounded-2xl bg-[var(--bg-input)] border border-[var(--border-color)]/60 space-y-2">
+        <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-main)] font-novel-display">
+          <BookOpen className="w-3.5 h-3.5 text-[var(--accent)]" />
+          <span>Sinopsis o Premisa Narrativa</span>
         </div>
-        <div className="space-y-1">
-          <label className="text-[11px] font-semibold text-[var(--text-muted)] block">Nombre del Autor</label>
-          <input
-            type="text"
-            placeholder="Tu nombre o seudónimo"
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-[11px] font-semibold text-[var(--text-muted)] block">Género Literario</label>
-          <input
-            type="text"
-            placeholder="Fantasía, Ciencia Ficción, Thriller..."
-            value={genre}
-            onChange={(e) => setGenre(e.target.value)}
-            className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[11px] font-semibold text-[var(--text-muted)] block">Meta de Palabras Global</label>
-          <input
-            type="number"
-            min={1000}
-            step={1000}
-            value={targetWords}
-            onChange={(e) => setTargetWords(parseInt(e.target.value) || 0)}
-            className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs font-mono text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[11px] font-semibold text-[var(--text-muted)] block">Premisa / Sinopsis Breve</label>
         <textarea
-          rows={2}
-          placeholder="¿De qué trata la historia? (puedes cambiarla después)"
+          rows={3}
           value={synopsis}
           onChange={(e) => setSynopsis(e.target.value)}
-          className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)] resize-none"
+          placeholder="¿De qué trata la historia? Describe el conflicto o premisa central..."
+          className="w-full bg-transparent text-xs sm:text-sm font-serif text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50 focus:outline-hidden resize-none leading-relaxed"
         />
       </div>
 
-      <div className="p-3 rounded-xl border border-amber-500/30 bg-[var(--bg-input)] space-y-1 text-xs">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-500" />
-          <span className="font-semibold text-[var(--text-main)]">Aviso: Se modificará la carpeta seleccionada</span>
-        </div>
-        <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-          Novelore creará la estructura local (project.json, manuscript/, assets/, etc.). Te recomendamos seleccionar una carpeta vacía o una carpeta dedicada.
-        </p>
-      </div>
-    </>
+      <CoverLightboxModal
+        isOpen={isCoverLightboxOpen}
+        onClose={() => setIsCoverLightboxOpen(false)}
+        title={title || "Nueva Novela"}
+        author={author}
+        genre={genre}
+        coverUrl={coverUrl}
+      />
+    </div>
   );
 };
