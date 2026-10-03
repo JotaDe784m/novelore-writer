@@ -16,8 +16,10 @@ export function useThemeModalLogic({
   project,
   onUpdateProject,
 }: UseThemeModalLogicProps) {
+  const storeTheme = useThemeStore((s) => s.activeTheme);
+  const storeAccent = useThemeStore((s) => s.customAccentColor);
   const { setTheme: setStoreTheme, setCustomAccent: setStoreAccent } = useThemeStore();
-  const currentThemeId = project.settings.theme || "minimal";
+  const currentThemeId = storeTheme || project?.settings?.theme || "minimal";
   const [selectedCategory, setSelectedCategory] = useState<"all" | "literary" | "genre">("all");
   const [toneFilter, setToneFilter] = useState<"all" | "light" | "dark">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,16 +63,16 @@ export function useThemeModalLogic({
 
   // Local state for smooth color picking without render lag
   const [localAccent, setLocalAccent] = useState<string>(
-    project.settings.customAccentColor || activeTheme.palette.defaultAccent
+    storeAccent || project?.settings?.customAccentColor || activeTheme.palette.defaultAccent
   );
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const rafThemeAccentRef = useRef<number | null>(null);
   const lastAccentTimeRef = useRef<number>(0);
 
-  // Synchronize localAccent whenever project theme or custom accent changes
+  // Synchronize localAccent whenever store or project theme/accent changes
   useEffect(() => {
-    setLocalAccent(project.settings.customAccentColor || activeTheme.palette.defaultAccent);
-  }, [project.settings.theme, project.settings.customAccentColor, activeTheme.palette.defaultAccent]);
+    setLocalAccent(storeAccent || project?.settings?.customAccentColor || activeTheme.palette.defaultAccent);
+  }, [storeTheme, storeAccent, project?.settings?.theme, project?.settings?.customAccentColor, activeTheme.palette.defaultAccent]);
 
   // Clean up debounce timer on unmount
   useEffect(() => {

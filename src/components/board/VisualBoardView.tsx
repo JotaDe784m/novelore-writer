@@ -63,6 +63,7 @@ import { BoardRichTextEditor, BoardRichTextEditorHandle } from "./BoardRichTextE
 import { BoardResourceCard } from "./BoardResourceCard";
 import { AddResourceModal } from "./AddResourceModal";
 import { PdfPreviewModal } from "./PdfPreviewModal";
+import { UnifiedSectionHeader } from "../ui/UnifiedSectionHeader";
 
 export interface VisualBoardViewProps {
   project?: NovelProject;
@@ -862,7 +863,7 @@ export const VisualBoardView: React.FC<VisualBoardViewProps> = ({
             y: 60 + Math.floor(entity.gallery.length / 3) * 280,
             width: 240,
             height: 180,
-            title: `📌 Pizarra de ${entity.name}`,
+            title: `Pizarra de ${entity.name}`,
             text: `Espacio visual dedicado. Sube referencias en alta resolución, crea formas sólidas con conceptos y conecta ideas con flechas.`,
             color: "#fef08a",
           });
@@ -2931,6 +2932,20 @@ export const VisualBoardView: React.FC<VisualBoardViewProps> = ({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
+      {/* Cabecera Unificada con Botón ? (GIF placeholder) y Botón Zen */}
+      {!entity && (
+        <UnifiedSectionHeader
+          icon={ImageIcon}
+          title="Pizarra Visual"
+          helpTitle="Pizarra Visual Global"
+          helpDescription="Lienzo infinito espacial para lluvia de ideas, mapas conceptuales, recursos gráficos y notas adhesivas interactivas conectadas con tu novela."
+          helpShortcuts={[
+            { keys: ["Espacio", "Arrastrar"], description: "Desplazamiento por el lienzo infinito" },
+            { keys: ["Ctrl", "Rueda"], description: "Acercar o alejar la pizarra" },
+          ]}
+        />
+      )}
+
       {/* Top Reorganized Toolbar - Scrollable with Navigation Arrows for Embedded / Reduced Views */}
       <div className="relative flex items-center bg-[var(--bg-surface)] border-b border-[var(--border-color)] z-30 shrink-0 h-13 overflow-hidden">
         {/* Left Scroll Chevron Button with subtle gradient backdrop */}

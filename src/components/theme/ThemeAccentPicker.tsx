@@ -54,10 +54,9 @@ export const ThemeAccentPicker: React.FC<ThemeAccentPickerProps> = ({
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 flex-wrap">
           {themePresets.map((preset) => {
-            const isDefault = preset.isDefault;
+            const isDefault = Boolean(preset.isDefault);
             const isWhite = preset.color.toLowerCase() === "#ffffff";
             const isCurrent =
-              (!customAccentColor && isDefault) ||
               (localAccent || "").toLowerCase() === preset.color.toLowerCase();
             const contrastColor = getContrastColor(preset.color);
 
@@ -75,28 +74,26 @@ export const ThemeAccentPicker: React.FC<ThemeAccentPickerProps> = ({
                 className={`w-6 h-6 rounded-full border transition-all cursor-pointer relative flex items-center justify-center ${
                   isCurrent
                     ? "scale-110 ring-2 ring-offset-2 ring-[var(--accent)]"
-                    : "hover:scale-105 opacity-90 hover:opacity-100"
+                    : "hover:scale-105 opacity-85 hover:opacity-100"
                 }`}
                 style={{
                   backgroundColor: preset.color,
                   borderColor: isWhite
                     ? "rgba(140,140,140,0.6)"
-                    : isDefault
-                    ? "var(--text-main)"
-                    : "rgba(0,0,0,0.2)",
+                    : isCurrent
+                    ? "var(--accent)"
+                    : "rgba(0,0,0,0.25)",
                 }}
-                title={preset.name}
+                title={
+                  isDefault
+                    ? `Acento Original (${activeTheme.name})${isCurrent ? " - Activo" : " - Haz clic para volver al original"}`
+                    : `${preset.name}${isCurrent ? " - Activo" : ""}`
+                }
               >
                 {isCurrent && (
                   <Check
                     className="w-3.5 h-3.5 drop-shadow-xs"
                     style={{ color: contrastColor }}
-                  />
-                )}
-                {isDefault && !isCurrent && (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full opacity-80"
-                    style={{ backgroundColor: contrastColor }}
                   />
                 )}
               </button>

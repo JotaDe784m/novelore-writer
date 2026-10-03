@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpDown, Search } from "lucide-react";
+import { ArrowUpDown, Search, Plus } from "lucide-react";
 import { CustomEntityCategory, EntityCategory } from "../../../types";
 import { useCodexStore } from "../../../stores/useCodexStore";
 
@@ -12,6 +12,7 @@ export interface CodexFilterBarProps {
   sortBy: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc";
   onSortByChange: (sort: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc") => void;
   customCategories?: CustomEntityCategory[];
+  onCreateEntity?: () => void;
 }
 
 export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
@@ -23,6 +24,7 @@ export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
   sortBy,
   onSortByChange,
   customCategories,
+  onCreateEntity,
 }) => {
   const storeCustomCategories = useCodexStore((state) => state.customEntityCategories);
   const activeCustomCategories = customCategories || storeCustomCategories;
@@ -114,6 +116,18 @@ export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
             <option value="name_asc">Nombre (A-Z)</option>
           </select>
         </div>
+
+        {onCreateEntity && (
+          <button
+            type="button"
+            onClick={onCreateEntity}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-semibold hover:opacity-95 transition-all shadow-xs cursor-pointer shrink-0"
+            title="Crear nueva ficha en el códice (Alt+N)"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Elemento</span>
+          </button>
+        )}
       </div>
     </div>
   );

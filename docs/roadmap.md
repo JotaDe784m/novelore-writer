@@ -17,14 +17,15 @@ Este documento establece la evolución estructurada y modular de **Novelore** co
 **Objetivo**: Transformar toda la experiencia de Novelore Desktop bajo la nueva filosofía de diseño: simpleza, espacio respirable, anti-sobreexposición, erradicación de formularios burocráticos innecesarios, proporción 3:4 universal, modo Zen transversal y respeto al ritmo del escritor.
 
 - [x] **Fase 1: Documentación Maestra (`docs/design-system.md` & `docs/roadmap.md`)**: Blindaje de reglas de diseño, tokens, modos inmersivos, proporciones 3:4, taller literario de inicio y arquitectura modular.
-- [ ] **Fase 2: Núcleo Visual Global, Barra Superior & Modo Zen Universal**: `UnderlineTabs`, `SectionHelpModal` (proporción 16:9 con placeholder para GIFs), `TopNavigation` modular ($\le 250$ líneas), `SettingsModal`, y estado/hook global de Modo Zen para todas las vistas.
+- [x] **Fase 2: Núcleo Visual Global, Barra Superior & Modo Zen Universal**: `UnderlineTabs`, `SectionHelpModal` (proporción 16:9 con placeholder para GIFs), `TopNavigation` modular ($\le 250$ líneas), `SettingsModal`, y estado/hook global de Modo Zen para todas las vistas.
 - [ ] **Fase 3: Rediseño de la Página de Inicio (Taller Literario)**: Hero acogedor con novela activa, botón directo "Continuar Escribiendo", ritmo literario humano, atajos cápsula, retratos 3:4 destacados del Códex y taller local modular ($\le 250$ líneas por submódulo).
 - [ ] **Fase 4: Rediseño del Códex Hub**: Tarjetas 3:4, búsqueda maestra multi-criterio, exclusión de eventos del filtro de categorías y CRUD completo de categorías personalizadas.
 - [ ] **Fase 5: Suite de Dossiers Unificada**: Sustitución de tablas rígidas por bloques visuales de detalles con CRUD (*Añadir detalle*, *Eliminar bloque*, redacción *inline*) y pestaña "Relacionados" agrupada semánticamente.
 - [ ] **Fase 6: Planeación & Línea de Tiempo**: Cabecera con tabs apilados, CRUD de planos temporales, tarjetas de eventos y modal unificado con selector híbrido de fechas.
-- [ ] **Fase 7: Manuscrito, Editor & Ergonomía Literaria**: Cabecera del editor con Zen y ayuda `?`, árbol de manuscrito limpio e inspector con tarjetas visuales *inline*.
-- [ ] **Fase 8: Pizarra & Maquetación (Armonización Estética Ligera)**: Armonización visual de la Pizarra Global Infinita (cabecera con `?` y Zen, tarjetas 3:4 y barra cápsula, preservando todas las funciones ya implementadas) y Maquetación/Compilación (diseño formuláico técnico limpio y botones cápsula de salida, sin adelantar backends futuros).
-- [ ] **Fase 9: Mapa de Relaciones & Verificación Final**: Cabecera unificada, filtros discretos de tipos de nodos, inspector con tarjetas 3:4 y suite de verificación integral (`tsc`, `npm test`, `knip`).
+- [ ] **Fase 7: Rediseño del Inspector de Escenas, Tablero de Corcho & Matriz de Esquema**: Adopción de las tarjetas de elemento y bloques visuales para sinopsis, POV con micro-tarjetas del Códex, notas dinámicas editables y sincronización visual libre de rigidez con el Tablero de Corcho y la Matriz de Esquema de Planeación.
+- [ ] **Fase 8: Manuscrito, Editor & Ergonomía Literaria**: Árbol de manuscrito respirable basado en contraste tonal sutil, menú contextual de escenas y ergonomía tipográfica.
+- [ ] **Fase 9: Pizarra & Maquetación (Armonización Estética Ligera)**: Armonización visual de la Pizarra Global Infinita (cabecera con `?` y Zen, tarjetas 3:4 y barra cápsula, preservando todas las funciones ya implementadas) y Maquetación/Compilación (diseño formuláico técnico limpio y botones cápsula de salida, sin adelantar backends futuros).
+- [ ] **Fase 10: Mapa de Relaciones & Verificación Final**: Cabecera unificada, filtros discretos de tipos de nodos, inspector con tarjetas 3:4 y suite de verificación integral (`tsc`, `npm test`, `knip`).
 
 ---
 

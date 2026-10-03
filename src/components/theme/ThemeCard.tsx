@@ -1,5 +1,4 @@
-import React from "react";
-import { Moon, Sun, Check } from "lucide-react";
+import { Moon, Sun, Check, Sparkles } from "lucide-react";
 import { ThemeOption } from "./themeCatalog";
 import { getReadableAccent, getContrastColor } from "../../stores/useThemeStore";
 
@@ -33,55 +32,59 @@ export const ThemeCard: React.FC<ThemeCardProps> = ({
       }}
     >
       {/* Header Info */}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
+        {/* Fila 1: Título de la Atmósfera y Estado Activo/Aplicar */}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-[var(--text-main)] group-hover:text-[var(--accent)] transition-colors">
-              {theme.name}
-            </span>
-            {theme.isDark ? (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-black/10 dark:bg-white/10 text-[var(--text-muted)] flex items-center gap-1 font-mono">
-                <Moon className="w-2.5 h-2.5" /> Oscuro
-              </span>
-            ) : (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 flex items-center gap-1 font-mono">
-                <Sun className="w-2.5 h-2.5" /> Claro
-              </span>
-            )}
-            {isSelected && customAccentColor && (
-              <span
-                className="text-[10px] px-1.5 py-0.5 rounded-md border font-mono flex items-center gap-1"
-                style={{
-                  borderColor: "var(--accent-readable, var(--accent))",
-                  color: "var(--accent-readable, var(--accent))",
-                }}
-                title="Color de enfoque personalizado activo"
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: customAccentColor }}
-                />
-                Personalizado
-              </span>
-            )}
-          </div>
+          <span className="font-bold text-sm text-[var(--text-main)] group-hover:text-[var(--accent)] transition-colors truncate">
+            {theme.name}
+          </span>
 
           {isSelected ? (
-            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] shadow-2xs">
-              <Check className="w-3 h-3" /> Activo
+            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] shadow-2xs shrink-0 whitespace-nowrap">
+              <Check className="w-3 h-3 shrink-0" /> Activo
             </span>
           ) : (
-            <span className="text-xs text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+            <span className="text-xs text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity font-medium shrink-0 whitespace-nowrap">
               Aplicar
             </span>
           )}
         </div>
 
-        <div className="text-[11px] font-medium text-[var(--accent)]">
-          {theme.genre}
+        {/* Fila 2: Etiquetas (Tono, Personalizado) y Género */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {theme.isDark ? (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-black/10 dark:bg-white/10 text-[var(--text-muted)] flex items-center gap-1 font-mono shrink-0">
+              <Moon className="w-2.5 h-2.5" /> Oscuro
+            </span>
+          ) : (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 flex items-center gap-1 font-mono shrink-0">
+              <Sun className="w-2.5 h-2.5" /> Claro
+            </span>
+          )}
+
+          {isSelected && customAccentColor && (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-md border font-mono flex items-center gap-1 shrink-0"
+              style={{
+                borderColor: "var(--accent-readable, var(--accent))",
+                color: "var(--accent-readable, var(--accent))",
+              }}
+              title="Color de enfoque personalizado activo"
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: customAccentColor }}
+              />
+              Personalizado
+            </span>
+          )}
+
+          <span className="text-[11px] font-medium text-[var(--accent)] truncate">
+            {theme.genre}
+          </span>
         </div>
 
-        <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-2">
+        <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-2 pt-0.5">
           {theme.description}
         </p>
       </div>
@@ -143,7 +146,7 @@ export const ThemeCard: React.FC<ThemeCardProps> = ({
                   color: getReadableAccent(activeAccent, theme.isDark),
                 }}
               >
-                ★
+                <Sparkles className="w-2.5 h-2.5" />
               </div>
               <div
                 className="px-2 py-0.5 rounded-md text-[9px] font-semibold"

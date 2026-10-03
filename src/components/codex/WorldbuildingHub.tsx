@@ -130,12 +130,11 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
     >
       {/* 1. Header con acciones principales */}
       <CodexHeader
-        onOpenRelationshipMap={onOpenRelationshipMap}
-        onCreateEntity={() => setIsCreating(true)}
         totalEntities={entities.length}
+        onOpenRelationshipMap={onOpenRelationshipMap}
       />
 
-      {/* 2. Barra de filtros de categoría, búsqueda y ordenación */}
+      {/* 2. Barra de filtros de categoría, búsqueda, ordenación y nuevo elemento */}
       <CodexFilterBar
         activeCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
@@ -144,6 +143,7 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
         onSearchChange={setSearchQuery}
         sortBy={sortBy}
         onSortByChange={setSortBy}
+        onCreateEntity={() => setIsCreating(true)}
       />
 
       {/* 3. Rejilla de tarjetas de entidades */}

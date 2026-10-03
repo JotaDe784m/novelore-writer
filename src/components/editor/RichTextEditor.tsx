@@ -147,12 +147,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       {!isZenMode && (
         <EditorHeader
           scene={scene}
-          project={project}
-          wordCount={wordCount}
-          targetWords={targetWords}
-          isInspectorOpen={isInspectorOpen}
           onUpdateScene={onUpdateScene}
-          onOpenInspector={onOpenInspector}
           onActivateZen={() => {
             setIsZenMode(true);
             showToast("Modo Zen activado (Pulsa Esc para salir)");
@@ -172,6 +167,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           project={project}
           onUpdateProjectSettings={onUpdateProjectSettings}
           showToast={showToast}
+          scene={scene}
+          wordCount={wordCount}
+          targetWords={targetWords}
+          isInspectorOpen={isInspectorOpen}
+          onUpdateScene={onUpdateScene}
+          onOpenInspector={onOpenInspector}
         />
       )}
 

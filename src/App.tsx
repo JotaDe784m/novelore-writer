@@ -6,7 +6,9 @@ import {
   Scene,
 } from "./types";
 import { demoProject } from "./data/demoProject";
-import { Navbar } from "./components/Navbar";
+import { TopNavigation } from "./components/navigation/TopNavigation";
+import { FloatingZenExitButton } from "./components/ui/FloatingZenExitButton";
+import { useSettingsStore } from "./stores/useSettingsStore";
 import { ManuscriptSidebar } from "./components/editor/ManuscriptSidebar";
 import { RichTextEditor } from "./components/editor/RichTextEditor";
 import { SceneInspector } from "./components/editor/SceneInspector";
@@ -97,7 +99,8 @@ export const App: React.FC = () => {
   // Toggles de UI
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  const [isZenMode, setIsZenMode] = useState(false);
+  const isZenMode = useSettingsStore((s) => s.isZenMode);
+  const setIsZenMode = useSettingsStore((s) => s.setZenMode);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isWordGoalsModalOpen, setIsWordGoalsModalOpen] = useState(false);
   const [dossierEntityId, setDossierEntityId] = useState<string | null>(null);
@@ -308,9 +311,12 @@ export const App: React.FC = () => {
         color: "var(--text-main)",
       }}
     >
+      {/* Botón flotante para salir de Pantalla Completa / Zen */}
+      <FloatingZenExitButton />
+
       {/* Barra de Navegación Principal */}
       {!isZenMode && (
-        <Navbar
+        <TopNavigation
           project={project}
           activeView={activeView}
           setActiveView={setActiveView}

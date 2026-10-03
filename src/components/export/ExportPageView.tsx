@@ -38,6 +38,7 @@ import {
   formatChapterHeading,
 } from "../../utils/docxExport";
 import { exportProjectToNvlFile, exportProjectToJson } from "../../utils/storage";
+import { UnifiedSectionHeader } from "../ui/UnifiedSectionHeader";
 
 interface ExportPageViewProps {
   project: NovelProject;
@@ -830,70 +831,39 @@ export const ExportPageView: React.FC<ExportPageViewProps> = ({
         </div>
       )}
 
-      {/* Top Navbar */}
-      <header
-        className="h-12 border-b px-3 sm:px-4 flex items-center justify-between shrink-0 select-none overflow-x-auto scrollbar-none gap-2"
-        style={{
-          backgroundColor: "var(--bg-surface)",
-          borderColor: "var(--border-color)",
-        }}
-      >
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border border-[var(--border-color)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Volver al Manuscrito</span>
-            <span className="sm:hidden">Volver</span>
-          </button>
+      {/* Cabecera Unificada con Botón ? (GIF placeholder), Botón Zen y Acciones de Compilación */}
+      <UnifiedSectionHeader
+        icon={BookOpen}
+        title="Maquetación & Exportación"
+        helpTitle="Maquetación y Exportación Editorial"
+        helpDescription="Diseñador y compilador técnico para imprenta y formatos digitales. Configura márgenes interiores y exteriores, encabezados de pliego, letras capitulares y compila tu obra a DOCX, PDF o Markdown."
+        helpShortcuts={[
+          { keys: ["Ctrl", "P"], description: "Imprimir o guardar como PDF" },
+          { keys: ["Ctrl", "E"], description: "Exportar a Microsoft Word DOCX" },
+        ]}
+        actions={
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={handlePrintOrPdf}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-[var(--border-color)]/70 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+              title="Abrir vista de impresión / Guardar en PDF con formato exacto"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Imprimir / PDF</span>
+            </button>
 
-          <div className="h-4 w-px bg-[var(--border-color)] hidden sm:block shrink-0" />
-
-          <div className="flex items-center gap-2 shrink-0">
-            <BookOpen className="w-4 h-4 text-[var(--accent)] shrink-0" />
-            <h2 className="font-bold text-xs sm:text-sm font-novel-display truncate">
-              Maquetación & Diseñador de Exportación
-            </h2>
+            <button
+              onClick={handleExportDocx}
+              disabled={isExporting}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity shadow-xs cursor-pointer shrink-0"
+              title="Exportar a Microsoft Word (.docx) respetando toda la plantilla"
+            >
+              <Download className="w-3.5 h-3.5 text-[var(--accent-contrast)]" />
+              <span>{isExporting ? "Compilando..." : "Descargar DOCX"}</span>
+            </button>
           </div>
-        </div>
-
-        {/* Quick Action Export Buttons */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={() => {
-              exportProjectToNvlFile(project);
-              showToast("¡Proyecto exportado como archivo propio .nvl!");
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border border-[var(--border-color)] bg-[var(--bg-input)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0"
-            title="Descargar copia de seguridad editable en formato .nvl"
-          >
-            <FileText className="w-3.5 h-3.5 text-[var(--accent)]" />
-            <span className="hidden sm:inline">Exportar .nvl</span>
-            <span className="sm:hidden">.nvl</span>
-          </button>
-
-          <button
-            onClick={handlePrintOrPdf}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-[var(--border-color)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0"
-            title="Abrir vista de impresión / Guardar en PDF con formato exacto"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Imprimir / PDF</span>
-            <span className="sm:hidden">PDF</span>
-          </button>
-
-          <button
-            onClick={handleExportDocx}
-            disabled={isExporting}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity shadow-xs cursor-pointer shrink-0"
-            title="Exportar a Microsoft Word (.docx) respetando toda la plantilla"
-          >
-            <Download className="w-3.5 h-3.5 text-[var(--accent-contrast)]" />
-            <span>{isExporting ? "Compilando..." : "Descargar DOCX"}</span>
-          </button>
-        </div>
-      </header>
+        }
+      />
 
       {/* Main Split Layout: Left Configurator & Right Book Reader Canvas */}
       <div className="flex-1 flex overflow-hidden min-h-0 w-full">
