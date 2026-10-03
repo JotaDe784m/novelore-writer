@@ -1,5 +1,7 @@
 import { CustomEntityCategory, EntityCategory, Relationship, RelationshipCategory, RelationshipType, WorldEntity } from "../types";
 
+export type CodexViewMode = "classic" | "free" | "compact";
+
 export interface CodexStoreState {
   entities: WorldEntity[];
   relationships: Relationship[];
@@ -11,6 +13,7 @@ export interface CodexStoreState {
   searchQuery: string;
   selectedTag: string;
   sortBy: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc";
+  viewMode: CodexViewMode;
   isSaving: boolean;
   lastSavedAt: Date | null;
   errorMessage: string | null;
@@ -31,6 +34,10 @@ export interface CodexStoreState {
   addCustomEntityCategory: (
     category: Omit<CustomEntityCategory, "id">
   ) => CustomEntityCategory;
+  updateCustomEntityCategory: (
+    id: string,
+    updates: Partial<CustomEntityCategory>
+  ) => void;
   deleteCustomEntityCategory: (id: string) => void;
 
   // Acciones de relaciones y grafo
@@ -67,6 +74,7 @@ export interface CodexStoreState {
   setSearchQuery: (query: string) => void;
   setSelectedTag: (tag: string) => void;
   setSortBy: (sort: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc") => void;
+  setViewMode: (mode: CodexViewMode) => void;
 
   // Selectores y Getters
   getEntityById: (id: string) => WorldEntity | undefined;

@@ -89,6 +89,16 @@ Diseñado para sostener jornadas de redacción profunda de 4 a 8 horas sin agota
    - Corte de escena clásico (`* * *`).
    - Sangría literaria inteligente (`Tab`, `Shift+Tab` y sangría automática de primera línea).
 
+### Jerarquía Tipográfica Universal de Novelore:
+La interfaz de Novelore no se limita al uso exclusivo de fuentes serif, sino que articula un sistema armónico de cuatro niveles para separar la narrativa editorial de los controles operativos:
+
+| Nivel de Jerarquía | Token / Clase CSS | Familia Tipográfica | Aplicación Concreta en la UI |
+| :--- | :--- | :--- | :--- |
+| **Título** | `.font-novel-display` (`--font-serif-display`) | *Playfair Display* / *Cinzel* (Serif Display) | Títulos principales de módulo, nombres de novela en el taller y títulos destacados de entidades del Códex. |
+| **Subtítulo** | `.font-novel-serif` o `font-serif` (`--font-serif`) | *Merriweather* / *Georgia* (Serif) | Subtítulos honoríficos, epígrafes, citas y roles narrativos. |
+| **Texto 1 (UI & Controles)** | `.font-novel-sans` o `font-sans` (`--font-sans`) | *Plus Jakarta Sans* / *System Sans* (Sans-serif) | Botones tipo cápsula (`+ Categoria`, `+ Elemento`), selectores de sección (`UnderlineTabs`), etiquetas de atributos (*Rol*, *Meta*, *Apariencia*), tags, badges y controles de formulario. |
+| **Texto 2 (Lectura & Notas)** | `.font-novel-serif` o `font-serif` (`--font-serif`) | *Merriweather* / *Georgia* (Serif) | Prosa del manuscrito, resúmenes de entidades, notas de autor y sinopsis narrativas. |
+
 ---
 
 ## 4. Sistema de Tokens de Diseño y Variables CSS

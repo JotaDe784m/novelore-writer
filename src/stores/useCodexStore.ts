@@ -5,9 +5,7 @@ import { CodexStoreState } from "./codexStoreTypes";
 import { useProjectStore } from "./useProjectStore";
 
 export type { CodexStoreState };
-
 let codexSaveTimeout: ReturnType<typeof setTimeout> | null = null;
-
 const getElectronAPI = () => (typeof window !== "undefined" ? window.electronAPI : undefined);
 
 export const useCodexStore = create<CodexStoreState>((set, get) => {
@@ -17,15 +15,14 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
     customCats?: RelationshipCategory[], customEntityCats?: CustomEntityCategory[]
   ) => {
     const projectStore = useProjectStore.getState();
-    if (projectStore.project) {
-      projectStore.setProject({
-        ...projectStore.project, entities, relationships,
-        relationshipPositions: positions ?? get().relationshipPositions,
-        relationshipCategories: customCats ?? get().customRelationshipCategories,
-        customEntityCategories: customEntityCats ?? get().customEntityCategories,
-        updatedAt: new Date().toISOString(),
-      });
-    }
+    if (!projectStore.project) return;
+    projectStore.setProject({
+      ...projectStore.project, entities, relationships,
+      relationshipPositions: positions ?? get().relationshipPositions,
+      relationshipCategories: customCats ?? get().customRelationshipCategories,
+      customEntityCategories: customEntityCats ?? get().customEntityCategories,
+      updatedAt: new Date().toISOString(),
+    });
   };
 
   const executeSave = async (
@@ -69,8 +66,8 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
     updatedCategories?: RelationshipCategory[], updatedEntityCategories?: CustomEntityCategory[]
   ) => {
     syncToProjectStore(entities, relationships, updatedPositions, updatedCategories, updatedEntityCategories);
-    set({ isSaving: true });
     if (codexSaveTimeout) clearTimeout(codexSaveTimeout);
+    set({ isSaving: true });
     codexSaveTimeout = setTimeout(() => executeSave(entities, relationships, updatedPositions, updatedCategories, updatedEntityCategories), 500);
   };
 
@@ -78,7 +75,7 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
     entities: [], relationships: [], relationshipPositions: {},
     customRelationshipCategories: [], customEntityCategories: [],
     selectedEntityId: null, selectedCategory: "all", searchQuery: "", selectedTag: "all",
-    sortBy: "default", isSaving: false, lastSavedAt: null, errorMessage: null,
+    sortBy: "default", viewMode: "classic", isSaving: false, lastSavedAt: null, errorMessage: null,
 
     loadCodex: (entities, relationships = [], relationshipPositions = {}, customRelationshipCategories = [], customEntityCategories = []) => {
       set({
@@ -116,12 +113,12 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
 
     deleteEntity: (id) => {
       const { entities, relationships, relationshipPositions, selectedEntityId } = get();
-      const nextEntities = entities.filter((ent) => ent.id !== id);
-      const nextRelationships = relationships.filter((r) => r.sourceEntityId !== id && r.targetEntityId !== id);
-      const nextPositions = { ...relationshipPositions };
-      delete nextPositions[id];
-      set({ entities: nextEntities, relationships: nextRelationships, relationshipPositions: nextPositions, selectedEntityId: selectedEntityId === id ? null : selectedEntityId });
-      triggerDebouncedSave(nextEntities, nextRelationships, nextPositions);
+      const nextEnt = entities.filter((ent) => ent.id !== id);
+      const nextRel = relationships.filter((r) => r.sourceEntityId !== id && r.targetEntityId !== id);
+      const nextPos = { ...relationshipPositions };
+      delete nextPos[id];
+      set({ entities: nextEnt, relationships: nextRel, relationshipPositions: nextPos, selectedEntityId: selectedEntityId === id ? null : selectedEntityId });
+      triggerDebouncedSave(nextEnt, nextRel, nextPos);
     },
 
     duplicateEntity: (id) => {
@@ -144,11 +141,18 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
       triggerDebouncedSave(entities, relationships, relationshipPositions, customRelationshipCategories, next);
       return newCategory;
     },
-    deleteCustomEntityCategory: (id) => {
+    updateCustomEntityCategory: (id, updates) => {
       const { entities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories } = get();
-      const next = customEntityCategories.filter((c) => c.id !== id);
+      const next = customEntityCategories.map((c) => (c.id === id ? { ...c, ...updates } : c));
       set({ customEntityCategories: next });
       triggerDebouncedSave(entities, relationships, relationshipPositions, customRelationshipCategories, next);
+    },
+    deleteCustomEntityCategory: (id) => {
+      const { entities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories } = get();
+      const nextCategories = customEntityCategories.filter((c) => c.id !== id);
+      const nextEntities = entities.map((e) => (e.category === id ? { ...e, category: "other" as const } : e));
+      set({ customEntityCategories: nextCategories, entities: nextEntities });
+      triggerDebouncedSave(nextEntities, relationships, relationshipPositions, customRelationshipCategories, nextCategories);
     },
     addRelationship: (sourceEntityId, targetEntityId, type, label, sentiment, description) => {
       const { entities, relationships, relationshipPositions } = get();
@@ -219,8 +223,7 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
     setSelectedCategory: (selectedCategory) => set({ selectedCategory }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
     setSelectedTag: (selectedTag) => set({ selectedTag }),
-    setSortBy: (sortBy) => set({ sortBy }),
-
+    setSortBy: (sortBy) => set({ sortBy }), setViewMode: (viewMode) => set({ viewMode }),
     getEntityById: (id) => get().entities.find((e) => e.id === id),
     getEntitiesByCategory: (category) => get().entities.filter((e) => e.category === category),
     getRelationshipsForEntity: (id) => get().relationships.filter((r) => r.sourceEntityId === id || r.targetEntityId === id),

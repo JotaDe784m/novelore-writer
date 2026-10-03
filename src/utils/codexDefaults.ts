@@ -20,16 +20,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Libre / General",
 };
 
-const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  character: "Protagonistas, antagonistas y personajes secundarios del elenco.",
-  location: "Reinos, ciudades, fortalezas, regiones y biomas geográficos.",
-  faction: "Gremios, órdenes militares, casas dinásticas y organizaciones.",
-  item: "Artefactos legendarios, armas, reliquias y documentos clave.",
-  concept: "Sistemas mágicos, religiones, leyes cósmicas y filosofía.",
-  event: "Hitos históricos, batallas, cataclismos y tratados pasados.",
-  other: "Fichas abiertas, notas de trasfondo, criaturas o elementos inclasificables.",
-};
-
 export function getDefaultCategoryColor(
   category: EntityCategory,
   customCategories?: CustomEntityCategory[]
@@ -101,11 +91,16 @@ export function filterAndSortEntities(
     if (!query) return true;
 
     const matchesName = entity.name.toLowerCase().includes(query);
+    const matchesSubtitle = entity.subtitle?.toLowerCase().includes(query);
     const matchesSummary = entity.summary?.toLowerCase().includes(query);
-    const matchesAliases = entity.aliases?.some((a) =>
-      a.toLowerCase().includes(query)
+    const matchesAliases = entity.aliases?.some((a) => a.toLowerCase().includes(query));
+    const matchesTags = entity.tags?.some((t) => t.toLowerCase().includes(query));
+    const matchesAttrs = Object.values(entity.attributes || {}).some((v) =>
+      v.toLowerCase().includes(query)
     );
-    return Boolean(matchesName || matchesSummary || matchesAliases);
+    return Boolean(
+      matchesName || matchesSubtitle || matchesSummary || matchesAliases || matchesTags || matchesAttrs
+    );
   });
 
   if (sortBy === "name_asc") {

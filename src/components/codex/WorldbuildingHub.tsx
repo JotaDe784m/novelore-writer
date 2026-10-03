@@ -3,9 +3,11 @@ import { NovelProject, WorldEntity } from "../../types";
 import { calculateAllEntitiesMentions } from "../../utils/mentionCounter";
 import { useCodexStore } from "../../stores/useCodexStore";
 import { CodexEmptyState } from "./hub/CodexEmptyState";
-import { CodexEntityCard } from "./hub/CodexEntityCard";
+import { CodexEntityGrid } from "./hub/CodexEntityGrid";
 import { CodexFilterBar } from "./hub/CodexFilterBar";
 import { CodexHeader } from "./hub/CodexHeader";
+import { CodexCardContextMenu } from "./hub/CodexCardContextMenu";
+import { CustomCategoryModal } from "./hub/CustomCategoryModal";
 import { EntityModal } from "./EntityModal";
 
 interface WorldbuildingHubProps {
@@ -23,23 +25,19 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
 }) => {
   const [editingEntity, setEditingEntity] = useState<WorldEntity | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    entity: WorldEntity | null;
+  }>({ isOpen: false, position: { x: 0, y: 0 }, entity: null });
 
   // Store modular desacoplado del Códice
   const {
-    entities: storeEntities,
-    relationships: storeRelationships,
-    selectedCategory,
-    searchQuery,
-    selectedTag,
-    sortBy,
-    setSelectedCategory,
-    setSearchQuery,
-    setSelectedTag,
-    setSortBy,
-    updateEntity,
-    deleteEntity,
-    getCategoriesSummary,
-    getFilteredEntities,
+    entities: storeEntities, relationships: storeRelationships,
+    selectedCategory, searchQuery, selectedTag, sortBy, viewMode,
+    setSelectedCategory, setSearchQuery, setSelectedTag, setSortBy, setViewMode,
+    updateEntity, deleteEntity, duplicateEntity, getCategoriesSummary, getFilteredEntities,
   } = useCodexStore();
 
   // Fallback a project si el store aún no ha sido hidratado
@@ -113,6 +111,13 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
     setEditingEntity(null);
   };
 
+  const handleDuplicateEntity = (entity: WorldEntity) => {
+    const dup = duplicateEntity(entity.id);
+    if (dup && onUpdateProject) {
+      onUpdateProject((p) => ({ ...p, entities: [...(p.entities || []), dup] }));
+    }
+  };
+
   const handleClearFilters = () => {
     setSelectedCategory("all");
     setSearchQuery("");
@@ -123,10 +128,7 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
     <div
       id="worldbuilding-hub"
       className="flex-1 flex flex-col min-h-0 overflow-hidden"
-      style={{
-        backgroundColor: "var(--bg-main)",
-        color: "var(--text-main)",
-      }}
+      style={{ backgroundColor: "var(--bg-main)", color: "var(--text-main)" }}
     >
       {/* 1. Header con acciones principales */}
       <CodexHeader
@@ -143,6 +145,9 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
         onSearchChange={setSearchQuery}
         sortBy={sortBy}
         onSortByChange={setSortBy}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onOpenManageCategories={() => setIsManageCategoriesOpen(true)}
         onCreateEntity={() => setIsCreating(true)}
       />
 
@@ -150,10 +155,7 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
       <div
         id="worldbuilding-entities-scroll"
         className="flex-1 min-h-0 overflow-y-scroll p-4 sm:p-6 lg:p-8 custom-scroll always-scroll"
-        style={{
-          overflowY: "scroll",
-          scrollbarGutter: "stable",
-        }}
+        style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
       >
         {filteredEntities.length === 0 ? (
           <CodexEmptyState
@@ -162,24 +164,15 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
             onClearFilters={handleClearFilters}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
-            {filteredEntities.map((entity) => {
-              const relCount = relationships.filter(
-                (r) => r.sourceEntityId === entity.id || r.targetEntityId === entity.id
-              ).length;
-              const mentions = entityMentionsMap[entity.id]?.totalCount || 0;
-
-              return (
-                <CodexEntityCard
-                  key={entity.id}
-                  entity={entity}
-                  relationshipCount={relCount}
-                  mentionCount={mentions}
-                  onEdit={(ent) => setEditingEntity(ent)}
-                />
-              );
-            })}
-          </div>
+          <CodexEntityGrid
+            entities={filteredEntities}
+            viewMode={viewMode}
+            relationships={relationships}
+            entityMentionsMap={entityMentionsMap}
+            projectPath={project.path}
+            onEdit={(ent) => setEditingEntity(ent)}
+            onContextMenu={(e, ent) => setContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, entity: ent })}
+          />
         )}
       </div>
 
@@ -191,10 +184,7 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
           initialCategory={selectedCategory !== "all" ? selectedCategory : undefined}
           onSave={handleSaveEntity}
           onDelete={handleDeleteEntity}
-          onClose={() => {
-            setIsCreating(false);
-            setEditingEntity(null);
-          }}
+          onClose={() => { setIsCreating(false); setEditingEntity(null); }}
           onNavigateToScene={(sceneId) => {
             setIsCreating(false);
             setEditingEntity(null);
@@ -202,6 +192,25 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
           }}
         />
       )}
+
+      {/* 5. Menú contextual en tarjeta */}
+      {contextMenu.isOpen && contextMenu.entity && (
+        <CodexCardContextMenu
+          isOpen={contextMenu.isOpen}
+          position={contextMenu.position}
+          entity={contextMenu.entity}
+          onClose={() => setContextMenu((prev) => ({ ...prev, isOpen: false }))}
+          onOpenDossier={(ent) => { setEditingEntity(ent); setContextMenu((p) => ({ ...p, isOpen: false })); }}
+          onDuplicate={(ent) => { handleDuplicateEntity(ent); setContextMenu((p) => ({ ...p, isOpen: false })); }}
+          onDelete={(ent) => { handleDeleteEntity(ent.id); setContextMenu((p) => ({ ...p, isOpen: false })); }}
+        />
+      )}
+
+      {/* 6. Modal de categorías personalizadas */}
+      <CustomCategoryModal
+        isOpen={isManageCategoriesOpen}
+        onClose={() => setIsManageCategoriesOpen(false)}
+      />
     </div>
   );
 };

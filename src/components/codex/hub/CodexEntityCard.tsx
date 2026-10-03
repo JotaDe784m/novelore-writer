@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
   BookOpen,
-  Calendar,
   Compass,
-  Edit2,
   Gem,
   Image as ImageIcon,
   MapPin,
+  MoreVertical,
   Share2,
   Shield,
   Sparkles,
@@ -15,7 +14,7 @@ import {
   Tag,
 } from "lucide-react";
 import { EntityCategory, WorldEntity } from "../../../types";
-import { getCategoryLabel } from "../../../utils/codexDefaults";
+import { getCategoryLabel, getDefaultCategoryColor } from "../../../utils/codexDefaults";
 import { resolveAssetUrl } from "../../../utils/imageUtils";
 import { useCodexStore } from "../../../stores/useCodexStore";
 
@@ -23,194 +22,177 @@ export interface CodexEntityCardProps {
   entity: WorldEntity;
   relationshipCount: number;
   mentionCount: number;
+  projectPath?: string;
   onEdit: (entity: WorldEntity) => void;
+  onContextMenu?: (e: React.MouseEvent, entity: WorldEntity) => void;
 }
 
-const getCategoryIcon = (cat: EntityCategory) => {
-  switch (cat) {
-    case "character":
-      return User;
-    case "location":
-      return MapPin;
-    case "faction":
-      return Shield;
-    case "item":
-      return Gem;
-    case "concept":
-      return Zap;
-    case "event":
-      return Calendar;
-    case "other":
-      return Sparkles;
-    default:
-      return Tag;
-  }
+const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  character: User,
+  location: MapPin,
+  faction: Shield,
+  item: Gem,
+  concept: Zap,
+  other: Sparkles,
 };
 
 export const CodexEntityCard: React.FC<CodexEntityCardProps> = ({
   entity,
   relationshipCount,
   mentionCount,
+  projectPath,
   onEdit,
+  onContextMenu,
 }) => {
   const customCategories = useCodexStore((state) => state.customEntityCategories);
-  const [avatarError, setAvatarError] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    setAvatarError(false);
-  }, [entity.avatarUrl]);
+    setImageError(false);
+  }, [entity.avatarUrl, entity.avatarOriginalUrl]);
 
-  const Icon = getCategoryIcon(entity.category);
-  const color = entity.color || "#3b82f6";
+  const rawImg = entity.avatarUrl || entity.avatarOriginalUrl;
+  const resolvedImg = rawImg ? resolveAssetUrl(rawImg, projectPath) : "";
+  const hasValidImage = Boolean(resolvedImg && !imageError);
+
+  const Icon = CATEGORY_ICONS[entity.category] || Tag;
+  const color = entity.color || getDefaultCategoryColor(entity.category, customCategories) || "#3b82f6";
+  const label = getCategoryLabel(entity.category, customCategories);
+  const initials = entity.name
+    ? entity.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("")
+    : "E";
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (onContextMenu) {
+      e.preventDefault();
+      onContextMenu(e, entity);
+    }
+  };
 
   return (
     <div
       onClick={() => onEdit(entity)}
-      className="rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between space-y-4 group overflow-hidden relative"
+      onContextMenu={handleContextMenu}
+      className="group relative rounded-2xl overflow-hidden cursor-pointer select-none transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1"
       style={{
         backgroundColor: "var(--bg-card)",
-        borderTop: `4px solid ${color}`,
+        border: hasValidImage ? `2px solid ${color}` : "1px solid var(--border-color)",
       }}
     >
-      <div className="space-y-3.5">
-        {/* Cabecera de la Tarjeta: Avatar / Icono, Nombre y Píldora de Menciones */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3.5 overflow-hidden">
-            {entity.avatarUrl && !avatarError ? (
-              <div
-                className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl overflow-hidden shadow-2xs shrink-0 relative"
-                style={{
-                  backgroundColor: "var(--bg-surface)",
-                  boxShadow: `0 0 0 2px ${color}33`,
-                }}
-              >
-                <img
-                  src={resolveAssetUrl(entity.avatarUrl)}
-                  alt={entity.name}
-                  onError={() => setAvatarError(true)}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <span
-                  className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full border border-white dark:border-black shadow-2xs"
-                  style={{ backgroundColor: color }}
-                />
-              </div>
-            ) : (
-              <div
-                className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-white font-bold shadow-2xs shrink-0"
-                style={{
-                  backgroundColor: color,
-                  boxShadow: `0 0 0 2px ${color}33`,
-                }}
-              >
-                <Icon className="w-6 h-6" />
-              </div>
-            )}
+      {/* 1. Contenedor en Proporción Universal 3:4 */}
+      <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--bg-input)]">
+        {hasValidImage ? (
+          <img
+            src={resolvedImg}
+            alt={entity.name}
+            onError={() => setImageError(true)}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          /* Portada editorial de respaldo con gradiente e iniciales */
+          <div
+            className="w-full h-full flex flex-col items-center justify-center p-4 relative overflow-hidden transition-transform duration-500 group-hover:scale-105"
+            style={{
+              background: `linear-gradient(145deg, ${color}dd 0%, ${color} 100%)`,
+            }}
+          >
+            {/* Marca de agua vectorial de categoría */}
+            <Icon className="absolute w-36 h-36 -bottom-8 -right-8 text-white/10 pointer-events-none" />
 
-            <div className="overflow-hidden space-y-0.5">
-              <h4 className="font-bold text-base font-novel-display text-[var(--text-main)] group-hover:text-[var(--accent)] transition-colors leading-tight truncate">
-                {entity.name}
-              </h4>
-              {entity.subtitle && (
-                <div className="text-xs text-[var(--text-muted)] truncate font-medium">
-                  {entity.subtitle}
-                </div>
-              )}
-              <div className="pt-0.5 flex items-center gap-1.5">
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="inline-block text-[11px] font-medium text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--bg-surface)]">
-                  {getCategoryLabel(entity.category, customCategories)}
-                </span>
-              </div>
+            <div className="flex items-center justify-center">
+              <span className="text-4xl sm:text-5xl font-bold font-novel-display text-white/95 drop-shadow-md tracking-wider">
+                {initials}
+              </span>
             </div>
           </div>
+        )}
 
-          {/* Contador de menciones literarias */}
+        {/* Degradado inferior protector para legibilidad de prosa */}
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/90 via-black/55 to-transparent pointer-events-none" />
+
+        {/* 2. Insignia Superior Izquierda: Categoría */}
+        <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5">
           <span
-            className="px-2.5 py-1 rounded-full text-xs font-bold bg-[var(--accent-subtle)] text-[var(--accent)] shrink-0 flex items-center gap-1.5 shadow-2xs"
-            title={`Mencionado ${mentionCount} veces en el manuscrito`}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-sans font-semibold text-white backdrop-blur-md shadow-xs"
+            style={{ backgroundColor: `${color}cc` }}
           >
-            <BookOpen className="w-3.5 h-3.5 text-[var(--accent)]" />
+            <Icon className="w-3 h-3 text-white" />
+            <span>{label}</span>
+          </span>
+        </div>
+
+        {/* 3. Insignia Superior Derecha: Menciones literarias y menú */}
+        <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5">
+          <span
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-sans font-bold bg-black/60 text-white backdrop-blur-md shadow-xs"
+            title={`${mentionCount} menciones en el manuscrito`}
+          >
+            <BookOpen className="w-3 h-3 text-[var(--accent)]" />
             <span>{mentionCount}</span>
           </span>
+
+          {onContextMenu && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleContextMenu(e);
+              }}
+              className="p-1 rounded-full bg-black/50 text-white/80 hover:text-white hover:bg-black/75 backdrop-blur-md transition-colors cursor-pointer"
+              title="Opciones de la ficha"
+            >
+              <MoreVertical className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        {/* Alias y Apodos (hasta 3) */}
-        {entity.aliases && entity.aliases.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-            {entity.aliases.slice(0, 3).map((alias) => (
-              <span
-                key={alias}
-                className="text-[11px] px-2 py-0.5 rounded-md bg-[var(--bg-surface)] text-[var(--text-muted)] truncate max-w-[130px]"
-                title={`Apodo o variante: ${alias}`}
-              >
-                «{alias}»
-              </span>
-            ))}
-            {entity.aliases.length > 3 && (
-              <span className="text-[10px] text-[var(--text-muted)] font-mono">
-                +{entity.aliases.length - 3}
-              </span>
+        {/* 4. Contenido en la Base: Nombre, subtítulo, alias y extracto */}
+        <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-4 z-10 text-white space-y-1">
+          <h4 className="font-bold text-sm sm:text-base font-novel-display text-white leading-tight drop-shadow-sm truncate">
+            {entity.name}
+          </h4>
+
+          {entity.subtitle && (
+            <p className="text-xs text-zinc-300 font-novel-serif italic drop-shadow-xs truncate">
+              {entity.subtitle}
+            </p>
+          )}
+
+          {/* Alias como píldoras translúcidas */}
+          {entity.aliases && entity.aliases.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+              {entity.aliases.slice(0, 2).map((alias) => (
+                <span
+                  key={alias}
+                  className="text-[10px] px-1.5 py-0.2 rounded-md bg-white/15 text-zinc-200 font-sans truncate max-w-[120px]"
+                >
+                  «{alias}»
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Extracto de sumario narrativo */}
+          {entity.summary && (
+            <p className="text-[11px] text-zinc-300/90 font-novel-serif line-clamp-2 leading-relaxed drop-shadow-xs pt-0.5">
+              {entity.summary}
+            </p>
+          )}
+
+          {/* Indicadores de relaciones y galería */}
+          <div className="flex items-center justify-between pt-1.5 text-[10px] text-zinc-300/80 border-t border-white/10 font-sans">
+            <div className="flex items-center gap-1">
+              <Share2 className="w-3 h-3 text-[var(--accent)]" />
+              <span>{relationshipCount} {relationshipCount === 1 ? "vínculo" : "vínculos"}</span>
+            </div>
+
+            {entity.gallery && entity.gallery.length > 0 && (
+              <div className="flex items-center gap-1 text-zinc-200">
+                <ImageIcon className="w-3 h-3 text-cyan-300" />
+                <span>{entity.gallery.length} fotos</span>
+              </div>
             )}
           </div>
-        )}
-
-        {/* Sumario narrativo */}
-        <p className="text-xs sm:text-sm text-[var(--text-muted)] line-clamp-3 leading-relaxed">
-          {entity.summary || "Sin descripción corta"}
-        </p>
-
-        {/* Atributos y rasgos detallados - Expandibles verticalmente */}
-        {Object.entries(entity.attributes || {}).length > 0 && (
-          <div className="p-2.5 rounded-xl bg-[var(--bg-surface)] text-xs space-y-2.5">
-            {Object.entries(entity.attributes).map(([k, v]) => (
-              <div key={k} className="flex flex-col gap-0.5">
-                <span className="font-bold text-[var(--text-muted)] text-[10px] uppercase tracking-wide">
-                  {k}:
-                </span>
-                <span className="text-[var(--text-main)] font-medium leading-relaxed break-words">
-                  {v}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Pie de tarjeta con vínculos y acción de edición */}
-      <div className="pt-3 border-t border-[var(--text-muted)]/10 flex items-center justify-between text-xs text-[var(--text-muted)]">
-        <div className="flex items-center gap-3">
-          <div
-            className="flex items-center gap-1.5 font-medium"
-            title={`${relationshipCount} vínculos en el mapa de relaciones`}
-          >
-            <Share2 className="w-3.5 h-3.5 text-[var(--accent)]" />
-            <span>{relationshipCount} vínculos</span>
-          </div>
-          {entity.gallery && entity.gallery.length > 0 && (
-            <span
-              className="flex items-center gap-1.5 font-semibold text-[var(--accent)]"
-              title={`${entity.gallery.length} imágenes en galería`}
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-              <span>{entity.gallery.length} fotos</span>
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {entity.tags && entity.tags[0] && (
-            <span className="px-2 py-0.5 rounded-md bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold text-[11px]">
-              {entity.tags[0]}
-            </span>
-          )}
-          <span className="text-[var(--accent)] font-semibold flex items-center gap-1 hover:underline">
-            <Edit2 className="w-3.5 h-3.5" />
-            <span className="text-[11px]">Editar</span>
-          </span>
         </div>
       </div>
     </div>
