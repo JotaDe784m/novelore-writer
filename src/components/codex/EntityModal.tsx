@@ -56,7 +56,12 @@ export const EntityModal: React.FC<EntityModalProps> = ({
         }
         style={{
           borderColor: logic.color || "var(--border-subtle)",
-        }}
+          ...(logic.color ? {
+            "--accent": logic.color,
+            "--accent-readable": logic.color,
+            "--accent-subtle": `${logic.color}18`,
+          } : {}),
+        } as React.CSSProperties}
       >
         <EntityModalHeader
           entity={entity} activeTab={logic.activeTab} onTabChange={logic.setActiveTab}
@@ -95,11 +100,10 @@ export const EntityModal: React.FC<EntityModalProps> = ({
 
             {logic.activeTab === "attributes" && (
               <DossierAttributesTab
-                category={logic.category}
-                attributes={logic.attributes}
-                onAttributeChange={logic.handleAttributeChange}
-                onRemoveAttribute={logic.handleRemoveAttribute}
-                onAddAttribute={logic.handleAddAttribute}
+                category={logic.category} attributes={logic.attributes}
+                pinnedAttributes={logic.pinnedAttributes} onAttributeChange={logic.handleAttributeChange}
+                onRemoveAttribute={logic.handleRemoveAttribute} onAddAttribute={logic.handleAddAttribute}
+                onTogglePinAttribute={logic.handleTogglePinAttribute}
               />
             )}
 
@@ -148,7 +152,11 @@ export const EntityModal: React.FC<EntityModalProps> = ({
             )}
 
             {logic.activeTab === "notes" && (
-              <DossierNotesTab notes={logic.notes} onNotesChange={logic.setNotes} />
+              <DossierNotesTab
+                notes={logic.notes}
+                onNotesChange={logic.setNotes}
+                entityName={logic.name}
+              />
             )}
           </div>
           {logic.activeTab !== "identity" && (

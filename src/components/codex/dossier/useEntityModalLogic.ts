@@ -52,6 +52,7 @@ export function useEntityModalLogic({
   const [cropSourceUrl, setCropSourceUrl] = useState<string>("");
   const [gallery, setGallery] = useState<EntityImage[]>(entity?.gallery || []);
   const [attributes, setAttributes] = useState<Record<string, string>>(entity?.attributes || getDefaultAttributes(entity?.category || initialCategory || "character"));
+  const [pinnedAttributes, setPinnedAttributes] = useState<string[]>(entity?.pinnedAttributes || []);
   const [isHistorical, setIsHistorical] = useState(entity?.isHistorical ?? (entity?.category === "event" || category === "event"));
   const [dateOrEpoch, setDateOrEpoch] = useState(entity?.dateOrEpoch || entity?.attributes?.["Época"] || "");
   const [involvedEntityIds, setInvolvedEntityIds] = useState<string[]>(entity?.involvedEntityIds || []);
@@ -81,9 +82,7 @@ export function useEntityModalLogic({
 
   const mentionStats: MentionStats = useMemo(() => ({
     totalCount: detailedMentions.totalCount, byTerm: detailedMentions.byTerm,
-    scenes: detailedMentions.flatScenes.map((s) => ({
-      sceneId: s.sceneId, sceneTitle: s.sceneTitle, chapterTitle: s.chapterTitle, actTitle: s.actTitle, count: s.count,
-    })),
+    scenes: detailedMentions.flatScenes.map((s) => ({ sceneId: s.sceneId, sceneTitle: s.sceneTitle, chapterTitle: s.chapterTitle, actTitle: s.actTitle, count: s.count })),
   }), [detailedMentions]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -166,10 +165,7 @@ export function useEntityModalLogic({
     setGallery((prev) => prev.filter((img) => img.id !== id));
     if (avatarOriginalUrl === url) {
       setAvatarOriginalUrl("");
-      if (avatarUrl && avatarUrl.includes("_crop")) {
-        await deleteLocalImage(avatarUrl);
-        setAvatarUrl("");
-      }
+      if (avatarUrl && avatarUrl.includes("_crop")) { await deleteLocalImage(avatarUrl); setAvatarUrl(""); }
     }
     if (avatarUrl === url) {
       const remaining = gallery.filter((img) => img.id !== id);
@@ -200,19 +196,23 @@ export function useEntityModalLogic({
   const handleAddAlias = (a: string) => { const c = a.trim(); if (c && !aliases.includes(c)) setAliases([...aliases, c]); };
   const handleRemoveAlias = (a: string) => setAliases(aliases.filter((al) => al !== a));
   const handleAttributeChange = (k: string, v: string) => setAttributes((prev) => ({ ...prev, [k]: v }));
-  const handleRemoveAttribute = (k: string) => setAttributes((prev) => { const cp = { ...prev }; delete cp[k]; return cp; });
+  const handleRemoveAttribute = (k: string) => {
+    setAttributes((prev) => { const cp = { ...prev }; delete cp[k]; return cp; });
+    setPinnedAttributes((prev) => prev.filter((p) => p !== k));
+  };
   const handleAddAttribute = (k: string, v = "") => { const c = k.trim(); if (c) setAttributes((prev) => ({ ...prev, [c]: v })); };
+  const handleTogglePinAttribute = (k: string) => setPinnedAttributes((prev) => prev.includes(k) ? prev.filter((i) => i !== k) : [...prev, k]);
   const handleToggleInvolvedEntity = (id: string) => setInvolvedEntityIds((prev) => prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]);
 
   const handleSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!name.trim()) return;
+    if (e) e.preventDefault(); if (!name.trim()) return;
     const targetId = entity ? entity.id : `ent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const targetTimelineEventId = existingTimelineEvent?.id || entity?.timelineEventId || (category === "event" && syncWithTimeline ? `evt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` : undefined);
     const updatedEntity: WorldEntity = {
       id: targetId, category, name: name.trim(), subtitle: subtitle.trim() || undefined,
-      summary: summary.trim(), tags, aliases, attributes, notes: notes.trim(),
-      avatarUrl: avatarUrl || undefined, avatarOriginalUrl: avatarOriginalUrl || undefined, avatarCrop,
+      summary: summary.trim(), tags, aliases, attributes,
+      pinnedAttributes: pinnedAttributes.length > 0 ? pinnedAttributes : undefined,
+      notes: notes.trim(), avatarUrl: avatarUrl || undefined, avatarOriginalUrl: avatarOriginalUrl || undefined, avatarCrop,
       gallery, color, whiteboard, timelineEventId: targetTimelineEventId,
       dateOrEpoch: category === "event" ? dateOrEpoch.trim() || undefined : undefined,
       isHistorical: category === "event" ? isHistorical : undefined,
@@ -238,6 +238,7 @@ export function useEntityModalLogic({
     name, setName, subtitle, setSubtitle, summary, setSummary, notes, setNotes, color, handleColorChange,
     tags, handleAddTag, handleRemoveTag, aliases, handleAddAlias, handleRemoveAlias,
     attributes, handleAttributeChange, handleRemoveAttribute, handleAddAttribute,
+    pinnedAttributes, handleTogglePinAttribute,
     avatarUrl, setAvatarUrl, avatarOriginalUrl, setAvatarOriginalUrl, avatarCrop,
     cropModalOpen, setCropModalOpen, cropSourceUrl, handleOpenCrop, handleConfirmCrop, handleRemoveAvatar,
     gallery, setGallery, whiteboard, setWhiteboard, fileInputRef, processImageFiles,

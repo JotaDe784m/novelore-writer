@@ -86,13 +86,13 @@ export const MentionsActBreakdown: React.FC<MentionsActBreakdownProps> = ({
           return (
             <div
               key={act.actId}
-              className="rounded-2xl bg-[var(--bg-input)]/20 overflow-hidden transition-all"
+              className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)]/50 overflow-hidden transition-all shadow-2xs"
             >
               {/* Cabecera del Acto */}
               <button
                 type="button"
                 onClick={() => toggleAct(act.actId)}
-                className="w-full p-3 sm:p-3.5 flex items-center justify-between hover:bg-[var(--bg-input)]/40 transition-colors text-left cursor-pointer"
+                className="w-full p-3 sm:p-3.5 flex items-center justify-between hover:bg-[var(--bg-surface-hover)] transition-colors text-left cursor-pointer"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {isOpen ? (
@@ -101,16 +101,16 @@ export const MentionsActBreakdown: React.FC<MentionsActBreakdownProps> = ({
                     <ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
                   )}
                   <Layers className="w-4 h-4 text-[var(--accent)] shrink-0" />
-                  <span className="font-semibold text-xs sm:text-sm text-[var(--text-primary)] truncate">
+                  <span className="font-bold font-novel-display text-xs sm:text-sm text-[var(--text-main)] truncate">
                     {act.actTitle}
                   </span>
-                  <span className="text-[11px] text-[var(--text-muted)] shrink-0">
+                  <span className="text-[11px] font-sans text-[var(--text-muted)] shrink-0">
                     ({act.chapters.length} {act.chapters.length === 1 ? "capítulo" : "capítulos"})
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-bold bg-[var(--accent-subtle)] text-[var(--accent)]">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-sans font-bold bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent)]/30">
                     {act.totalCount} {act.totalCount === 1 ? "mención" : "menciones"}
                   </span>
                 </div>
@@ -121,10 +121,10 @@ export const MentionsActBreakdown: React.FC<MentionsActBreakdownProps> = ({
                 <div className="p-3 sm:p-4 pt-1 space-y-4">
                   {act.chapters.map((chap) => (
                     <div key={chap.chapterId} className="space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] font-semibold px-1">
-                        <BookMarked className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                        <span>{chap.chapterTitle}</span>
-                        <span className="text-[11px] text-[var(--text-muted)] font-normal">
+                      <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] font-novel-serif font-semibold px-1">
+                        <BookMarked className="w-3.5 h-3.5 text-[var(--accent)]" />
+                        <span className="text-[var(--text-main)]">{chap.chapterTitle}</span>
+                        <span className="text-[11px] font-sans text-[var(--text-muted)] font-normal">
                           ({chap.scenes.length} {chap.scenes.length === 1 ? "escena" : "escenas"})
                         </span>
                       </div>

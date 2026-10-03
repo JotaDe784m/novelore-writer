@@ -1,5 +1,5 @@
 import React from "react";
-import { User, MapPin, Shield, Gem, Zap, Calendar, Tag } from "lucide-react";
+import { User, MapPin, Shield, Gem, Zap, Calendar, Tag, Feather } from "lucide-react";
 import { DossierIdentityTabProps } from "./dossierTypes";
 import { DossierHeroCard } from "./DossierHeroCard";
 
@@ -63,17 +63,22 @@ export const DossierIdentityTab: React.FC<DossierIdentityTabProps> = ({
         categoryIcon={CategoryIcon}
       />
 
-      {/* 2. Descripción corta */}
-      <div className="pt-1">
-        <h3 className="font-bold font-novel-display text-xl sm:text-2xl text-[var(--text-primary)] block mb-2.5">
-          Descripción corta
-        </h3>
+      {/* 2. Descripción corta en tarjeta editorial */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-[var(--bg-input)]/45 border border-[var(--border-color)]/50 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-xl bg-[var(--bg-card)] text-[var(--accent)] border border-[var(--border-color)]/50 shrink-0">
+            <Feather className="w-3.5 h-3.5" />
+          </div>
+          <h4 className="font-bold font-novel-display text-sm text-[var(--text-main)]">
+            Descripción Corta (Síntesis Editorial)
+          </h4>
+        </div>
         <textarea
           value={summary}
           onChange={(e) => onSummaryChange(e.target.value)}
           placeholder="Descripción literaria o síntesis del elemento accesible para vista rápida en tarjetas y el manuscrito..."
-          rows={5}
-          className="w-full p-4 rounded-2xl bg-[var(--bg-input)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent)] leading-relaxed text-sm sm:text-base custom-scroll resize-y"
+          rows={4}
+          className="w-full p-3.5 rounded-xl bg-[var(--bg-card)] text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50 focus:outline-hidden focus:border-[var(--accent)] border border-[var(--border-color)]/50 leading-relaxed text-sm font-novel-serif custom-scroll resize-y"
         />
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Upload, Star, ZoomIn, Trash2, Edit3, Image as ImageIcon, Check, ImageOff } from "lucide-react";
+import { Upload, Star, ZoomIn, Trash2, Edit3, Image as ImageIcon, Check, ImageOff, Crop } from "lucide-react";
 import { DossierGalleryTabProps } from "./dossierTypes";
 import { resolveAssetUrl } from "../../../utils/imageUtils";
 
@@ -20,58 +20,40 @@ export const DossierGalleryTab: React.FC<DossierGalleryTabProps> = ({
   const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = () => { setIsDragging(false); };
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      onAddImages(e.dataTransfer.files);
-    }
+    e.preventDefault(); setIsDragging(false);
+    if (e.dataTransfer.files?.length) onAddImages(e.dataTransfer.files);
   };
 
-  const startEditingCaption = (id: string, current: string = "") => {
-    setEditingCaptionId(id);
-    setCaptionDraft(current);
+  const startEditingCaption = (id: string, current = "") => {
+    setEditingCaptionId(id); setCaptionDraft(current);
   };
-
   const saveCaption = (id: string) => {
-    onUpdateCaption(id, captionDraft.trim());
-    setEditingCaptionId(null);
+    onUpdateCaption(id, captionDraft.trim()); setEditingCaptionId(null);
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-150">
-      {/* 1. Header & Zona de subida */}
+      {/* 1. Zona de Arrastrar y Subir Fotografías */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`p-5 rounded-2xl border-2 border-dashed transition-all flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left ${
+        className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left ${
           isDragging
-            ? "border-[var(--accent)] bg-[var(--accent-subtle)]/40 scale-[1.01]"
-            : "border-[var(--border-subtle)] bg-[var(--bg-input)]/40 hover:bg-[var(--bg-input)]/70"
+            ? "border-[var(--accent)] bg-[var(--accent-subtle)]/50 scale-[1.01]"
+            : "border-[var(--border-color)]/60 bg-[var(--bg-input)]/40 hover:bg-[var(--bg-input)]/60"
         }`}
       >
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-[var(--bg-card)] flex items-center justify-center text-[var(--accent)] shadow-2xs shrink-0">
-            <ImageIcon className="w-6 h-6" />
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-xl bg-[var(--bg-card)] text-[var(--accent)] border border-[var(--border-color)]/50 shrink-0">
+            <ImageIcon className="w-3.5 h-3.5" />
           </div>
-          <div className="space-y-0.5">
-            <h4 className="text-xs font-bold text-[var(--text-main)]">
-              Galería Multimedia del Elemento
-            </h4>
-            <p className="text-[11px] text-[var(--text-muted)]">
-              Arrastra imágenes aquí o sube archivos locales. Se copiarán físicamente en assets/gallery/.
-            </p>
-          </div>
+          <h4 className="font-bold font-novel-display text-sm text-[var(--text-main)]">
+            Galería Multimedia
+          </h4>
         </div>
 
         <div className="shrink-0 flex items-center gap-2">
@@ -82,16 +64,13 @@ export const DossierGalleryTab: React.FC<DossierGalleryTabProps> = ({
             multiple
             className="hidden"
             onChange={(e) => {
-              if (e.target.files && e.target.files.length > 0) {
-                onAddImages(e.target.files);
-                e.target.value = "";
-              }
+              if (e.target.files?.length) { onAddImages(e.target.files); e.target.value = ""; }
             }}
           />
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-semibold hover:opacity-95 shadow-2xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-sans font-bold hover:opacity-90 transition-all cursor-pointer shadow-2xs"
           >
             <Upload className="w-3.5 h-3.5" />
             <span>Añadir Fotos</span>
@@ -99,16 +78,16 @@ export const DossierGalleryTab: React.FC<DossierGalleryTabProps> = ({
         </div>
       </div>
 
-      {/* 2. Cuadrícula de Galería */}
+      {/* 2. Cuadrícula Editorial en Proporción 3:4 */}
       {gallery.length === 0 ? (
-        <div className="py-12 text-center rounded-2xl bg-[var(--bg-card)]/30 border border-[var(--border-subtle)] flex flex-col items-center justify-center space-y-2">
-          <ImageIcon className="w-8 h-8 text-[var(--text-muted)] opacity-50" />
-          <p className="text-xs text-[var(--text-muted)]">
-            Aún no hay imágenes añadidas a este dossier.
+        <div className="py-12 text-center rounded-2xl bg-[var(--bg-card)]/30 border border-[var(--border-color)]/50 flex flex-col items-center justify-center space-y-2">
+          <ImageIcon className="w-8 h-8 text-[var(--text-muted)] opacity-40" />
+          <p className="text-xs font-sans text-[var(--text-muted)]">
+            Aún no hay imágenes en la galería de esta ficha.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {gallery.map((img, idx) => {
             const isAvatar = (avatarOriginalUrl && avatarOriginalUrl === img.url) || avatarUrl === img.url;
             const isEditing = editingCaptionId === img.id;
@@ -118,77 +97,82 @@ export const DossierGalleryTab: React.FC<DossierGalleryTabProps> = ({
             return (
               <div
                 key={img.id || idx}
-                className="group rounded-2xl overflow-hidden bg-[var(--bg-card)] border border-[var(--border-subtle)] flex flex-col shadow-2xs transition-all hover:shadow-xs"
+                className={`group rounded-2xl overflow-hidden bg-[var(--bg-card)] border flex flex-col shadow-2xs transition-all hover:shadow-md ${
+                  isAvatar ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/30" : "border-[var(--border-color)]/60"
+                }`}
               >
-                {/* Contenedor de Imagen */}
-                <div className="relative aspect-4/3 overflow-hidden bg-black/5 dark:bg-white/5 flex items-center justify-center">
+                {/* Contenedor de Imagen 3:4 */}
+                <div className="relative aspect-[3/4] overflow-hidden bg-black/5 dark:bg-white/5 flex items-center justify-center">
                   {hasError ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-amber-500/5 dark:bg-amber-500/10">
+                    <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-amber-500/10">
                       <ImageOff className="w-6 h-6 text-amber-500/80 mb-1" />
-                      <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 leading-tight">
-                        Archivo no encontrado
-                      </span>
-                      <span className="text-[9px] text-[var(--text-muted)] line-clamp-1 mt-0.5 max-w-[140px]">
-                        {img.url.replace(/^assets\//, "")}
+                      <span className="text-[10px] font-sans font-semibold text-amber-600 dark:text-amber-400">
+                        No encontrada
                       </span>
                       <button
                         type="button"
                         onClick={() => onRemoveImage(img.id, img.url)}
-                        className="mt-2 text-[10px] font-medium text-red-500 hover:text-red-600 hover:underline flex items-center gap-1 cursor-pointer"
+                        className="mt-2 text-[10px] font-sans font-medium text-red-500 hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3" />
-                        <span>Desvincular</span>
+                        <span>Quitar</span>
                       </button>
                     </div>
                   ) : (
                     <>
                       <img
                         src={resolvedSrc}
-                        alt={img.caption || `Imagen ${idx + 1}`}
+                        alt={img.caption || `Foto ${idx + 1}`}
                         onError={() => setFailedIds((prev) => new Set(prev).add(img.id))}
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
 
                       {/* Insignia de Avatar Actual */}
                       {isAvatar && (
-                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-amber-500 text-black text-[9px] font-bold shadow-xs flex items-center gap-1 z-10">
-                          <Star className="w-2.5 h-2.5 fill-black" />
-                          <span>Perfil</span>
+                        <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] text-[9px] font-sans font-bold shadow-xs flex items-center gap-1 z-10">
+                          <Star className="w-2.5 h-2.5 fill-current" />
+                          <span>Avatar</span>
                         </div>
                       )}
 
-                      {/* Overlay de Acciones Rápidas */}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
+                      {/* Botonera Flotante en Hover */}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 p-2 text-white transition-opacity">
                         <button
                           type="button"
                           onClick={() => onOpenLightbox(idx)}
                           className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors cursor-pointer"
-                          title="Ver a pantalla completa"
+                          title="Ver en grande"
                         >
                           <ZoomIn className="w-4 h-4" />
                         </button>
 
+                        {onOpenCropForImage && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenCropForImage(img.url)}
+                            className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-amber-300 transition-colors cursor-pointer"
+                            title="Ajustar encuadre (3:4)"
+                          >
+                            <Crop className="w-4 h-4" />
+                          </button>
+                        )}
+
                         <button
                           type="button"
-                          onClick={() => {
-                            if (onOpenCropForImage) onOpenCropForImage(img.url);
-                            else onSetAsAvatar(img.url);
-                          }}
+                          onClick={() => onSetAsAvatar(img.url)}
                           className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                            isAvatar
-                              ? "bg-amber-500 text-black"
-                              : "bg-white/20 hover:bg-white/30 text-white"
+                            isAvatar ? "bg-[var(--accent)] text-[var(--accent-contrast)]" : "bg-white/20 hover:bg-white/30 text-white"
                           }`}
-                          title={isAvatar ? "Encuadrar foto de perfil" : "Establecer como foto de perfil"}
+                          title={isAvatar ? "Avatar actual" : "Establecer como avatar"}
                         >
-                          <Star className={`w-4 h-4 ${isAvatar ? "fill-black" : ""}`} />
+                          <Star className={`w-4 h-4 ${isAvatar ? "fill-current" : ""}`} />
                         </button>
 
                         <button
                           type="button"
                           onClick={() => onRemoveImage(img.id, img.url)}
-                          className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-200 transition-colors cursor-pointer"
-                          title="Eliminar imagen"
+                          className="p-1.5 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-red-100 transition-colors cursor-pointer"
+                          title="Eliminar foto"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -197,8 +181,8 @@ export const DossierGalleryTab: React.FC<DossierGalleryTabProps> = ({
                   )}
                 </div>
 
-                {/* Pie de foto / Descripción editable */}
-                <div className="p-2.5 text-xs flex-1 flex flex-col justify-between">
+                {/* Pie de foto editorial en cursiva */}
+                <div className="p-2.5 text-xs flex-1 flex flex-col justify-between border-t border-[var(--border-color)]/40 bg-[var(--bg-input)]/20">
                   {isEditing ? (
                     <div className="flex items-center gap-1">
                       <input
@@ -211,12 +195,12 @@ export const DossierGalleryTab: React.FC<DossierGalleryTabProps> = ({
                         }}
                         placeholder="Pie de foto..."
                         autoFocus
-                        className="w-full px-2 py-0.5 rounded-md text-[11px] border border-[var(--accent)] bg-[var(--bg-input)] text-[var(--text-main)] focus:outline-hidden"
+                        className="w-full px-2 py-0.5 rounded-lg text-[11px] font-novel-serif italic border border-[var(--accent)] bg-[var(--bg-card)] text-[var(--text-main)] focus:outline-hidden"
                       />
                       <button
                         type="button"
                         onClick={() => saveCaption(img.id)}
-                        className="p-1 rounded-md text-emerald-500 hover:bg-emerald-500/10 cursor-pointer"
+                        className="p-1 rounded-lg text-emerald-500 hover:bg-emerald-500/10 cursor-pointer"
                       >
                         <Check className="w-3.5 h-3.5" />
                       </button>
@@ -224,11 +208,11 @@ export const DossierGalleryTab: React.FC<DossierGalleryTabProps> = ({
                   ) : (
                     <div
                       onClick={() => startEditingCaption(img.id, img.caption)}
-                      className="flex items-center justify-between gap-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate"
+                      className="flex items-center justify-between gap-1 text-[11px] font-novel-serif italic text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate"
                       title="Clic para editar pie de foto"
                     >
                       <span className="truncate">{img.caption || "Sin descripción"}</span>
-                      <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-70 shrink-0" />
+                      <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-60 shrink-0" />
                     </div>
                   )}
                 </div>

@@ -77,7 +77,10 @@ export const CodexEntityCard: React.FC<CodexEntityCardProps> = ({
       style={{
         backgroundColor: "var(--bg-card)",
         border: hasValidImage ? `2px solid ${color}` : "1px solid var(--border-color)",
-      }}
+        "--accent": color,
+        "--accent-readable": color,
+        "--accent-subtle": `${color}18`,
+      } as React.CSSProperties}
     >
       {/* 1. Contenedor en Proporción Universal 3:4 */}
       <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--bg-input)]">

@@ -75,9 +75,11 @@ export interface DossierGalleryTabProps {
 export interface DossierAttributesTabProps {
   category: EntityCategory;
   attributes: Record<string, string>;
+  pinnedAttributes?: string[];
   onAttributeChange: (key: string, value: string) => void;
   onRemoveAttribute: (key: string) => void;
   onAddAttribute: (key: string, value?: string) => void;
+  onTogglePinAttribute?: (key: string) => void;
 }
 
 export interface DossierMentionsTabProps {
@@ -114,4 +116,5 @@ export interface DossierEventLoreTabProps {
 export interface DossierNotesTabProps {
   notes: string;
   onNotesChange: (val: string) => void;
+  entityName?: string;
 }

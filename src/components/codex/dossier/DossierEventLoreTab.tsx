@@ -30,14 +30,14 @@ export const DossierEventLoreTab: React.FC<DossierEventLoreTabProps> = ({
   return (
     <div className="space-y-5 animate-in fade-in duration-150">
       {/* 1. Header & Timeline Navigation Link */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--accent-subtle)]/30">
-        <div>
-          <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)] font-novel-display">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--bg-input)]/45 border border-[var(--border-color)]/50">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-xl bg-[var(--bg-card)] text-[var(--accent)] border border-[var(--border-color)]/50 shrink-0">
+            <History className="w-3.5 h-3.5" />
+          </div>
+          <h4 className="font-bold font-novel-display text-sm text-[var(--text-main)]">
             Dimensiones Temporales, Cronología & Lore
           </h4>
-          <p className="text-[11px] text-[var(--text-muted)]">
-            Define la época histórica, sincroniza con la línea temporal y vincula los participantes.
-          </p>
         </div>
         {existingTimelineEventId && onNavigateToTimeline && (
           <button
@@ -71,7 +71,7 @@ export const DossierEventLoreTab: React.FC<DossierEventLoreTabProps> = ({
             </div>
             <div>
               <div className="font-bold text-xs text-[var(--text-primary)]">
-                📜 Evento Histórico / Lore (Pasado)
+                Evento Histórico / Lore (Pasado)
               </div>
               <div className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
                 Aconteció antes del manuscrito (guerras antiguas, pactos, cataclismos).
@@ -93,7 +93,7 @@ export const DossierEventLoreTab: React.FC<DossierEventLoreTabProps> = ({
             </div>
             <div>
               <div className="font-bold text-xs text-[var(--text-primary)]">
-                📖 Hito de la Trama Activa (Presente)
+                Hito de la Trama Activa (Presente)
               </div>
               <div className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
                 Forma parte del transcurso cronológico vivo de los actos y capítulos.

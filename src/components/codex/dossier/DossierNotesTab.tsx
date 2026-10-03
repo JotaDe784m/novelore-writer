@@ -1,36 +1,65 @@
-import React from "react";
-import { FileText, Lock } from "lucide-react";
+import React, { useMemo } from "react";
+import { ScrollText, BookOpen } from "lucide-react";
 import { DossierNotesTabProps } from "./dossierTypes";
 
 export const DossierNotesTab: React.FC<DossierNotesTabProps> = ({
   notes,
   onNotesChange,
+  entityName,
 }) => {
+  const wordCount = useMemo(() => {
+    const trimmed = notes.trim();
+    if (!trimmed) return 0;
+    return trimmed.split(/\s+/).length;
+  }, [notes]);
+
+  const handleInsertDivider = () => {
+    const divider = "\n\n* * *\n\n";
+    onNotesChange(notes ? `${notes.trimEnd()}${divider}` : "* * *\n\n");
+  };
+
   return (
     <div className="space-y-4 animate-in fade-in duration-150">
-      {/* Header Banner */}
-      <div className="p-4 rounded-2xl bg-[var(--bg-input)]/40 flex items-start gap-3">
-        <div className="p-2 rounded-xl bg-[var(--accent-subtle)] text-[var(--accent)] shrink-0 mt-0.5">
-          <Lock className="w-4 h-4" />
-        </div>
-        <div>
-          <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">
-            Notas Secretas & Trasfondo Profundo (Lore del Autor)
+      {/* 1. Cabecera Editorial & Contador de Palabras */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-[var(--bg-input)]/45 border border-[var(--border-color)]/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 rounded-xl bg-[var(--bg-card)] text-[var(--accent)] border border-[var(--border-color)]/50 shrink-0">
+            <ScrollText className="w-3.5 h-3.5" />
+          </div>
+          <h4 className="font-bold font-novel-display text-sm text-[var(--text-main)] truncate">
+            Lore Profundo {entityName ? `de ${entityName}` : ""}
           </h4>
-          <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-            Este espacio está reservado para la biblia privada del escritor: secretos inconfesables, revelaciones futuras, árbol genealógico, borradores o detalles no revelados al lector.
-          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+          {/* Contador de Palabras de Trasfondo */}
+          <div
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-bold bg-[var(--bg-card)] text-[var(--text-main)] border border-[var(--border-color)]/50 shadow-2xs"
+            title="Palabras acumuladas en este lore"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-[var(--accent)]" />
+            <span>{wordCount} palabras</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleInsertDivider}
+            className="px-2.5 py-1 rounded-full text-xs font-sans text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-color)]/40 transition-colors cursor-pointer"
+            title="Insertar corte escénico (* * *)"
+          >
+            + Corte (* * *)
+          </button>
         </div>
       </div>
 
-      {/* Deep Notes Area */}
-      <div>
+      {/* 2. Área Amplia de Redacción Literaria */}
+      <div className="relative rounded-2xl bg-[var(--bg-input)]/40 border border-[var(--border-color)]/60 p-4 sm:p-5 focus-within:border-[var(--accent)] transition-colors">
         <textarea
           value={notes}
           onChange={(e) => onNotesChange(e.target.value)}
-          placeholder="Escribe libremente el trasfondo, secretos, evolución futura de este elemento en los próximos libros o giros argumentales..."
-          rows={14}
-          className="w-full p-4 rounded-2xl bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] leading-relaxed text-sm font-sans resize-y min-h-[220px]"
+          placeholder="Escribe libremente el trasfondo, secretos, evolución futura de este elemento en los próximos libros o giros argumentales no revelados al lector..."
+          rows={16}
+          className="w-full bg-transparent text-[var(--text-main)] placeholder:text-[var(--text-muted)]/45 focus:outline-hidden leading-relaxed text-sm sm:text-base font-novel-serif custom-scroll resize-y min-h-[360px]"
         />
       </div>
     </div>

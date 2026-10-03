@@ -1,8 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  BookOpen, Compass, Gem, Image as ImageIcon, MapPin, MoreVertical,
-  Share2, Shield, Sparkles, User, Zap,
-} from "lucide-react";
+import { BookOpen, Compass, Gem, Image as ImageIcon, MapPin, MoreVertical, Share2, Shield, Sparkles, User, Zap } from "lucide-react";
 import { WorldEntity } from "../../../types";
 import { getDefaultCategoryColor, getCategoryLabel } from "../../../utils/codexDefaults";
 import { resolveAssetUrl } from "../../../utils/imageUtils";
@@ -46,27 +43,29 @@ export const CodexEntityCardDetailed: React.FC<CodexEntityCardDetailedProps> = (
     const attrs = entity.attributes || {};
     const keys = Object.keys(attrs);
 
-    const findKey = (pattern: RegExp) => keys.find((k) => pattern.test(k));
-    const roleKey = findKey(/^rol|^role/i);
-    const goalKey = findKey(/^meta|^objetivo|^goal/i);
-    const appearanceKey = findKey(/^apariencia|^aspecto|^f[ií]sico/i);
-    const motivationKey = findKey(/^motivaci[oó]n|^motivo|^deseo/i);
+    if (entity.pinnedAttributes?.length) {
+      const pinned = entity.pinnedAttributes.filter((k) => attrs[k]?.trim()).map((k) => ({ label: k, value: attrs[k].trim() }));
+      if (pinned.length > 0) {
+        if (mode === "classic" && entity.notes?.trim() && pinned.length < 4) {
+          pinned.push({ label: "Notas", value: entity.notes.trim() });
+        }
+        return pinned;
+      }
+    }
+
+    const findKey = (p: RegExp) => keys.find((k) => p.test(k));
+    const roleKey = findKey(/^rol|^role/i), goalKey = findKey(/^meta|^objetivo|^goal/i);
+    const appearanceKey = findKey(/^apariencia|^aspecto|^f[ií]sico/i), motivationKey = findKey(/^motivaci[oó]n|^motivo|^deseo/i);
 
     const prioritized: { label: string; value: string }[] = [];
     const usedKeys = new Set<string>();
 
     [roleKey, goalKey, appearanceKey, motivationKey].forEach((k) => {
-      if (k && attrs[k]?.trim()) {
-        prioritized.push({ label: k, value: attrs[k].trim() });
-        usedKeys.add(k);
-      }
+      if (k && attrs[k]?.trim()) { prioritized.push({ label: k, value: attrs[k].trim() }); usedKeys.add(k); }
     });
 
     keys.forEach((k) => {
-      if (!usedKeys.has(k) && attrs[k]?.trim()) {
-        prioritized.push({ label: k, value: attrs[k].trim() });
-        usedKeys.add(k);
-      }
+      if (!usedKeys.has(k) && attrs[k]?.trim()) { prioritized.push({ label: k, value: attrs[k].trim() }); usedKeys.add(k); }
     });
 
     if (mode === "classic" && entity.notes?.trim() && prioritized.length < 4) {
@@ -74,7 +73,7 @@ export const CodexEntityCardDetailed: React.FC<CodexEntityCardDetailedProps> = (
     }
 
     return prioritized;
-  }, [entity.attributes, entity.notes, mode]);
+  }, [entity.attributes, entity.pinnedAttributes, entity.notes, mode]);
 
   const displayedAttributes = mode === "classic" ? attributeEntries.slice(0, 4) : attributeEntries;
 
@@ -94,7 +93,10 @@ export const CodexEntityCardDetailed: React.FC<CodexEntityCardDetailedProps> = (
       style={{
         backgroundColor: "var(--bg-card)",
         borderColor: accentColor,
-      }}
+        "--accent": accentColor,
+        "--accent-readable": accentColor,
+        "--accent-subtle": `${accentColor}18`,
+      } as React.CSSProperties}
     >
       <div>
         {/* 1. Cabecera Vertical: Retrato en proporción 3:4 + Identidad Editorial */}
@@ -152,7 +154,7 @@ export const CodexEntityCardDetailed: React.FC<CodexEntityCardDetailedProps> = (
             </div>
 
             <div className="mt-1.5 pt-1 border-t border-[var(--border-color)]/30">
-              <div className="flex items-center gap-1.5 font-sans text-[11px] text-[var(--text-muted)]">
+              <div className="flex items-center gap-1.5 font-sans text-[11px] text-[var(--accent)] font-medium">
                 <CategoryIcon className="w-3 h-3 shrink-0" />
                 <span className="truncate">{categoryLabel}</span>
               </div>

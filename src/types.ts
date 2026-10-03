@@ -141,6 +141,7 @@ export interface WorldEntity {
   tags: string[];
   aliases?: string[]; // Apodos o variantes de nombre para contabilizar menciones en el manuscrito
   attributes: Record<string, string>; // Dynamic key-value pairs (e.g. "Edad", "Rol", "Motivación", "Miedo")
+  pinnedAttributes?: string[]; // Claves de atributos/notas seleccionadas para mostrar en las tarjetas del Códex
   notes: string;
   avatarIcon?: string;
   avatarUrl?: string; // Imagen de perfil de la entrada (recortada a 3:4)
