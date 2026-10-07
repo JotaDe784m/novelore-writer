@@ -38,6 +38,15 @@ La experiencia de Novelore se inspira en los referentes más refinados del softw
    - Tanto en la Ficha de Obra como en los dossiers de personajes, locaciones y entidades del Códice, los campos y atributos clave se estructuran como **filas horizontales encapsuladas** (`rounded-2xl` o `rounded-xl` sobre `--bg-input` con delimitación tonal suave).
    - Cada cápsula engloba su **símbolo vectorial temático** (`lucide-react`) y su **etiqueta o subtítulo descriptivo en el lado izquierdo**, integrando la **entrada de texto limpio y fluido en el lado derecho**.
    - Se erradica la disposición en formularios administrativos tradicionales de etiquetas flotantes o tablas rígidas; los campos se apilan armónicamente uno sobre otro con espacio respirable, consolidando la estética de un expediente o cuaderno editorial refinado.
+10. **Erradicación de Subtítulos Explicativos y Textos Redundantes**:
+    - En cabeceras, tarjetas, barras de herramientas, modales y lienzos, **queda estrictamente prohibido incluir subtítulos decorativos o explicaciones redundantes** (e.g. *"Explora y administra las líneas temporales de tu historia"*, *"Crea y organiza tus notas"*, *"Haz clic para editar"* o leyendas instruccionales obvias).
+    - La interfaz debe ser limpia, literaria y autoevidente. Las acciones y controles se explican por sí mismos o mediante iconografía vectorial refinada (`lucide-react`) y tooltips sutiles.
+    - Toda guía pedagógica o conceptual se reserva **exclusivamente bajo demanda** mediante el botón `?` que despliega el modal contextual `SectionHelpModal`.
+11. **Compatibilidad Universal con Todos los Temas & Prohibición de Colores Fijos**:
+    - Cada componente, modal, tarjeta, botón o vista debe funcionar con el 100% de los temas del programa (*Minimal*, *Dark*, *Sepia*, *Forest*, *Midnight*, *Noir*).
+    - **Queda estrictamente prohibido el uso de colores fijos en hexadecimal (`#131316`, `#1c1917`, etc.) o clases de colores fijos de Tailwind (`bg-stone-900`, `bg-zinc-950`, `text-stone-300`, `border-stone-800`, etc.) en la interfaz**.
+    - Todo el estilizado debe consumir exclusivamente las variables semánticas de CSS (`--bg-app`, `--bg-sidebar`, `--bg-card`, `--bg-input`, `--bg-surface-hover`, `--bg-surface-active`, `--text-primary`, `--text-secondary`, `--text-muted`, `--accent`, `--accent-subtle`, `--accent-text`).
+    - **Aislamiento del color de enfoque**: Cuando una entidad o evento define su color de identidad, este se aplica sobreescribiendo `--accent` de forma local (`style={{ ['--accent' as string]: color }}`) en el contenedor de su tarjeta o dossier sin alterar los tokens globales de la aplicación.
 
 ---
 
@@ -171,48 +180,62 @@ La página de inicio no es un cuadro de mando empresarial; es el **vestíbulo ac
 
 ---
 
-## 8. Sistema Universal de Tarjetas de Entidad (Proporción 3:4)
+## 8. Sistema Universal de Tarjetas de Entidad y Eventos (Proporción 3:4)
 
-El estándar transversal para renderizar entidades en Códex, Cronología, Pizarras, Inspector y Relaciones:
+El estándar transversal para renderizar entidades en Códex Hub y eventos en la vista de Primer Plano de Líneas de Tiempo garantiza consistencia visual y dimensional absoluta:
 
-### Variación 1: Tarjeta Estándar Completa (Principal)
+### Arquitectura de la Tarjeta Editorial Unificada:
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ ┌─────────┐  Nombre del Elemento                [Desvincular]│
-│ │         │  Subtítulo / Rol / Arquetipo                     │
+│ ┌─────────┐  [Fecha / Intervalo si es Evento]               │
+│ │         │  Nombre de la Entidad o Evento                  │
 │ │ RETRATO │                                                  │
-│ │   3:4   │  ┌───────────┐  ┌───────────┐                    │
-│ │         │  │  Pizarra  │  │   Ficha   │                    │
-│ └─────────┘  └───────────┘  └───────────┘                    │
+│ │   3:4   │  Descripción corta truncada con puntos...       │
+│ │         │                                                  │
+│ └─────────┘  [Tags]                [(Doc) Menciones] [(Link) Vínculos]
 └─────────────────────────────────────────────────────────────┘
 ```
-- Marco fotográfico vertical en proporción **3:4** con borde en color semántico y micro-animación de zoom.
-- Nombre destacado, subtítulo atenuado y botones directos *Pizarra* y *Ficha* en ventana flotante (`z-[70]`).
 
-### Variación 2: Fila de Avatares / Elenco Compacto (Modo Facepile)
-- Círculos de avatar limpios (`w-9 h-9 rounded-full`) para escenas corales y asambleas numerosas.
-- Popover flotante enriquecido al hacer hover con sinopsis y botones de acción.
-
-### Variación 3: Tarjeta Compacta con Popover (Modo Lista Densa)
-- Tarjeta horizontal de ~36px de altura con micro-avatar y nombre truncable para paneles estrechos.
+1. **Dimensiones Uniformes y Cuadrícula Estable**:
+   - Todas las tarjetas cuentan con dimensiones fijas de ancho y alto, evitando cuadrículas dentadas, saltos o desalineaciones visuales.
+2. **Marco Fotográfico 3:4 Universal**:
+   - Proporción vertical **3:4** con borde fino delimitado por el color de identidad semántica (`entity.color` o `event.color`).
+   - Cuando no existe foto asignada, se muestra una superficie con el color de identidad y las iniciales tipográficas de la entidad.
+3. **Jerarquía Tipográfica Editorial**:
+   - **En Eventos**: La fecha o indicador temporal narrativo se posiciona justo encima del título en tipografía sans atenuada (`text-xs text-secondary/70`).
+   - **Título**: Tipografía serif destacada con peso enfático (`font-bold text-base`).
+   - **Descripción Corta Truncada**: Bloque acotado a 2-3 líneas (`line-clamp-2` / `line-clamp-3`). Si el texto es breve, se conserva el espacio respirable; si excede el límite, se emplean puntos suspensivos sin deformar la tarjeta.
+   - **Cero Notas Frontales**: La tarjeta frontal se mantiene despejada. Las notas y detalles residen exclusivamente en su pestaña de detalles dentro del dossier.
+4. **Metadatos y Cápsulas de Relación**:
+   - En el pie de la tarjeta, junto a las etiquetas temáticas, se sitúan dos micro-cápsulas informativas:
+     - Contador de menciones en el manuscrito (`FileText`).
+     - Contador de vínculos y relaciones activas (`Link2`).
+5. **Comportamiento e Interacción**:
+   - **Códex Hub**: Soporta arrastre manual (Drag & Drop) para reordenar elementos a voluntad. El orden se persiste de forma independiente para la vista general y para cada categoría individual.
+   - **Líneas de Tiempo (Primer Plano)**: Las tarjetas se ordenan secuencialmente según la posición cronológica del evento en la línea temporal.
 
 ---
 
-## 9. Suite de Dossiers: Tarjetas Visuales y Pestaña "Relacionados"
+## 9. Suite de Dossiers & Lienzo 2D Libre de Notas
 
-### 1. Bloques Visuales de Detalles (`DossierAttributesTab.tsx`)
-- Se erradican las tablas de pares clave-valor rígidas.
-- **Tarjetas Temáticas**: Bloques visuales configurables (*Inicio*, *Conflicto*, *Final*, *Motivación*, *Mayor Miedo*, *Aliados*).
-- **CRUD Completo**:
-  - Redacción directa *inline* de título y contenido con auto-guardado suave.
-  - Botón `+ Añadir detalle` para crear nuevos bloques temáticos.
-  - Botón de papelera en cada tarjeta para eliminar el bloque con confirmación sutil.
+### 1. Lienzo 2D Libre de Notas & Detalles (`EntityNotesCanvas.tsx`)
+Se sustituyen las listas rígidas o cuadrículas estáticas por un **espacio visual bidireccional libre**:
+- **Caja Única Limpia**: Cada nota se compone de un solo cuadro armónico, sin doble borde, sin marcos pesados ni separaciones de cabecera rígidas.
+- **Libre Disposición Espacial**: Las notas no están atadas a una cuadrícula forzada. El autor puede acomodarlas, escalonarlas o agruparlas libremente en dos dimensiones para estructurar fichas de personajes, especies o lugares.
+- **Arrastre Fluido Directo**: La nota se puede arrastrar desde cualquier parte de su superficie con respuesta inmediata del cursor (sin tiradores aparatosos ni latencia).
+- **Redimensionamiento Elástico**: Tiradores sutiles en bordes y esquinas para ajustar ancho y alto libremente.
+- **Edición por Doble Clic**: El título de la nota se edita directamente haciendo doble clic sobre él, prescindiendo de botones de edición adicionales.
+- **Acciones Flotantes al Posar el Ratón (Hover)**: Los botones de fijar (`Pin` / `PinOff`) y eliminar (`Trash2`) permanecen ocultos y se revelan exclusivamente al pasar el cursor sobre la nota.
+- **Fijación de Posición**: Al fijar una nota, se bloquea su arrastre para resguardarla de desplazamientos involuntarios.
+- **Lienzo Infinito con Autoexpansión**: Si una nota se desplaza o expande más allá de las dimensiones de la ventana, el lienzo incrementa automáticamente su área de trabajo habilitando scroll vertical y horizontal suave.
+- **Elevación de Foco**: Al hacer clic o interactuar con una nota, esta eleva su nivel de profundidad (`z-index`) para situarse sobre las demás.
+- **Estado Inicial Vacío**: Todo nuevo elemento del códex o evento de la línea de tiempo se crea **completamente vacío, sin notas de ejemplo**.
 
-### 2. Pestaña "Relacionados" (`DossierRelationsTab.tsx`)
-- Presente en todas las entidades del Códex y Acontecimientos de la Cronología.
-- Agrupación semántica por categorías: `Lugares +`, `Personajes +`, `Facciones +`, `Acontecimientos +`.
-- Selector de densidad de visualización (Tarjetas 3:4, Compactas, Avatares).
-- Botón directo para desenlazar o eliminar la relación.
+### 2. Pestaña "Vínculos" (`DossierRelationsTab.tsx`)
+- Presente en todas las entidades del Códex y eventos de la Línea de Tiempo.
+- Agrupación semántica por categorías: `Lugares`, `Personajes`, `Facciones`, `Eventos`.
+- Subsección exclusiva de eventos: vinculación de Actos completos, Capítulos completos o Escenas individuales con botón de salto al manuscrito.
+- Sincronización bidireccional con el Mapa de Vínculos.
 
 ---
 

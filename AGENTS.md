@@ -42,16 +42,29 @@ La sincronización entre dispositivos no se realiza mediante servidores de Novel
 
 Todo agente debe cumplir estrictamente las especificaciones del sistema de diseño recogidas en `docs/design-system.md`:
 
-1. **Prohibición de Interfaces Tipo "Dashboard / Panel Administrativo"**:
+1. **Cumplimiento Obligatorio del Sistema de Diseño (`docs/design-system.md`)**:
+   - Cada cambio o nuevo módulo debe adoptar con fidelidad matemática los estándares, proporciones, curvaturas y tipografías normadas en el sistema de diseño.
+2. **Compatibilidad Universal con Todos los Temas & Prohibición de Colores Fijos**:
+   - Todo componente, panel, modal, botón y tarjeta debe funcionar y verse armónico con el 100% de los temas del programa (*Minimal*, *Dark*, *Sepia*, *Forest*, *Midnight*, *Noir*).
+   - **Prohibición Estricta de Colores Fijos**: Queda terminantemente prohibido utilizar colores fijos en hexadecimal (`#131316`, `#1c1917`, etc.) o clases de colores fijos de Tailwind (`bg-stone-900`, `bg-zinc-950`, `text-stone-300`, `border-stone-800`, etc.) para fondos, superficies, textos o bordes en componentes de UI.
+   - Se deben usar exclusivamente los tokens semánticos CSS (`--bg-app`, `--bg-sidebar`, `--bg-card`, `--bg-input`, `--bg-surface-hover`, `--bg-surface-active`, `--text-primary`, `--text-secondary`, `--text-muted`, `--accent`, `--accent-subtle`, `--accent-text`).
+   - **Aislamiento del Color de Enfoque**: Cuando una entidad o evento define un color de identidad personalizado, este debe inyectarse localmente sobrescribiendo `--accent` (`style={{ ['--accent' as string]: color }}`) en el ámbito exclusivo de la tarjeta o del modal, evitando contaminar los tokens globales de la aplicación.
+3. **Erradicación de Subtítulos Explicativos y Textos Redundantes**:
+   - Queda estrictamente prohibido incluir en cabeceras, tarjetas, modales o barras de herramientas subtítulos que expliquen la obviedad funcional (e.g., *"Organiza tus eventos"*, *"Crea y administra tus notas"*, *"Haz clic para editar"* o leyendas instruccionales obvias).
+   - La interfaz debe ser limpia, literaria y autoevidente. Las acciones se definen por sí mismas o mediante iconografía contextual refinada (`lucide-react`) y tooltips sutiles.
+   - La orientación al usuario se ofrece exclusivamente bajo demanda a través de `SectionHelpModal` (`?`).
+4. **Prohibición de Interfaces Tipo "Dashboard / Panel Administrativo"**:
    - Queda estrictamente prohibido rodear componentes con marcos pesados o líneas divisorias rígidas (`border border-[...]`).
    - La delimitación visual entre paneles y tarjetas debe lograrse mediante **contraste tonal suave de superficies** y **márgenes generosos**.
    - Los botones deben ser limpios y sin contorno (*ghost/flat*), reaccionando con un fondo suave (*hover tint*).
-2. **Arquitectura de 3 Columnas Fluidas con Colapso Total**:
+5. **Arquitectura de 3 Columnas Fluidas con Colapso Total**:
    - La barra izquierda (manuscrito) y el inspector derecho deben ser capaces de replegarse al 100% hacia los bordes, dejando el editor en aislamiento absoluto.
-3. **Ergonomía Literaria Central (Ulysses / iA Writer)**:
+6. **Ergonomía Literaria Central (Ulysses / iA Writer)**:
    - El editor debe mantener una columna de lectura óptima centrada de **~720px (65-75 caracteres por línea)** con márgenes laterales respirables.
    - Debe soportar desplazamiento de máquina de escribir (*typewriter scrolling*) y modo de foco por párrafo.
-4. **Atmósferas Visuales Desacopladas**:
+7. **Regla de Cero Emojis**:
+   - Queda estrictamente prohibido el uso de emojis en código, componentes, interfaces, botones, mensajes predeterminados y nombres de entidades del sistema. La iconografía se resuelve exclusivamente mediante glifos vectoriales refinados (`lucide-react`).
+8. **Atmósferas Visuales Desacopladas**:
    - Los temas cromáticos definen paletas de superficie y acentos personalizables, sin imponer ni forzar la tipografía o el tamaño de letra elegido por el autor.
 
 ---

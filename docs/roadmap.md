@@ -4,7 +4,7 @@ Este documento establece la evolución estructurada, modular y soberana de **Nov
 
 ---
 
-## 1. Estado Actual del Proyecto: **FASE 6 EN CURSO**
+### 1. Estado Actual del Proyecto: **FASE 7 EN CURSO (SIGUIENTE)**
 
 ```text
 [F1: Escritura & Shell] ──► [F2: Códice Local] ──► [F3: Núcleo Visual & Zen] ──► [F4: Códex Hub] ──► [F5: Dossiers Códex]
@@ -12,8 +12,8 @@ Este documento establece la evolución estructurada, modular y soberana de **Nov
                                                                                                            │
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ▼
-[F6: Línea de Tiempo Integral] ──► [F7: Esquema de Escenas] ──► [F8: Pizarras] ──► [F9: Mapa de Vínculos]
-          ▲ (ACTUAL)                      (SIGUIENTE)
+[F6: Líneas de Tiempo] ──► [F7: Esquema de Escenas] ──► [F8: Mapa de Vínculos] ──► [F9: Pizarras]
+       (COMPLETADA)                 ▲ (SIGUIENTE)
 │
 └─► [F10: Maquetación & Exportación] ──► [F11: Manuscrito & Inspector] ──► [F12: Sincronización Personal]
 ```
@@ -27,10 +27,10 @@ Este documento establece la evolución estructurada, modular y soberana de **Nov
 - [x] **Fase 3: Documentación Maestra, Núcleo Visual Global & Modo Zen Universal**: `docs/design-system.md`, `UnifiedSectionHeader`, `UnderlineTabs`, modal de ayuda 16:9 (`SectionHelpModal`), `TopNavigation` y taller literario de inicio (`HomeDashboard`).
 - [x] **Fase 4: Rediseño del Códex Hub**: Retratos universales 3:4, vista clásica y vista libre en mosaico con notas dinámicas, contornos con color de identidad de elemento y categorías personalizadas.
 - [x] **Fase 5: Suite de Dossiers Unificada del Códex**: Rediseño editorial de pestañas (Detalles, Lore Profundo con contador de palabras, Galería 3:4, Menciones con desglose e Identidad con síntesis), cabeceras homogéneas y aislamiento cromático de tarjeta y modal.
-- [ ] **Fase 6: Planeación — Línea de Tiempo Integral & Dossier de Eventos**: Desacoplamiento de eventos del Códex, cabecera limpia apilada, jerarquía Planos $\rightarrow$ Líneas $\rightarrow$ Eventos, vista general reducida libre con espaciado relativo y etiquetas de intervalo, vista en primer plano con zoom clásico/libre, dossier completo de evento con selector híbrido de fechas, y pestaña Vínculos con subsección «Escenas y Capítulos Vinculados».
-- [ ] **Fase 7: Planeación — Esquema de Escenas (Tablero de Corcho & Matriz)**: Unificación en 2 vistas de esquema, sincronización bidireccional con el manuscrito e inspector, ficha modal de escena con notas por bloque, lore profundo y elementos relacionados.
-- [ ] **Fase 8: Pizarras Visuales Espaciales**: Lienzo global infinito y pizarras dedicadas por elemento/evento, persistencia en `boards/`, refactorización modular $\le 250$ líneas, tarjetas 3:4 y enlaces multimedia.
-- [ ] **Fase 9: Mapa de Vínculos (Simplificación & Sincronización)**: Renombrado a Mapa de Vínculos, simplificación a solo categorías, filtros multidimensionales, sincronización bidireccional con la pestaña Vínculos y panel lateral con popover de avatar.
+- [x] **Fase 6: Planeación — Línea de Tiempo Integral & Dossier de Eventos**: Desacoplamiento de eventos del Códex, cabecera de ancho completo, jerarquía Planos $\rightarrow$ Líneas $\rightarrow$ Eventos, vista general reducida libre con espaciado relativo y etiquetas de intervalo, vista en primer plano con tarjetas 3:4 compartidas con el Códex, dossier completo de evento con selector híbrido de fechas, notas en lienzo 2D libre redimensionables y pestaña Vínculos con sincronización de escenas.
+- [ ] **Fase 7: Planeación — Esquema de Escenas (Tablero de Corcho & Matriz)**: Unificación en 2 vistas de esquema dentro de Planeación, sincronización bidireccional con el manuscrito e inspector, ficha modal de escena con notas por bloque, lore profundo y elementos relacionados.
+- [ ] **Fase 8: Mapa de Vínculos (Simplificación & Sincronización)**: Renombrado a Mapa de Vínculos, simplificación a solo categorías, filtros multidimensionales, sincronización bidireccional con la pestaña Vínculos de cada ficha y panel lateral con popover de avatar.
+- [ ] **Fase 9: Pizarras Visuales Espaciales**: Lienzo global infinito y pizarras dedicadas por elemento/evento, persistencia en `boards/`, refactorización modular $\le 250$ líneas, tarjetas 3:4 y enlaces multimedia.
 - [ ] **Fase 10: Maquetación, Compilación & Exportación Editorial**: Preservación funcional de plantillas DOCX y pliegos, rediseño visual sin marcos, plantillas de usuario y exportación en crudo en PDF.
 - [ ] **Fase 11: Manuscrito & Inspector de Escenas**: Refactor visual del árbol del manuscrito con contraste tonal suave, sincronización de creación/edición con el Tablero de Corcho e inspector de escenas unificado.
 - [ ] **Fase 12: Sincronización en la Nube Personal (Local-First)**: Conectores opcionales para Google Drive, Dropbox y OneDrive coordinados por el autor, manteniendo el almacenamiento local atómico.
@@ -57,45 +57,44 @@ Este documento establece la evolución estructurada, modular y soberana de **Nov
 - [x] Taller literario (`HomeDashboard.tsx`) con novela activa, métricas humanas y carrusel 3:4.
 
 ### Fase 4: Rediseño del Códex Hub [COMPLETADA]
-- [x] Cuadrícula conmutada: Vista Clásica (4 notas fijas) y Vista Libre (mosaico expandible).
-- [x] Marcos fotográficos en proporción universal 3:4 con contorno en color de identidad.
+- [x] Retratos fotográficos universales 3:4 con contorno en color de identidad semántica.
+- [x] Tarjetas editoriales consistentes con dimensiones fijas y descripción corta truncada con puntos suspensivos.
+- [x] Reordenamiento ágil de elementos mediante arrastre manual (orden persistido por categoría y general).
+- [x] Eliminación de vistas fragmentadas (vista compacta eliminada a favor de tarjetas editoriales uniformes).
 - [x] CRUD completo de categorías personalizadas de entidades.
 
 ### Fase 5: Suite de Dossiers Unificada del Códex [COMPLETADA]
-- [x] Pestañas rediseñadas: Detalles con pines de tarjeta, Lore Profundo editorial, Galería 3:4, Menciones con desglose e Identidad con síntesis.
-- [x] Cabeceras estándar sin textos explicativos redundantes.
-- [x] Aislamiento cromático del color de énfasis (`--accent`) a nivel de tarjeta y modal.
+- [x] Pestañas rediseñadas: Detalles con notas y canvas 2D libre, Lore Profundo editorial, Galería 3:4, Menciones con desglose e Identidad con síntesis.
+- [x] Cabeceras estándar de ancho completo sin textos explicativos redundantes.
+- [x] Aislamiento cromático del color de énfasis (`--accent`) a nivel de tarjeta y modal según la entidad activa.
 
 ---
 
-### Fase 6: Planeación — Línea de Tiempo Integral & Dossier de Eventos [EN CURSO]
+### Fase 6: Planeación — Línea de Tiempo Integral & Dossier de Eventos [COMPLETADA]
 
 1. **Desacoplamiento de Eventos del Códex & Migración**:
-   - [ ] Eliminar la categoría `event` del Códex Hub, sus filtros y formularios de creación.
-   - [ ] Migración automática transparente: al cargar un proyecto, si existen entidades de tipo `event` en `codex.json`, se migran limpiamente a `planning.json` como eventos cronológicos sin pérdida de datos.
-2. **Cabecera Apilada Limpia**:
-   - [ ] Cabecera de 3 niveles sin saturación de botones:
-     - Fila 1: `[Brújula] Planeación [?] [Modo Zen]`.
-     - Fila 2: Sub-pestañas: `Línea de tiempo` | `Esquema de escenas` (`UnderlineTabs`).
-     - Fila 3: Selector de Planos Temporales (`Todos`, `Pasado`, `Presente`, `Futuro`, `+ Plano`).
-3. **Jerarquía Planos $\rightarrow$ Líneas de Tiempo $\rightarrow$ Eventos**:
-   - [ ] Los Planos agrupan líneas de tiempo (pistas); cuentan con nombre, color y etiqueta corta editable.
-   - [ ] Cada Línea de Tiempo pertenece a un Plano y dispone de su botón directo `+ Evento` (el evento hereda automáticamente plano y línea sin selectores burocráticos).
-4. **Vista General de Líneas de Tiempo (Vista Reducida Libre)**:
-   - [ ] Tarjeta reducida exclusiva: Fecha/era temporal, título del evento, subtítulo y descripción corta, con contorno en color de identidad.
-   - [ ] Lienzo con scroll horizontal y arrastre libre relativo, permitiendo al autor dejar espacios entre eventos para alinear sucesos paralelos entre líneas.
-   - [ ] Etiquetas de intervalo temporal sobre la línea conectora (ej: *«3 años después»*).
-5. **Vista en Primer Plano (Zoom a una Línea de Tiempo)**:
-   - [ ] Al pulsar en una línea de tiempo, se abre en primer plano con botón de retorno `← Volver a Líneas de Tiempo` y atajo `Esc`.
-   - [ ] Tarjetas detalladas estilo Códex (3:4 retrato, título, subtítulo, fecha, 4 primeras notas y badge de correspondencia escénica).
-   - [ ] Modos Clásico (fijo) y Libre (expandible verticalmente).
-6. **Dossier Completo de Evento**:
-   - [ ] Ficha modal con el mismo motor del Códex: Resumen, Detalles, Lore Profundo, Vínculos, Galería, Menciones y Pizarra.
-   - [ ] **Selector Híbrido de Fechas**: Pestaña de Calendario Estándar (`AAAA-MM-DD`) vs Era Narrativa / Fantasía (campo libre).
-7. **Pestaña Vínculos & Subsección «Escenas y Capítulos Vinculados»**:
-   - [ ] Vínculos agrupados por categoría semántica, sincronizados con el Mapa de Vínculos.
-   - [ ] Subsección exclusiva de eventos: vinculación de Actos completos, Capítulos completos o Escenas individuales.
-   - [ ] Tarjetas de escritura dedicadas con botón de salto al manuscrito (vistas completa y compacta).
+   - [x] Desacoplamiento total de eventos respecto al Códex Hub.
+   - [x] Migración automática transparente al cargar un proyecto (`event` migrado de `codex.json` a `planning.json`).
+2. **Cabecera de Ancho Completo & Jerarquía**:
+   - [x] Cabecera unificada apilada cubriendo el ancho total de la ventana: `Planeación` con `[?]`, Modo Zen y `UnderlineTabs` (`Líneas de tiempo` | `Esquema de escenas`).
+   - [x] Selector y gestión ágil de Planos Temporales (`Todos`, `Pasado`, `Presente`, `Futuro`, `+ Plano`).
+   - [x] Jerarquía de tres niveles: Planos $\rightarrow$ Líneas de Tiempo $\rightarrow$ Eventos.
+3. **Vista General Reducida Libre**:
+   - [x] Tarjetas reducidas de evento con contorno en color de identidad y dimensiones compactas.
+   - [x] Espaciado relativo manual y arrastre horizontal con guardado de posición en píxeles.
+   - [x] Etiquetas de intervalo temporal sobre conectores (ej: *«3 años después»*).
+4. **Vista en Primer Plano (Zoom a Línea de Tiempo)**:
+   - [x] Tarjetas de eventos unificadas con el estándar editorial 3:4 del Códex (aspecto 3:4, fecha sobre el título, descripción truncada, cápsulas de menciones y vínculos).
+   - [x] Retorno con botón `← Volver a Líneas de Tiempo` y atajo `Esc`.
+5. **Dossier Completo de Evento**:
+   - [x] Ficha modal con suite completa de pestañas (Resumen, Detalles, Lore Profundo, Vínculos, Galería, Menciones).
+   - [x] Selector híbrido de fechas: Calendario estándar vs Era narrativa / cronología fantástica.
+   - [x] Pestaña Vínculos con subsección «Escenas y Capítulos Vinculados».
+6. **Lienzo 2D Libre de Notas & Detalles**:
+   - [x] Rediseño unificado de notas tanto para Códex como para Eventos: cajas limpias sin marcos pesados, arrastre fluido directo y redimensionamiento libre desde bordes.
+   - [x] Edición de título por doble clic, controles flotantes de fijar y eliminar exclusivos al pasar el ratón.
+   - [x] Lienzo infinito con autoexpansión y scroll bidireccional; entidades creadas sin notas por defecto.
+   - [x] Compatibilidad total con todos los temas visuales del programa y aislamiento de acento cromático.
 
 ---
 
@@ -108,21 +107,21 @@ Este documento establece la evolución estructurada, modular y soberana de **Nov
 
 ---
 
-### Fase 8: Pizarras Visuales Espaciales
-- [ ] Pizarras individuales por cada elemento del Códice y evento de la Línea de Tiempo.
-- [ ] Pizarra global infinita del proyecto (`boards/main.json`).
-- [ ] Refactorización modular estricta ($\le 250$ líneas) y persistencia en `boards/entities/[id].json`.
-- [ ] Tarjetas de elementos y eventos en 3 variaciones (Completa 3:4, Compacta, Avatar).
-- [ ] Buscador modal de inserción filtrable por categoría o línea de tiempo.
-
----
-
-### Fase 9: Mapa de Vínculos (Simplificación & Sincronización)
+### Fase 8: Mapa de Vínculos (Simplificación & Sincronización)
 - [ ] Renombrado oficial a **Mapa de Vínculos**.
 - [ ] Simplificación a solo categorías de vínculo (sin campos redundantes de etiquetas o detalles).
 - [ ] Filtros para ocultar categorías de Códice u ocultar eventos.
 - [ ] Sincronización bidireccional total con la pestaña Vínculos de cada ficha.
 - [ ] Panel lateral con tarjeta completa y popover de avatar al pasar el cursor sobre nodos.
+
+---
+
+### Fase 9: Pizarras Visuales Espaciales
+- [ ] Pizarras individuales por cada elemento del Códice y evento de la Línea de Tiempo.
+- [ ] Pizarra global infinita del proyecto (`boards/main.json`).
+- [ ] Refactorización modular estricta ($\le 250$ líneas) y persistencia en `boards/entities/[id].json`.
+- [ ] Tarjetas de elementos y eventos en 3 variaciones (Completa 3:4, Compacta, Avatar).
+- [ ] Buscador modal de inserción filtrable por categoría o línea de tiempo.
 
 ---
 
