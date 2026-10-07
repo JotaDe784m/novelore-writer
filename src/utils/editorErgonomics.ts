@@ -73,6 +73,6 @@ export function getOptimalReadingColumnWidth(isZenMode: boolean = false): {
   return {
     maxWidthPx,
     optimalCharCount: 70,
-    sidePaddingCalc: `max(2rem, calc((100% - ${maxWidthPx}px) / 2))`,
+    sidePaddingCalc: `max(1.25rem, calc((100% - ${maxWidthPx}px) / 2))`,
   };
 }

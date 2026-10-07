@@ -138,6 +138,27 @@ export const App: React.FC = () => {
     useThemeStore.getState().syncWithProject(project);
   }, [project?.settings?.theme, project?.settings?.customAccentColor]);
 
+  // Manejo adaptativo de paneles para pantallas compactas (< 1200px)
+  const handleToggleSidebar = () => {
+    setIsSidebarOpen((prev) => {
+      const next = !prev;
+      if (next && typeof window !== "undefined" && window.innerWidth < 1200 && isInspectorOpen) {
+        setIsInspectorOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleInspector = () => {
+    setIsInspectorOpen((prev) => {
+      const next = !prev;
+      if (next && typeof window !== "undefined" && window.innerWidth < 1200 && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+      return next;
+    });
+  };
+
   // Atajos globales: Ctrl+\ / Cmd+\ (manuscrito) y Ctrl+I / Cmd+I (inspector de escena)
   useEffect(() => {
     const handleGlobalShortcuts = (e: KeyboardEvent) => {
@@ -149,17 +170,17 @@ export const App: React.FC = () => {
       if (isCmdOrCtrl) {
         if (e.key === "\\" || e.code === "Backslash") {
           e.preventDefault();
-          setIsSidebarOpen((prev) => !prev);
+          handleToggleSidebar();
         } else if (e.key.toLowerCase() === "i" || e.code === "KeyI") {
           e.preventDefault();
-          setIsInspectorOpen((prev) => !prev);
+          handleToggleInspector();
         }
       }
     };
 
     window.addEventListener("keydown", handleGlobalShortcuts);
     return () => window.removeEventListener("keydown", handleGlobalShortcuts);
-  }, []);
+  }, [isSidebarOpen, isInspectorOpen]);
 
   // Selección de escena actual
   const currentScene = useMemo(() => {
@@ -335,7 +356,7 @@ export const App: React.FC = () => {
           onOpenDemo={handleLoadDemo}
           onCloseProject={handleCloseProject}
           isSidebarOpen={isSidebarOpen}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          onToggleSidebar={handleToggleSidebar}
           isZenMode={isZenMode}
           setIsZenMode={setIsZenMode}
           onOpenExport={() => handleNavigateView("export")}
@@ -405,7 +426,7 @@ export const App: React.FC = () => {
                       isZenMode={isZenMode}
                       setIsZenMode={setIsZenMode}
                       isInspectorOpen={isInspectorOpen}
-                      onOpenInspector={() => setIsInspectorOpen(!isInspectorOpen)}
+                      onOpenInspector={handleToggleInspector}
                     />
 
                     {/* Inspector lateral */}

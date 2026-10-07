@@ -56,7 +56,7 @@ export const NavbarProjectDropdown: React.FC<NavbarProjectDropdownProps> = ({
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--bg-input)] hover:bg-[var(--bg-surface-hover)] transition-colors border border-[var(--border-color)]/60 cursor-pointer"
         >
           <FolderOpen className="w-3.5 h-3.5 text-[var(--accent)]" />
-          <span className="max-w-[130px] sm:max-w-[170px] truncate font-serif font-semibold text-xs text-[var(--text-main)]">
+          <span className="max-w-[110px] sm:max-w-[160px] md:max-w-[220px] lg:max-w-[280px] truncate font-serif font-semibold text-xs text-[var(--text-main)]">
             {project ? project.title || "Novela sin título" : "Sin novela activa"}
           </span>
           <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />

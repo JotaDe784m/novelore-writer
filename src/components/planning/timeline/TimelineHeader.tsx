@@ -38,9 +38,9 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   };
 
   return (
-    <div className="px-5 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0 select-none border-b border-[var(--border-color)]/50 bg-[var(--bg-surface)]">
+    <div className="px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2.5 shrink-0 select-none border-b border-[var(--border-color)]/50 bg-[var(--bg-surface)]">
       {/* Nivel 3: Selector Dinámico de Planos Temporales */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none py-0.5 min-w-0 max-w-full">
         <button
           type="button"
           onClick={() => onSelectPlane("all")}
@@ -61,7 +61,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
           return (
             <div
               key={plane.id}
-              className={`flex items-center rounded-full text-xs font-semibold transition-all ${
+              className={`flex items-center rounded-full text-xs font-semibold transition-all shrink-0 ${
                 isActive
                   ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-2xs"
                   : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5"
@@ -70,7 +70,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
               <button
                 type="button"
                 onClick={() => onSelectPlane(plane.id)}
-                className="flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 cursor-pointer"
+                className="flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 cursor-pointer whitespace-nowrap"
               >
                 <div
                   className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
@@ -98,7 +98,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
         <button
           type="button"
           onClick={onOpenCreatePlane}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5 border border-dashed border-[var(--border-color)] transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5 border border-dashed border-[var(--border-color)] transition-all cursor-pointer shrink-0"
           title="Crear nuevo plano temporal"
         >
           <Plus className="w-3 h-3" />
@@ -107,7 +107,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
       </div>
 
       {/* Buscador y Botón Crear Pista */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap">
         <div className="relative">
           <Search className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
           <input
@@ -115,18 +115,19 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar acontecimiento..."
-            className="text-xs pl-8 pr-3 py-1.5 rounded-full bg-[var(--bg-main)] text-[var(--text-main)] placeholder:[var(--text-muted)]/50 border border-[var(--border-color)]/60 outline-hidden w-36 focus:w-48 transition-all focus:border-[var(--accent)] font-novel-serif"
+            className="text-xs pl-8 pr-3 py-1.5 rounded-full bg-[var(--bg-main)] text-[var(--text-main)] placeholder:[var(--text-muted)]/50 border border-[var(--border-color)]/60 outline-hidden w-32 sm:w-40 focus:w-48 transition-all focus:border-[var(--accent)] font-novel-serif"
           />
         </div>
 
         <button
           type="button"
           onClick={onOpenCreateTrack}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[var(--accent)] bg-[var(--accent-subtle)] hover:opacity-90 transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[var(--accent)] bg-[var(--accent-subtle)] hover:opacity-90 transition-all cursor-pointer shrink-0"
           title="Crear nueva línea de tiempo / pista cronológica"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Nueva Línea</span>
+          <span className="hidden sm:inline">Nueva Línea</span>
+          <span className="sm:hidden">Línea</span>
         </button>
       </div>
     </div>

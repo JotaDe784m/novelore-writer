@@ -83,15 +83,10 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({
         }}
       >
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
-          <div>
-            <h3 className="font-bold text-lg text-[var(--text-main)] font-novel-display flex items-center gap-2">
-              <Pencil className="w-4 h-4 text-[var(--accent)]" />
-              <span>Configurar Datos de la Novela</span>
-            </h3>
-            <p className="text-xs text-[var(--text-muted)]">
-              Modifica los metadatos de tu obra guardados en su archivo project.json.
-            </p>
-          </div>
+          <h3 className="font-bold text-lg text-[var(--text-main)] font-novel-display flex items-center gap-2">
+            <Pencil className="w-4 h-4 text-[var(--accent)]" />
+            <span>Configurar Datos de la Novela</span>
+          </h3>
           <button
             type="button"
             onClick={onClose}

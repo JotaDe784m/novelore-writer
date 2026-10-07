@@ -67,7 +67,7 @@ export const CodexEntityGrid: React.FC<CodexEntityGridProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5">
       {entities.map((entity) => {
         const relCount = relationships.filter(
           (r) => r.sourceEntityId === entity.id || r.targetEntityId === entity.id

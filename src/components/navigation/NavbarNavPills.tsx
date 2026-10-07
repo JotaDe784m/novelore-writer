@@ -76,7 +76,7 @@ export const NavbarNavPills: React.FC<NavbarNavPillsProps> = ({
             onClick={() => onSelectView(item.id)}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className={`relative flex items-center justify-center gap-1.5 px-2.5 py-1 xl:px-3 rounded-full text-xs font-medium transition-colors shrink-0 whitespace-nowrap cursor-pointer ${
+            className={`relative flex items-center justify-center w-8 h-8 rounded-full text-xs font-medium transition-colors shrink-0 cursor-pointer ${
               isActive
                 ? "text-[var(--text-main)] font-semibold"
                 : isDimmed
@@ -88,6 +88,7 @@ export const NavbarNavPills: React.FC<NavbarNavPillsProps> = ({
                 ? `${item.label} (Requiere una novela activa)`
                 : item.label
             }
+            aria-label={item.label}
           >
             {isActive && (
               <motion.div
@@ -96,8 +97,7 @@ export const NavbarNavPills: React.FC<NavbarNavPillsProps> = ({
                 transition={{ type: "spring", stiffness: 450, damping: 35 }}
               />
             )}
-            <Icon className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden xl:inline">{item.label}</span>
+            <Icon className="w-4 h-4 shrink-0" />
           </motion.button>
         );
       })}

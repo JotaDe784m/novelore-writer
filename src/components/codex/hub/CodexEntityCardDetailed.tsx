@@ -79,8 +79,8 @@ export const CodexEntityCardDetailed: React.FC<CodexEntityCardDetailedProps> = (
         "--accent-subtle": `${accentColor}18`,
       } as React.CSSProperties}
     >
-      {/* 1. Retrato en Proporción 3:4 a la izquierda */}
-      <div className="w-36 sm:w-40 md:w-44 aspect-[3/4] rounded-2xl overflow-hidden shrink-0 relative bg-[var(--bg-surface)] border border-[var(--border-color)]/50 shadow-xs">
+      {/* 1. Retrato en Proporción 3:4 a la izquierda con escala fluida */}
+      <div className="w-28 sm:w-32 md:w-36 lg:w-40 xl:w-44 aspect-[3/4] rounded-2xl overflow-hidden shrink-0 relative bg-[var(--bg-surface)] border border-[var(--border-color)]/50 shadow-xs">
         {imageSrc ? (
           <img
             src={imageSrc}
@@ -89,7 +89,7 @@ export const CodexEntityCardDetailed: React.FC<CodexEntityCardDetailedProps> = (
           />
         ) : (
           <div
-            className="w-full h-full flex items-center justify-center font-novel-display text-3xl font-bold text-white drop-shadow-md"
+            className="w-full h-full flex items-center justify-center font-novel-display text-2xl sm:text-3xl font-bold text-white drop-shadow-md"
             style={{
               backgroundColor: accentColor,
             }}

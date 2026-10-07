@@ -84,14 +84,14 @@ export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
 
   return (
     <div
-      className="px-4 sm:px-8 py-2.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 shrink-0 text-xs border-b transition-colors select-none"
+      className="px-4 sm:px-6 xl:px-8 py-2.5 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-2.5 shrink-0 text-xs border-b transition-colors select-none"
       style={{
         backgroundColor: "var(--bg-surface)",
         borderColor: "var(--border-color)",
       }}
     >
-      {/* 1. Navegación fluida por Pestañas de Texto (UnderlineTabs) */}
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none min-w-0 max-w-full">
+      {/* 1. Navegación fluida por Pestañas de Texto (UnderlineTabs) con ancho prioritario */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none min-w-0 max-w-full py-0.5">
         <UnderlineTabs
           tabs={allTabs}
           activeTab={activeCategory}
@@ -108,13 +108,13 @@ export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
             title="Gestionar o añadir categorías personalizadas"
           >
             <Tag className="w-3.5 h-3.5 text-[var(--accent)]" />
-            <span>+ Categoría</span>
+            <span className="whitespace-nowrap">+ Categoría</span>
           </button>
         )}
       </div>
 
       {/* 2. Búsqueda Maestra Multi-Criterio, Ordenación y Creación */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 shrink-0 flex-wrap">
         <div className="relative flex-1 sm:flex-initial">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input
