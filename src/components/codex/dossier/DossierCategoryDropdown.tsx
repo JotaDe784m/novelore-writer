@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  ChevronDown, Plus, User, MapPin, Shield, Gem, Zap, Calendar, Tag, Check, X,
+  ChevronDown, Plus, User, MapPin, Shield, Gem, Zap, Tag, Check, X,
 } from "lucide-react";
 import { CustomEntityCategory, EntityCategory } from "../../../types";
 import { useCodexStore } from "../../../stores/useCodexStore";
@@ -12,7 +12,6 @@ const BASE_CATEGORIES: { id: EntityCategory; label: string; icon: React.Componen
   { id: "faction", label: "Facción", icon: Shield },
   { id: "item", label: "Objeto", icon: Gem },
   { id: "concept", label: "Concepto", icon: Zap },
-  { id: "event", label: "Evento", icon: Calendar },
 ];
 
 const PRESET_NEW_COLORS = ["#3B82F6", "#10B981", "#8B5CF6", "#F59E0B", "#EC4899", "#EF4444", "#14B8A6", "#6366F1"];

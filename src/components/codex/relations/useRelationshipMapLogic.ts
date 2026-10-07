@@ -95,7 +95,7 @@ export function useRelationshipMapLogic({ project }: UseRelationshipMapLogicProp
 
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
+      try { e.preventDefault(); } catch {}
       const delta = -e.deltaY * 0.0015;
       setZoom((z) => Math.min(2.0, Math.max(0.4, Number((z + delta).toFixed(2)))));
     } else {

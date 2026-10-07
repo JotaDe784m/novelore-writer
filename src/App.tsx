@@ -27,7 +27,9 @@ import { useThemeStore } from "./stores/useThemeStore";
 import { useManuscriptStore } from "./stores/useManuscriptStore";
 import { useCodexStore } from "./stores/useCodexStore";
 import { usePlanningStore } from "./stores/usePlanningStore";
+import { migrateCodexEventsToTimeline } from "./utils/codexEventMigration";
 
+// Componente principal de la suite Novelore
 export const App: React.FC = () => {
   const projectStore = useProjectStore();
   const activeTheme = useThemeStore((s) => s.activeTheme);
@@ -35,32 +37,48 @@ export const App: React.FC = () => {
   // El estado de proyecto inicia limpio (null). El autor puede abrir o probar la demo desde el inicio
   const [project, setProject] = useState<NovelProject | null>(null);
 
+  const syncProjectToStores = (proj: NovelProject) => {
+    useThemeStore.getState().syncWithProject(proj);
+    const first = proj.acts[0]?.chapters[0]?.scenes[0];
+    useManuscriptStore.getState().loadManuscript(proj.acts, first?.id);
+
+    const planningData = proj.planning || {
+      timeline: { tracks: proj.timelineTracks || [], events: proj.timelineEvents || [] },
+      beats: proj.storyBeats || [],
+    };
+    const existingEvents = planningData.timeline?.events || [];
+    const existingTracks = planningData.timeline?.tracks || [];
+    const migration = migrateCodexEventsToTimeline(proj.entities || [], existingEvents, existingTracks);
+
+    useCodexStore.getState().loadCodex(
+      migration.cleanedEntities,
+      proj.relationships || [],
+      proj.relationshipPositions || {},
+      proj.relationshipCategories || [],
+      proj.customEntityCategories || [],
+      proj.categoryOrders || {}
+    );
+    usePlanningStore.getState().initPlanning({
+      ...planningData,
+      timeline: {
+        ...planningData.timeline,
+        tracks: existingTracks,
+        events: migration.migratedEvents,
+      },
+    });
+
+    if (migration.hasChanges) {
+      useCodexStore.getState().saveCodexImmediately();
+      usePlanningStore.getState().savePlanningImmediately();
+    }
+    if (first) setSelectedSceneId(first.id);
+  };
+
   // Sincronizar proyecto cuando useProjectStore carga uno nuevo desde disco
   useEffect(() => {
     if (projectStore.project && projectStore.project.id !== project?.id) {
       setProject(projectStore.project);
-      useThemeStore.getState().syncWithProject(projectStore.project);
-      const first = projectStore.project.acts[0]?.chapters[0]?.scenes[0];
-      useManuscriptStore.getState().loadManuscript(projectStore.project.acts, first?.id);
-      useCodexStore.getState().loadCodex(
-        projectStore.project.entities || [],
-        projectStore.project.relationships || [],
-        projectStore.project.relationshipPositions || {},
-        projectStore.project.relationshipCategories || [],
-        projectStore.project.customEntityCategories || []
-      );
-      usePlanningStore.getState().initPlanning(
-        projectStore.project.planning || {
-          timeline: {
-            tracks: projectStore.project.timelineTracks || [],
-            events: projectStore.project.timelineEvents || [],
-          },
-          beats: projectStore.project.storyBeats || [],
-        }
-      );
-      if (first) {
-        setSelectedSceneId(first.id);
-      }
+      syncProjectToStores(projectStore.project);
     }
   }, [projectStore.project, project?.id]);
 
@@ -94,6 +112,14 @@ export const App: React.FC = () => {
   }, []);
 
   const [activeView, setActiveView] = useState<ProjectView>("home");
+
+  const handleNavigateView = (view: ProjectView) => {
+    // Vaciado preventivo de escrituras debounced al cambiar de vista o sección
+    usePlanningStore.getState().savePlanningImmediately().catch(() => {});
+    useCodexStore.getState().saveCodexImmediately().catch(() => {});
+    setActiveView(view);
+  };
+
   const [selectedSceneId, setSelectedSceneId] = useState<string>("");
 
   // Toggles de UI
@@ -211,38 +237,19 @@ export const App: React.FC = () => {
 
   const handleSelectScene = (sceneId: string) => {
     setSelectedSceneId(sceneId);
-    setActiveView("manuscript");
+    handleNavigateView("manuscript");
   };
 
   const handleCreateNewProject = () => {
-    setActiveView("home");
+    handleNavigateView("home");
   };
 
   // Cargar y activar proyecto
   const handleSelectProject = (newProj: NovelProject) => {
     setProject(newProj);
     useProjectStore.getState().setProject(newProj);
-    useThemeStore.getState().syncWithProject(newProj);
-    const first = newProj.acts[0]?.chapters[0]?.scenes[0];
-    useManuscriptStore.getState().loadManuscript(newProj.acts, first?.id);
-    useCodexStore.getState().loadCodex(
-      newProj.entities || [],
-      newProj.relationships || [],
-      newProj.relationshipPositions || {},
-      newProj.relationshipCategories || [],
-      newProj.customEntityCategories || []
-    );
-    usePlanningStore.getState().initPlanning(
-      newProj.planning || {
-        timeline: {
-          tracks: newProj.timelineTracks || [],
-          events: newProj.timelineEvents || [],
-        },
-        beats: newProj.storyBeats || [],
-      }
-    );
-    if (first) setSelectedSceneId(first.id);
-    setActiveView("manuscript");
+    syncProjectToStores(newProj);
+    handleNavigateView("manuscript");
   };
 
   // Probar novela de ejemplo
@@ -321,7 +328,7 @@ export const App: React.FC = () => {
         <TopNavigation
           project={project}
           activeView={activeView}
-          setActiveView={setActiveView}
+          setActiveView={handleNavigateView}
           onUpdateProject={handleUpdateProject}
           onNewProject={handleCreateNewProject}
           onOpenLocalFolder={handleOpenLocalFolder}
@@ -331,7 +338,7 @@ export const App: React.FC = () => {
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           isZenMode={isZenMode}
           setIsZenMode={setIsZenMode}
-          onOpenExport={() => setActiveView("export")}
+          onOpenExport={() => handleNavigateView("export")}
           onOpenWordGoals={() => setIsWordGoalsModalOpen(true)}
           isSaving={projectStore.isSaving}
           lastSavedAt={projectStore.lastSavedAt}
@@ -354,12 +361,12 @@ export const App: React.FC = () => {
               <HomeDashboard
                 currentProject={project}
                 onSelectProject={handleSelectProject}
-                onNavigateView={(v) => setActiveView(v)}
+                onNavigateView={(v) => handleNavigateView(v)}
                 onSelectScene={handleSelectScene}
                 onOpenEntityDossier={(entityId) => {
                   setDossierInitialTab("details");
                   setDossierEntityId(entityId);
-                  setActiveView("codex");
+                  handleNavigateView("codex");
                 }}
                 onUpdateProject={handleUpdateProject}
               />
@@ -368,7 +375,7 @@ export const App: React.FC = () => {
                 sectionName={getSectionName(activeView)}
                 onOpenDemo={handleLoadDemo}
                 onOpenFolder={handleOpenLocalFolder}
-                onGoHome={() => setActiveView("home")}
+                onGoHome={() => handleNavigateView("home")}
               />
             ) : (
               <>
@@ -439,7 +446,7 @@ export const App: React.FC = () => {
                   <WorldbuildingHub
                     project={project}
                     onUpdateProject={handleUpdateProject}
-                    onOpenRelationshipMap={() => setActiveView("relationships")}
+                    onOpenRelationshipMap={() => handleNavigateView("relationships")}
                     onNavigateToScene={handleSelectScene}
                   />
                 )}
@@ -449,8 +456,8 @@ export const App: React.FC = () => {
                   <RelationshipMapView
                     project={project}
                     onUpdateProject={handleUpdateProject}
-                    onBackToCodex={() => setActiveView("codex")}
-                    onOpenBoard={() => setActiveView("gallery")}
+                    onBackToCodex={() => handleNavigateView("codex")}
+                    onOpenBoard={() => handleNavigateView("gallery")}
                     onOpenEntityBoard={(entityId) => {
                       setDossierInitialTab("whiteboard");
                       setDossierEntityId(entityId);
@@ -475,7 +482,7 @@ export const App: React.FC = () => {
                   <ExportPageView
                     project={project}
                     onUpdateProject={handleUpdateProject}
-                    onBack={() => setActiveView("manuscript")}
+                    onBack={() => handleNavigateView("manuscript")}
                   />
                 )}
               </>

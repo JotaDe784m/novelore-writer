@@ -1,12 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Relationship, WorldEntity } from "../../../types";
-import { CodexViewMode } from "../../../stores/codexStoreTypes";
-import { CodexEntityCard } from "./CodexEntityCard";
 import { CodexEntityCardDetailed } from "./CodexEntityCardDetailed";
+import { useCodexStore } from "../../../stores/useCodexStore";
 
 interface CodexEntityGridProps {
   entities: WorldEntity[];
-  viewMode: CodexViewMode;
   relationships: Relationship[];
   entityMentionsMap: Record<string, { totalCount: number }>;
   projectPath?: string;
@@ -16,71 +14,79 @@ interface CodexEntityGridProps {
 
 export const CodexEntityGrid: React.FC<CodexEntityGridProps> = ({
   entities,
-  viewMode,
   relationships,
   entityMentionsMap,
   projectPath,
   onEdit,
   onContextMenu,
 }) => {
-  if (viewMode === "free") {
-    return (
-      <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-4 sm:gap-6 [column-fill:_balance]">
-        {entities.map((entity) => {
-          const relCount = relationships.filter(
-            (r) => r.sourceEntityId === entity.id || r.targetEntityId === entity.id
-          ).length;
-          const mentions = entityMentionsMap[entity.id]?.totalCount || 0;
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const selectedCategory = useCodexStore((s) => s.selectedCategory);
+  const reorderEntities = useCodexStore((s) => s.reorderEntities);
 
-          return (
-            <div key={entity.id} className="break-inside-avoid mb-4 sm:mb-6">
-              <CodexEntityCardDetailed
-                entity={entity}
-                mode="free"
-                relationshipCount={relCount}
-                mentionCount={mentions}
-                projectPath={projectPath}
-                onEdit={onEdit}
-                onContextMenu={onContextMenu}
-              />
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.setData("text/plain", id);
+    e.dataTransfer.effectAllowed = "move";
+  };
 
-  const gridClasses =
-    viewMode === "classic"
-      ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 auto-rows-fr"
-      : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4";
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (draggedId && draggedId !== id) {
+      setDragOverId(id);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const currentIds = entities.map((ent) => ent.id);
+    const sourceIdx = currentIds.indexOf(draggedId);
+    const targetIdx = currentIds.indexOf(targetId);
+
+    if (sourceIdx !== -1 && targetIdx !== -1) {
+      const nextIds = [...currentIds];
+      const [removed] = nextIds.splice(sourceIdx, 1);
+      nextIds.splice(targetIdx, 0, removed);
+      reorderEntities(selectedCategory, nextIds);
+    }
+
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
 
   return (
-    <div className={gridClasses}>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
       {entities.map((entity) => {
         const relCount = relationships.filter(
           (r) => r.sourceEntityId === entity.id || r.targetEntityId === entity.id
         ).length;
         const mentions = entityMentionsMap[entity.id]?.totalCount || 0;
 
-        return viewMode === "classic" ? (
+        return (
           <CodexEntityCardDetailed
             key={entity.id}
             entity={entity}
-            mode="classic"
             relationshipCount={relCount}
             mentionCount={mentions}
             projectPath={projectPath}
-            onEdit={onEdit}
-            onContextMenu={onContextMenu}
-          />
-        ) : (
-          <CodexEntityCard
-            key={entity.id}
-            entity={entity}
-            relationshipCount={relCount}
-            mentionCount={mentions}
-            projectPath={projectPath}
+            isDragging={draggedId === entity.id}
+            isOver={dragOverId === entity.id}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onDragEnd={handleDragEnd}
             onEdit={onEdit}
             onContextMenu={onContextMenu}
           />

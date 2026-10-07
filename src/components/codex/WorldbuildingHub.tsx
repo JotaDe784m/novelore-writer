@@ -9,6 +9,7 @@ import { CodexHeader } from "./hub/CodexHeader";
 import { CodexCardContextMenu } from "./hub/CodexCardContextMenu";
 import { CustomCategoryModal } from "./hub/CustomCategoryModal";
 import { EntityModal } from "./EntityModal";
+import { cleanupProjectOrphanAssets } from "../../utils/imageUtils";
 
 interface WorldbuildingHubProps {
   project: NovelProject;
@@ -35,8 +36,8 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
   // Store modular desacoplado del Códice
   const {
     entities: storeEntities, relationships: storeRelationships,
-    selectedCategory, searchQuery, selectedTag, sortBy, viewMode,
-    setSelectedCategory, setSearchQuery, setSelectedTag, setSortBy, setViewMode,
+    selectedCategory, searchQuery, selectedTag, sortBy,
+    setSelectedCategory, setSearchQuery, setSelectedTag, setSortBy,
     updateEntity, deleteEntity, duplicateEntity, getCategoriesSummary, getFilteredEntities,
   } = useCodexStore();
 
@@ -73,8 +74,9 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
         codexStore.relationshipPositions,
         codexStore.customRelationshipCategories
       );
-      codexStore.saveCodexImmediately();
     }
+    useCodexStore.getState().saveCodexImmediately();
+    cleanupProjectOrphanAssets().catch(() => {});
 
     // Sincronizar hacia project por retrocompatibilidad
     if (onUpdateProject) {
@@ -96,6 +98,8 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
 
   const handleDeleteEntity = (id: string) => {
     deleteEntity(id);
+    useCodexStore.getState().saveCodexImmediately();
+    cleanupProjectOrphanAssets().catch(() => {});
 
     // Sincronizar hacia project
     if (onUpdateProject) {
@@ -145,8 +149,6 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
         onSearchChange={setSearchQuery}
         sortBy={sortBy}
         onSortByChange={setSortBy}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
         onOpenManageCategories={() => setIsManageCategoriesOpen(true)}
         onCreateEntity={() => setIsCreating(true)}
       />
@@ -166,7 +168,6 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
         ) : (
           <CodexEntityGrid
             entities={filteredEntities}
-            viewMode={viewMode}
             relationships={relationships}
             entityMentionsMap={entityMentionsMap}
             projectPath={project.path}

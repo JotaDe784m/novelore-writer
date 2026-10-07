@@ -79,6 +79,8 @@ export function compressImage(
 }
 
 
+import { useProjectStore } from "../stores/useProjectStore";
+
 /**
  * Resuelve una ruta de asset física ('assets/gallery/...', 'assets/covers/...')
  * a una URL accesible por el motor de renderizado de Electron o el navegador.
@@ -101,7 +103,8 @@ export function resolveAssetUrl(urlOrPath?: string, projectPath?: string): strin
   if (typeof window !== "undefined" && window.electronAPI?.isElectron) {
     const effectiveProjectPath =
       projectPath ||
-      (typeof window !== "undefined" ? (window as any).__novelore_current_project_path : undefined);
+      (typeof window !== "undefined" ? (window as any).__novelore_current_project_path : undefined) ||
+      useProjectStore.getState().projectPath;
 
     if (effectiveProjectPath) {
       return `novelore-asset://project-asset?projectPath=${encodeURIComponent(
@@ -197,5 +200,27 @@ export async function deleteLocalImage(
     projectPath ||
     (typeof window !== "undefined" ? (window as any).__novelore_current_project_path : undefined);
   return await window.electronAPI.deleteAssetImage(relativePath, effectiveProjectPath);
+}
+
+/**
+ * Limpia y purga del disco todos los assets huérfanos que no estén referenciados en ningún JSON del proyecto.
+ */
+export async function cleanupProjectOrphanAssets(
+  projectPath?: string
+): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+  if (typeof window === "undefined" || !window.electronAPI?.cleanupOrphanAssets) {
+    return { success: true, deletedCount: 0 };
+  }
+  const effectiveProjectPath =
+    projectPath ||
+    (typeof window !== "undefined" ? (window as any).__novelore_current_project_path : undefined) ||
+    useProjectStore.getState().projectPath;
+
+  const res = await window.electronAPI.cleanupOrphanAssets(effectiveProjectPath || undefined);
+  return {
+    success: res.success,
+    deletedCount: res.deletedCount || 0,
+    error: res.error,
+  };
 }
 

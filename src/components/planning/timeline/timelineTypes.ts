@@ -1,4 +1,10 @@
-import { NovelProject } from "../../../types";
+import {
+  NovelProject,
+  TimelineLinkedManuscriptItem,
+  EntityImage,
+  MoodboardCanvas,
+  NoteCardLayout,
+} from "../../../types";
 import { TemporalPlane } from "../../../stores/planningStoreTypes";
 
 export interface TimelineViewProps {
@@ -19,13 +25,30 @@ export interface FlattenedScene {
 export interface EventModalData {
   id?: string;
   title: string;
+  subtitle?: string;
   summary: string;
   trackId: string;
   temporalPlane?: TemporalPlane;
-  date: string;
+  date?: string;
+  dateType?: "calendar" | "free";
+  relativeOffset?: number;
+  timeGapLabel?: string;
+  linkedManuscriptItems?: TimelineLinkedManuscriptItem[];
+  pinnedAttributes?: string[];
+  wideAttributes?: string[];
+  gallery?: EntityImage[];
+  avatarUrl?: string;
+  avatarOriginalUrl?: string;
+  whiteboard?: MoodboardCanvas;
+  color?: string;
+  notes?: string;
+  attributes?: Record<string, string>;
+  attributeLayouts?: Record<string, NoteCardLayout>;
+  tags?: string[];
+  aliases?: string[];
   sceneId?: string;
   codexEntityId?: string;
-  characterIds: string[];
+  characterIds?: string[];
   locationId?: string;
   consequences?: string;
 }
@@ -35,4 +58,5 @@ export interface TrackModalData {
   name: string;
   color: string;
   description: string;
+  planeId?: string;
 }

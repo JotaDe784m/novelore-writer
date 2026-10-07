@@ -22,10 +22,16 @@ export const useTimelineLogic = (project: NovelProject) => {
   const addEvent = usePlanningStore((s) => s.addEvent);
   const updateEvent = usePlanningStore((s) => s.updateEvent);
   const deleteEvent = usePlanningStore((s) => s.deleteEvent);
+  const duplicateEvent = usePlanningStore((s) => s.duplicateEvent);
   const moveEventToTrack = usePlanningStore((s) => s.moveEventToTrack);
+  const reorderTracks = usePlanningStore((s) => s.reorderTracks);
+  const reorderEvents = usePlanningStore((s) => s.reorderEvents);
+  const temporalPlanes = usePlanningStore((s) => s.temporalPlanes);
 
   const codexEntities = useCodexStore((s) => s.entities);
-  const allCodexEntities = codexEntities.length > 0 ? codexEntities : (project.entities || []);
+  const allCodexEntities = codexEntities.length > 0 ? codexEntities : project.entities || [];
+
+  const [focusedTrackId, setFocusedTrackId] = useState<string | null>(null);
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [eventModalData, setEventModalData] = useState<EventModalData | null>(null);
@@ -70,12 +76,25 @@ export const useTimelineLogic = (project: NovelProject) => {
   }, [tracks, filteredEvents]);
 
   const openCreateEvent = (trackId?: string) => {
+    const targetTrackId = trackId || tracks[0]?.id || "track-main";
+    const targetTrack = tracks.find((t) => t.id === targetTrackId);
     setEventModalData({
       title: "",
+      subtitle: "",
       summary: "",
-      trackId: trackId || tracks[0]?.id || "track-main",
-      temporalPlane: activePlane === "all" ? undefined : activePlane,
+      trackId: targetTrackId,
+      temporalPlane: targetTrack?.planeId || (activePlane === "all" ? undefined : activePlane),
       date: "",
+      dateType: "free",
+      color: targetTrack?.color || "#6366f1",
+      tags: [],
+      aliases: [],
+      attributes: {},
+      pinnedAttributes: [],
+      wideAttributes: [],
+      notes: "",
+      gallery: [],
+      linkedManuscriptItems: [],
       characterIds: [],
     });
     setIsEventModalOpen(true);
@@ -83,12 +102,24 @@ export const useTimelineLogic = (project: NovelProject) => {
 
   const openEditEvent = (event: TimelineEvent) => {
     setEventModalData({
-      id: event.id,
+      ...event,
       title: event.title,
+      subtitle: event.subtitle || "",
       summary: event.summary || "",
       trackId: event.trackId,
       temporalPlane: event.temporalPlane,
       date: event.date || "",
+      dateType: event.dateType || "free",
+      color: event.color || "#6366f1",
+      tags: event.tags || [],
+      aliases: event.aliases || [],
+      attributes: event.attributes || {},
+      pinnedAttributes: event.pinnedAttributes || [],
+      wideAttributes: event.wideAttributes || [],
+      notes: event.notes || "",
+      gallery: event.gallery || [],
+      whiteboard: event.whiteboard,
+      linkedManuscriptItems: event.linkedManuscriptItems || [],
       sceneId: event.sceneId,
       codexEntityId: event.codexEntityId,
       characterIds: event.characterIds || [],
@@ -99,25 +130,29 @@ export const useTimelineLogic = (project: NovelProject) => {
   };
 
   const handleSaveEvent = (data: EventModalData) => {
-    const payload = {
-      title: data.title,
-      summary: data.summary,
-      trackId: data.trackId,
-      temporalPlane: data.temporalPlane,
-      date: data.date,
-      sceneId: data.sceneId,
-      codexEntityId: data.codexEntityId,
-      characterIds: data.characterIds,
-      locationId: data.locationId,
-      consequences: data.consequences,
-    };
-    if (data.id) updateEvent(data.id, payload);
-    else addEvent(payload);
+    if (data.id) {
+      updateEvent(data.id, data);
+    } else {
+      addEvent(data as Omit<TimelineEvent, "id">);
+    }
     setIsEventModalOpen(false);
   };
 
+  const updateEventGap = (eventId: string, gapLabel: string) => {
+    updateEvent(eventId, { timeGapLabel: gapLabel });
+  };
+
+  const updateEventOffset = (eventId: string, offset: number) => {
+    updateEvent(eventId, { relativeOffset: offset });
+  };
+
   const openCreateTrack = () => {
-    setTrackModalData({ name: "", color: "#6366f1", description: "" });
+    setTrackModalData({
+      name: "",
+      color: "#6366f1",
+      description: "",
+      planeId: activePlane === "all" ? undefined : activePlane,
+    });
     setIsTrackModalOpen(true);
   };
 
@@ -127,6 +162,7 @@ export const useTimelineLogic = (project: NovelProject) => {
       name: track.name,
       color: track.color || "#6366f1",
       description: track.description || "",
+      planeId: track.planeId,
     });
     setIsTrackModalOpen(true);
   };
@@ -156,6 +192,8 @@ export const useTimelineLogic = (project: NovelProject) => {
     flattenedScenes,
     allCodexEntities,
     eventsByTrack,
+    focusedTrackId,
+    setFocusedTrackId,
     setTemporalPlaneFilter,
     setTrackFilter,
     setSearchQuery,
@@ -166,7 +204,13 @@ export const useTimelineLogic = (project: NovelProject) => {
     handleSaveEvent,
     setIsEventModalOpen,
     deleteEvent,
+    duplicateEvent,
     moveEventToTrack,
+    updateEventGap,
+    updateEventOffset,
+    reorderTracks,
+    reorderEvents,
+    temporalPlanes,
     isTrackModalOpen,
     trackModalData,
     openCreateTrack,

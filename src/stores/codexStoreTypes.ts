@@ -1,19 +1,17 @@
 import { CustomEntityCategory, EntityCategory, Relationship, RelationshipCategory, RelationshipType, WorldEntity } from "../types";
 
-export type CodexViewMode = "classic" | "free" | "compact";
-
 export interface CodexStoreState {
   entities: WorldEntity[];
   relationships: Relationship[];
   relationshipPositions: Record<string, { x: number; y: number }>;
   customRelationshipCategories: RelationshipCategory[];
   customEntityCategories: CustomEntityCategory[];
+  categoryOrders: Record<string, string[]>; // { all: [...], character: [...], etc. }
   selectedEntityId: string | null;
   selectedCategory: EntityCategory | "all";
   searchQuery: string;
   selectedTag: string;
   sortBy: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc";
-  viewMode: CodexViewMode;
   isSaving: boolean;
   lastSavedAt: Date | null;
   errorMessage: string | null;
@@ -24,9 +22,11 @@ export interface CodexStoreState {
     relationships?: Relationship[],
     relationshipPositions?: Record<string, { x: number; y: number }>,
     customRelationshipCategories?: RelationshipCategory[],
-    customEntityCategories?: CustomEntityCategory[]
+    customEntityCategories?: CustomEntityCategory[],
+    categoryOrders?: Record<string, string[]>
   ) => void;
   saveCodexImmediately: () => Promise<boolean>;
+  reorderEntities: (category: EntityCategory | "all", orderedIds: string[]) => void;
   addEntity: (category: EntityCategory, name?: string) => WorldEntity;
   updateEntity: (id: string, updates: Partial<WorldEntity>) => void;
   deleteEntity: (id: string) => void;
@@ -74,7 +74,6 @@ export interface CodexStoreState {
   setSearchQuery: (query: string) => void;
   setSelectedTag: (tag: string) => void;
   setSortBy: (sort: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc") => void;
-  setViewMode: (mode: CodexViewMode) => void;
 
   // Selectores y Getters
   getEntityById: (id: string) => WorldEntity | undefined;

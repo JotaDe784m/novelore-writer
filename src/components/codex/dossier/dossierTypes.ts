@@ -1,13 +1,13 @@
-import { EntityCategory, EntityImage, NovelProject, Scene, TimelineEvent, WorldEntity } from "../../../types";
+import { EntityCategory, EntityImage, NoteCardLayout, NovelProject, Scene, TimelineEvent, WorldEntity } from "../../../types";
 import { EntityDetailedMentions } from "../../../utils/mentionTypes";
 
 export type DossierTab =
   | "identity"
   | "attributes"
-  | "mentions"
-  | "gallery"
-  | "chronology"
   | "notes"
+  | "links"
+  | "gallery"
+  | "mentions"
   | "whiteboard";
 
 interface MentionSceneOccurrence {
@@ -75,11 +75,19 @@ export interface DossierGalleryTabProps {
 export interface DossierAttributesTabProps {
   category: EntityCategory;
   attributes: Record<string, string>;
+  attributeLayouts?: Record<string, NoteCardLayout>;
   pinnedAttributes?: string[];
+  wideAttributes?: string[];
   onAttributeChange: (key: string, value: string) => void;
   onRemoveAttribute: (key: string) => void;
   onAddAttribute: (key: string, value?: string) => void;
   onTogglePinAttribute?: (key: string) => void;
+  onToggleWideAttribute?: (key: string) => void;
+  onReorderAttributes?: (orderedKeys: string[]) => void;
+  onRenameAttribute?: (oldKey: string, newKey: string) => void;
+  onResetGridLayout?: () => void;
+  onUpdateLayout?: (key: string, layout: Partial<NoteCardLayout>) => void;
+  onToggleLockAttribute?: (key: string) => void;
 }
 
 export interface DossierMentionsTabProps {
@@ -92,26 +100,6 @@ export interface DossierMentionsTabProps {
   onNavigateToScene?: (sceneId: string) => void;
 }
 
-export interface DossierEventLoreTabProps {
-  isHistorical: boolean;
-  onToggleHistorical: (val: boolean) => void;
-  dateOrEpoch: string;
-  onDateOrEpochChange: (val: string) => void;
-  involvedEntityIds: string[];
-  onToggleInvolvedEntity: (entityId: string) => void;
-  projectEntities: WorldEntity[];
-  syncWithTimeline: boolean;
-  onToggleSyncWithTimeline: (val: boolean) => void;
-  timelineTrackId: string;
-  onTimelineTrackIdChange: (trackId: string) => void;
-  timelineImportance: "minor" | "key" | "turning_point" | "climax";
-  onTimelineImportanceChange: (importance: "minor" | "key" | "turning_point" | "climax") => void;
-  timelineTracks: import("../../../types").TimelineTrack[];
-  scenesWithThisEvent: { scene: Scene; chapterTitle: string; actTitle: string }[];
-  existingTimelineEventId?: string;
-  onNavigateToTimeline?: (timelineEventId?: string) => void;
-  onNavigateToScene?: (sceneId: string) => void;
-}
 
 export interface DossierNotesTabProps {
   notes: string;

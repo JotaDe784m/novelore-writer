@@ -118,6 +118,9 @@ export const filterTimelineEvents = (
 
 export const sortTimelineEvents = (events: TimelineEvent[]): TimelineEvent[] => {
   return [...events].sort((a, b) => {
+    if (a.relativeOffset !== undefined && b.relativeOffset !== undefined && a.relativeOffset !== b.relativeOffset) {
+      return a.relativeOffset - b.relativeOffset;
+    }
     const orderA = a.order ?? a.position ?? 0;
     const orderB = b.order ?? b.position ?? 0;
     if (orderA !== orderB) return orderA - orderB;

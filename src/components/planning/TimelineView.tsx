@@ -1,12 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import { TimelineViewProps } from "./timeline/timelineTypes";
 import { useTimelineLogic } from "./timeline/useTimelineLogic";
 import { TimelineHeader } from "./timeline/TimelineHeader";
-import { TimelineTrackRow } from "./timeline/TimelineTrackRow";
+import { TimelineGeneralView } from "./timeline/TimelineGeneralView";
+import { TimelineFocusedView } from "./timeline/TimelineFocusedView";
 import { TimelineEventModal } from "./timeline/TimelineEventModal";
 import { TimelineTrackModal } from "./timeline/TimelineTrackModal";
 import { TimelinePlaneModal } from "./timeline/TimelinePlaneModal";
-import { Layers } from "lucide-react";
+import { EventContextMenu } from "./timeline/general/EventContextMenu";
+import { TimelineEvent } from "../../types";
 
 export const TimelineView: React.FC<TimelineViewProps> = ({
   project,
@@ -16,64 +18,99 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 }) => {
   const logic = useTimelineLogic(project);
 
+  const [contextMenuState, setContextMenuState] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    event: TimelineEvent | null;
+  }>({
+    isOpen: false,
+    position: { x: 0, y: 0 },
+    event: null,
+  });
+
+  const handleOpenContextMenu = (e: React.MouseEvent, event: TimelineEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuState({
+      isOpen: true,
+      position: { x: e.clientX, y: e.clientY },
+      event,
+    });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenuState((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const focusedTrack = logic.focusedTrackId
+    ? logic.tracks.find((t) => t.id === logic.focusedTrackId) || null
+    : null;
+
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden select-none">
-      {/* Cabecera Limpia de 1 Fila */}
-      <TimelineHeader
-        events={logic.events}
-        activePlane={logic.activePlane}
-        searchQuery={logic.searchQuery}
-        onSelectPlane={logic.setTemporalPlaneFilter}
-        onSearchChange={logic.setSearchQuery}
-        onOpenCreateEvent={() => logic.openCreateEvent()}
-        onOpenCreateTrack={logic.openCreateTrack}
-        onOpenCreatePlane={logic.openCreatePlane}
-        onEditPlane={logic.openEditPlane}
+    <div className="flex-1 flex flex-col h-full overflow-hidden select-none bg-[var(--bg-main)]">
+      {/* Vista en Primer Plano (si una pista está enfocada) */}
+      {focusedTrack ? (
+        <TimelineFocusedView
+          track={focusedTrack}
+          events={logic.eventsByTrack.get(focusedTrack.id) || []}
+          onBack={() => logic.setFocusedTrackId(null)}
+          onEditEvent={logic.openEditEvent}
+          onAddEventToTrack={(trackId) => logic.openCreateEvent(trackId)}
+          onEditTrack={logic.openEditTrack}
+          onEventContextMenu={handleOpenContextMenu}
+        />
+      ) : (
+        /* Vista General Panorámica */
+        <>
+          <TimelineHeader
+            events={logic.events}
+            tracks={logic.tracks}
+            activePlane={logic.activePlane}
+            searchQuery={logic.searchQuery}
+            onSelectPlane={logic.setTemporalPlaneFilter}
+            onSearchChange={logic.setSearchQuery}
+            onOpenCreateTrack={logic.openCreateTrack}
+            onOpenCreatePlane={logic.openCreatePlane}
+            onEditPlane={logic.openEditPlane}
+          />
+
+          <TimelineGeneralView
+            tracks={logic.tracks}
+            eventsByTrack={logic.eventsByTrack}
+            activePlane={logic.activePlane}
+            onFocusTrack={(trackId) => logic.setFocusedTrackId(trackId)}
+            onEditTrack={logic.openEditTrack}
+            onDeleteTrack={logic.deleteTrack}
+            onAddEventToTrack={(trackId) => logic.openCreateEvent(trackId)}
+            onEditEvent={logic.openEditEvent}
+            onUpdateEventGap={logic.updateEventGap}
+            onUpdateEventOffset={logic.updateEventOffset}
+            onMoveEvent={logic.moveEventToTrack}
+            onOpenCreateTrack={logic.openCreateTrack}
+            onReorderTracks={logic.reorderTracks}
+            onReorderTrackEvents={logic.reorderEvents}
+            onEventContextMenu={handleOpenContextMenu}
+          />
+        </>
+      )}
+
+      {/* Menú Contextual de Clic Derecho para Acontecimientos */}
+      <EventContextMenu
+        isOpen={contextMenuState.isOpen}
+        position={contextMenuState.position}
+        event={contextMenuState.event}
+        tracks={logic.tracks}
+        planes={logic.temporalPlanes}
+        onClose={handleCloseContextMenu}
+        onDelete={logic.deleteEvent}
+        onDuplicate={logic.duplicateEvent}
+        onMoveToTrack={(eventId, targetTrackId) => {
+          logic.moveEventToTrack(eventId, targetTrackId);
+          handleCloseContextMenu();
+        }}
       />
 
-      {/* Contenedor de Carriles de Tiempo */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-        {logic.tracks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center">
-            <Layers className="w-10 h-10 text-[var(--text-muted)] opacity-40 mb-3" />
-            <h3 className="font-semibold text-sm text-[var(--text-main)] mb-1">
-              No hay pistas cronológicas
-            </h3>
-            <p className="text-xs text-[var(--text-muted)] max-w-sm mb-4">
-              Crea tu primera pista para comenzar a ubicar acontecimientos en el tiempo.
-            </p>
-            <button
-              type="button"
-              onClick={logic.openCreateTrack}
-              className="px-4 py-2 rounded-lg text-xs font-medium bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 shadow-xs transition-all cursor-pointer"
-            >
-              Crear primera pista
-            </button>
-          </div>
-        ) : (
-          logic.tracks
-            .filter((track) => !logic.activeTrackId || track.id === logic.activeTrackId)
-            .map((track) => (
-              <TimelineTrackRow
-                key={track.id}
-                track={track}
-                events={logic.eventsByTrack.get(track.id) || []}
-                allScenes={logic.flattenedScenes}
-                allCodexEntities={logic.allCodexEntities}
-                onEditTrack={logic.openEditTrack}
-                onDeleteTrack={logic.deleteTrack}
-                onAddEventToTrack={(trackId) => logic.openCreateEvent(trackId)}
-                onEditEvent={logic.openEditEvent}
-                onDeleteEvent={logic.deleteEvent}
-                onMoveEvent={logic.moveEventToTrack}
-                onSelectScene={onSelectScene}
-                onOpenEntityDossier={onOpenEntityDossier}
-              />
-            ))
-        )}
-      </div>
-
-      {/* Ficha Grande de Evento */}
+      {/* Dossier Completo de Evento */}
       {logic.isEventModalOpen && logic.eventModalData && (
         <TimelineEventModal
           initialData={logic.eventModalData}
@@ -82,6 +119,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
           scenes={logic.flattenedScenes}
           allCodexEntities={logic.allCodexEntities}
           onSave={logic.handleSaveEvent}
+          onDelete={logic.deleteEvent}
           onClose={() => logic.setIsEventModalOpen(false)}
           onOpenEntityDossier={onOpenEntityDossier}
           onOpenEntityWhiteboard={onOpenEntityWhiteboard}
@@ -89,7 +127,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
         />
       )}
 
-      {/* Modal de Pistas */}
+      {/* Modal de Líneas de Tiempo (Pistas) */}
       {logic.isTrackModalOpen && logic.trackModalData && (
         <TimelineTrackModal
           initialData={logic.trackModalData}

@@ -122,6 +122,7 @@ declare global {
         relationshipPositions?: Record<string, { x: number; y: number }>;
         customRelationshipCategories?: any[];
         customEntityCategories?: any[];
+        categoryOrders?: Record<string, string[]>;
       }) => Promise<{
         success: boolean;
         error?: string;
@@ -133,12 +134,14 @@ declare global {
         relationshipPositions?: Record<string, { x: number; y: number }>;
         customRelationshipCategories?: any[];
         customEntityCategories?: any[];
+        categoryOrders?: Record<string, string[]>;
         codex?: {
           entities: any[];
           relationships: any[];
           relationshipPositions?: Record<string, { x: number; y: number }>;
           customRelationshipCategories?: any[];
           customEntityCategories?: any[];
+          categoryOrders?: Record<string, string[]>;
         };
         error?: string;
       }>;
@@ -178,6 +181,13 @@ declare global {
         projectPath?: string
       ) => Promise<{
         success: boolean;
+        error?: string;
+      }>;
+      cleanupOrphanAssets?: (
+        projectPath?: string
+      ) => Promise<{
+        success: boolean;
+        deletedCount?: number;
         error?: string;
       }>;
     };

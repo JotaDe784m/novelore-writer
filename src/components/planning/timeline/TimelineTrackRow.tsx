@@ -90,11 +90,6 @@ export const TimelineTrackRow: React.FC<TimelineTrackRowProps> = ({
           <span className="text-xs text-[var(--text-muted)] opacity-70">
             {events.length} {events.length === 1 ? "evento" : "eventos"}
           </span>
-          {track.description && (
-            <span className="hidden md:inline text-xs text-[var(--text-muted)] opacity-50 truncate max-w-sm">
-              — {track.description}
-            </span>
-          )}
         </div>
 
         {/* Acciones de Pista */}

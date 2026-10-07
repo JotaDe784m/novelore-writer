@@ -108,7 +108,8 @@ export const reorderEventInTracks = (
   eventId: string,
   targetTrackId: string,
   targetOrIndex?: string | number,
-  position: "before" | "after" = "before"
+  position: "before" | "after" = "before",
+  targetPlaneId?: string
 ): TimelineEvent[] => {
   const draggedEvent = allEvents.find((e) => e.id === eventId);
   if (!draggedEvent) return allEvents;
@@ -127,9 +128,25 @@ export const reorderEventInTracks = (
     insertIdx = Math.max(0, Math.min(targetOrIndex, targetEvents.length));
   }
 
+  let calculatedOffset = draggedEvent.relativeOffset;
+  const sourceTrackId = draggedEvent.trackId;
+  if (sourceTrackId !== targetTrackId && insertIdx >= targetEvents.length) {
+    if (targetEvents.length === 0) {
+      calculatedOffset = 24;
+    } else {
+      const maxOffset = targetEvents.reduce(
+        (max, ev, idx) => Math.max(max, ev.relativeOffset ?? idx * 368 + 24),
+        0
+      );
+      calculatedOffset = maxOffset + 368;
+    }
+  }
+
   const updatedDraggedEvent: TimelineEvent = {
     ...draggedEvent,
     trackId: targetTrackId,
+    temporalPlane: targetPlaneId || draggedEvent.temporalPlane,
+    relativeOffset: calculatedOffset,
   };
 
   const newTargetEvents = [...targetEvents];
@@ -141,7 +158,6 @@ export const reorderEventInTracks = (
     order: idx,
   }));
 
-  const sourceTrackId = draggedEvent.trackId;
   let finalSourceEvents: TimelineEvent[] = [];
   if (sourceTrackId !== targetTrackId) {
     finalSourceEvents = sortTimelineEvents(

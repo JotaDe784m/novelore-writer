@@ -347,21 +347,21 @@ function createWindow(): void {
     },
   });
 
+  mainWindow.webContents.on("console-message", (event) => {
+    const levelTag = event.level === "warning" ? "WARN" : (event.level || "info").toUpperCase();
+    console.log(`[Renderer ${levelTag}] ${event.message} (${event.sourceId}:${event.lineNumber})`);
+  });
+
+  mainWindow.webContents.on("preload-error", (_event, preloadPath, error) => {
+    console.error(`[Electron] Error en preload (${preloadPath}):`, error);
+  });
+
+  mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[Electron] Falló carga de URL (${validatedURL}): ${errorCode} - ${errorDescription}`);
+  });
+
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
   if (devServerUrl) {
-    mainWindow.webContents.on("console-message", (event) => {
-      const levelTag = event.level === "warning" ? "WARN" : (event.level || "info").toUpperCase();
-      console.log(`[Renderer ${levelTag}] ${event.message} (${event.sourceId}:${event.lineNumber})`);
-    });
-
-    mainWindow.webContents.on("preload-error", (_event, preloadPath, error) => {
-      console.error(`[Electron] Error en preload (${preloadPath}):`, error);
-    });
-
-    mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
-      console.error(`[Electron] Falló carga de URL (${validatedURL}): ${errorCode} - ${errorDescription}`);
-    });
-
     const loadWithRetry = async (attempts = 10, delayMs = 300) => {
       for (let i = 0; i < attempts; i++) {
         try {
@@ -1080,6 +1080,80 @@ ipcMain.handle(
         await fs.unlink(fullPath);
       }
       return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+);
+
+ipcMain.handle(
+  "assets:cleanupOrphans",
+  async (_event, data?: { projectPath?: string }) => {
+    let targetProject = data?.projectPath || currentProjectPath;
+    if (!targetProject) {
+      const recent = await getRecentProjectsList();
+      if (recent && recent.length > 0 && recent[0].path) {
+        targetProject = recent[0].path;
+      }
+    }
+    if (!targetProject) return { success: false, error: "No hay proyecto especificado." };
+
+    try {
+      const galleryDir = path.resolve(targetProject, "assets", "gallery");
+      if (!(await fileExists(galleryDir))) return { success: true, deletedCount: 0 };
+
+      const referencedFiles = new Set<string>();
+      const scanObjectForAssets = (obj: any) => {
+        if (!obj || typeof obj !== "object") return;
+        for (const val of Object.values(obj)) {
+          if (typeof val === "string") {
+            if (val.includes("assets/gallery/") || val.includes("assets\\gallery\\")) {
+              const basename = path.basename(val.trim());
+              if (basename) referencedFiles.add(basename);
+            }
+          } else if (typeof val === "object") {
+            scanObjectForAssets(val);
+          }
+        }
+      };
+
+      const jsonFiles = ["planning.json", "codex.json", "manuscript.json", "project.json"];
+      for (const jf of jsonFiles) {
+        const fullJsonPath = path.resolve(targetProject, jf);
+        if (await fileExists(fullJsonPath)) {
+          try {
+            const raw = await fs.readFile(fullJsonPath, "utf-8");
+            scanObjectForAssets(JSON.parse(raw));
+          } catch {}
+        }
+      }
+
+      const boardsDir = path.resolve(targetProject, "boards");
+      if (await fileExists(boardsDir)) {
+        try {
+          const boardFiles = await fs.readdir(boardsDir);
+          for (const bf of boardFiles) {
+            if (bf.endsWith(".json")) {
+              const bPath = path.resolve(boardsDir, bf);
+              const raw = await fs.readFile(bPath, "utf-8");
+              scanObjectForAssets(JSON.parse(raw));
+            }
+          }
+        } catch {}
+      }
+
+      const allFiles = await fs.readdir(galleryDir);
+      let deletedCount = 0;
+      for (const file of allFiles) {
+        if (!referencedFiles.has(file)) {
+          try {
+            await fs.unlink(path.resolve(galleryDir, file));
+            deletedCount++;
+          } catch {}
+        }
+      }
+
+      return { success: true, deletedCount };
     } catch (err: any) {
       return { success: false, error: err.message };
     }

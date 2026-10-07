@@ -117,13 +117,24 @@ export function getRelationshipCategory(
 export function getRelationshipColor(
   type: string,
   customCategoriesOrSentiment?: RelationshipCategory[] | string,
-  sentiment?: string
+  sentiment?: string,
+  label?: string
 ): string {
   if (Array.isArray(customCategoriesOrSentiment)) {
-    const custom = customCategoriesOrSentiment.find((c) => c.id === type);
+    const custom = customCategoriesOrSentiment.find(
+      (c) =>
+        c.id === type ||
+        (label && c.label.toLowerCase() === label.toLowerCase()) ||
+        c.label.toLowerCase() === type.toLowerCase()
+    );
     if (custom) return custom.color;
   }
-  const found = RELATIONSHIP_PRESETS.find((p) => p.id === type);
+  const found = RELATIONSHIP_PRESETS.find(
+    (p) =>
+      p.id === type ||
+      (label && p.label.toLowerCase() === label.toLowerCase()) ||
+      p.label.toLowerCase() === type.toLowerCase()
+  );
   if (found) return found.color;
 
   const actualSentiment =

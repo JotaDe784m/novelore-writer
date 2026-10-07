@@ -37,18 +37,20 @@ export const DossierTagsSection: React.FC<DossierTagsSectionProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const safeTags = Array.isArray(tags) ? tags : [];
+
   const handleAddSubmit = (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
     const val = tagInput.trim();
-    if (val && !tags.includes(val)) {
+    if (val && !safeTags.includes(val)) {
       onAddTag(val);
       setTagInput("");
     }
     setIsAdding(false);
   };
 
-  const visibleTags = isExpanded ? tags : tags.slice(0, maxVisibleTags);
-  const hasMore = tags.length > maxVisibleTags;
+  const visibleTags = isExpanded ? safeTags : safeTags.slice(0, maxVisibleTags);
+  const hasMore = safeTags.length > maxVisibleTags;
 
   return (
     <div className="space-y-1.5" ref={containerRef}>

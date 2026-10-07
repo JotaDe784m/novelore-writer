@@ -1,17 +1,26 @@
-import React, { useState } from "react";
-import { X, Calendar } from "lucide-react";
-import { NovelProject, TimelineTrack, CodexEntity } from "../../../types";
-import { EventModalData, FlattenedScene } from "./timelineTypes";
-import { EventDossierEntities } from "./EventDossierEntities";
-import { usePlanningStore } from "../../../stores/usePlanningStore";
+import React, { useState, useMemo } from "react";
+import { NovelProject, TimelineTrack, CodexEntity, WorldEntity } from "../../../types";
+import { EventModalData } from "./timelineTypes";
+import { useEventModalLogic } from "./dossier/useEventModalLogic";
+import { EventDossierHeader } from "./dossier/EventDossierHeader";
+import { EventSummaryTab } from "./dossier/EventSummaryTab";
+import { DossierAttributesTab } from "../../codex/dossier/DossierAttributesTab";
+import { DossierNotesTab } from "../../codex/dossier/DossierNotesTab";
+import { TimelineEventLinksTab } from "./TimelineEventLinksTab";
+import { DossierGalleryTab } from "../../codex/dossier/DossierGalleryTab";
+import { DossierMentionsTab } from "../../codex/dossier/DossierMentionsTab";
+import { VisualBoardView } from "../../board/VisualBoardView";
+import { ImageCropModal } from "../../codex/dossier/ImageCropModal";
+import { ImageLightboxModal } from "../../codex/ImageLightboxModal";
 
 interface TimelineEventModalProps {
   initialData: EventModalData;
   project: NovelProject;
   tracks: TimelineTrack[];
-  scenes: FlattenedScene[];
+  scenes?: any[];
   allCodexEntities?: CodexEntity[];
   onSave: (data: EventModalData) => void;
+  onDelete?: (eventId: string) => void;
   onClose: () => void;
   onOpenEntityDossier?: (entityId: string) => void;
   onOpenEntityWhiteboard?: (entityId: string) => void;
@@ -22,201 +31,215 @@ export const TimelineEventModal: React.FC<TimelineEventModalProps> = ({
   initialData,
   project,
   tracks,
-  scenes,
-  allCodexEntities,
   onSave,
+  onDelete,
   onClose,
   onOpenEntityDossier,
-  onOpenEntityWhiteboard,
   onSelectScene,
 }) => {
-  const [formData, setFormData] = useState<EventModalData>(initialData);
-  const temporalPlanes = usePlanningStore((s) => s.temporalPlanes);
+  const logic = useEventModalLogic({ initialData, project, onSave });
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.title.trim()) return;
-    onSave(formData);
-  };
+  // Entidad sintética para la pizarra visual si se abre la pestaña de pizarra
+  const currentEntityForBoard: WorldEntity = useMemo(() => ({
+    id: initialData.id || "temp-event", category: "concept",
+    name: logic.title || "Evento", subtitle: logic.subtitle, summary: logic.summary,
+    tags: logic.tags, aliases: logic.aliases, attributes: logic.attributes, notes: logic.notes,
+    avatarUrl: logic.avatarUrl, gallery: logic.gallery, color: logic.color, whiteboard: logic.whiteboard,
+  }), [
+    initialData.id, logic.title, logic.subtitle, logic.summary, logic.tags,
+    logic.aliases, logic.attributes, logic.notes, logic.avatarUrl, logic.gallery, logic.color, logic.whiteboard,
+  ]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs select-none">
-      <div className="w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] bg-[var(--bg-editor)] text-[var(--text-primary)]">
-        {/* Cabecera de la Ficha */}
-        <div className="px-6 py-4 flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-card)]">
-          <div className="flex items-center gap-2.5">
-            <Calendar className="w-4 h-4 text-[var(--accent)]" />
-            <h3 className="font-semibold text-base">
-              {formData.id ? "Ficha de Evento Narrativo" : "Nuevo Evento en la Línea de Tiempo"}
-            </h3>
+    <div
+      id="event-modal-backdrop"
+      className="fixed inset-0 bg-black/65 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 z-[70] animate-in fade-in select-none"
+    >
+      <div
+        id="event-modal-container"
+        className={
+          logic.isFullscreen
+            ? "fixed inset-0 w-full h-full max-w-none max-h-none rounded-none z-50 flex flex-col overflow-hidden bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
+            : logic.activeTab === "whiteboard"
+            ? "w-full max-w-[96vw] 2xl:max-w-7xl rounded-3xl shadow-2xl flex flex-col h-[90vh] max-h-[94vh] overflow-hidden transition-all duration-200 bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
+            : "w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transition-all duration-200 bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
+        }
+        style={{
+          borderColor: logic.color || "var(--border-subtle)",
+          ...(logic.color ? {
+            "--accent": logic.color,
+            "--accent-readable": logic.color,
+            "--accent-subtle": `${logic.color}18`,
+          } : {}),
+        } as React.CSSProperties}
+      >
+        <EventDossierHeader
+          eventId={initialData.id}
+          eventTitle={logic.title}
+          activeTab={logic.activeTab}
+          onTabChange={logic.setActiveTab}
+          attributesCount={Object.keys(logic.attributes).length}
+          galleryCount={logic.gallery.length}
+          mentionsCount={logic.mentionStats.totalCount}
+          whiteboardItemsCount={logic.whiteboard?.items?.length || 0}
+          isFullscreen={logic.isFullscreen}
+          onToggleFullscreen={() => logic.setIsFullscreen(!logic.isFullscreen)}
+          onDelete={initialData.id && onDelete ? () => onDelete(initialData.id!) : undefined}
+          onClose={onClose}
+          onSave={logic.handleSubmit}
+        />
+
+        <input
+          ref={logic.fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple={logic.activeTab === "gallery"}
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) {
+              if (logic.activeTab === "gallery") {
+                logic.handleAddGalleryImages(e.target.files);
+              } else {
+                logic.processImageFiles(e.target.files);
+              }
+              e.target.value = "";
+            }
+          }}
+        />
+
+        {logic.activeTab === "whiteboard" ? (
+          <div className="flex-1 min-h-0 relative">
+            <VisualBoardView
+              entity={currentEntityForBoard}
+              isEmbedded={true}
+              onUpdateEntity={(updater) => {
+                const next = updater(currentEntityForBoard);
+                logic.setWhiteboard(next.whiteboard);
+                if (next.gallery) logic.setGallery(next.gallery);
+                if (next.avatarUrl) logic.setAvatarUrl(next.avatarUrl);
+              }}
+              onSetAvatar={(url) => logic.handleOpenCrop(url)}
+              currentAvatarUrl={logic.avatarUrl}
+            />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Cuerpo del Dossier */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-            {/* Columna Izquierda: Datos Narrativos */}
-            <div className="md:col-span-7 space-y-4">
-              <div>
-                <label className="block font-medium mb-1 text-[var(--text-muted)]">
-                  Título del acontecimiento *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Ej. Batalla del Valle Sombrío, Pacto en la biblioteca..."
-                  className="w-full px-3 py-2 text-sm rounded-lg bg-[var(--bg-app)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+        ) : logic.activeTab === "attributes" ? (
+          <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden relative">
+            <DossierAttributesTab
+              category="concept"
+              attributes={logic.attributes}
+              attributeLayouts={logic.attributeLayouts}
+              onAttributeChange={(k, v) => logic.setAttributes({ ...logic.attributes, [k]: v })}
+              onRemoveAttribute={(k) => {
+                const next = { ...logic.attributes };
+                delete next[k];
+                logic.setAttributes(next);
+                logic.setPinnedAttributes(logic.pinnedAttributes.filter((x) => x !== k));
+              }}
+              onAddAttribute={(k, v) => logic.setAttributes({ ...logic.attributes, [k]: v })}
+              onRenameAttribute={logic.handleRenameAttribute}
+              onResetGridLayout={logic.handleResetGridLayout}
+              onUpdateLayout={logic.handleUpdateLayout}
+              onToggleLockAttribute={logic.handleToggleLockAttribute}
+            />
+          </div>
+        ) : (
+          <>
+            <div className="flex-auto min-h-0 overflow-y-auto p-4 sm:p-6 space-y-6 text-sm custom-scroll">
+              {logic.activeTab === "summary" && (
+                <EventSummaryTab
+                  title={logic.title} onTitleChange={logic.setTitle}
+                  subtitle={logic.subtitle} onSubtitleChange={logic.setSubtitle}
+                  summary={logic.summary} onSummaryChange={logic.setSummary}
+                  date={logic.date} dateType={logic.dateType} onDateChange={(d, dt) => { logic.setDate(d); logic.setDateType(dt); }}
+                  color={logic.color} onColorChange={logic.setColor}
+                  tags={logic.tags} onAddTag={(t) => logic.setTags([...logic.tags, t])} onRemoveTag={(t) => logic.setTags(logic.tags.filter((x) => x !== t))}
+                  avatarUrl={logic.avatarUrl} onUploadAvatarClick={() => logic.fileInputRef.current?.click()}
+                  onRemoveAvatar={logic.handleRemoveAvatar} onOpenCropModal={() => logic.handleOpenCrop()}
                 />
-              </div>
+              )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium mb-1 text-[var(--text-muted)]">Pista / Trama</label>
-                  <select
-                    value={formData.trackId}
-                    onChange={(e) => setFormData({ ...formData, trackId: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--bg-app)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                  >
-                    {tracks.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-medium mb-1 text-[var(--text-muted)]">Fecha o Momento</label>
-                  <input
-                    type="text"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    placeholder="Ej. Año 142, Tercer día de invierno..."
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--bg-app)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                  />
-                </div>
-              </div>
-
-              {/* Plano Temporal Dinámico */}
-              <div>
-                <label className="block font-medium mb-1.5 text-[var(--text-muted)]">
-                  Plano Temporal
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, temporalPlane: undefined })}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      !formData.temporalPlane
-                        ? "bg-[var(--accent)] text-white shadow-xs"
-                        : "bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                    }`}
-                  >
-                    Sin plano
-                  </button>
-                  {temporalPlanes.map((plane) => {
-                    const isSelected = formData.temporalPlane === plane.id;
-                    return (
-                      <button
-                        key={plane.id}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, temporalPlane: plane.id })}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                          isSelected
-                            ? "ring-1 ring-[var(--accent)] font-semibold shadow-xs"
-                            : "bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                        }`}
-                        style={
-                          isSelected
-                            ? {
-                                backgroundColor: plane.badgeBg || "rgba(99, 102, 241, 0.15)",
-                                color: plane.badgeText || plane.color,
-                              }
-                            : {}
-                        }
-                      >
-                        <div
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: plane.color }}
-                        />
-                        <span>{plane.shortLabel || plane.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium mb-1 text-[var(--text-muted)]">
-                  Sinopsis y Desarrollo
-                </label>
-                <textarea
-                  rows={4}
-                  value={formData.summary}
-                  onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-                  placeholder="Relata qué ocurre detalladamente en este evento..."
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--bg-app)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
+              {logic.activeTab === "notes" && (
+                <DossierNotesTab
+                  notes={logic.notes}
+                  onNotesChange={logic.setNotes}
+                  entityName={logic.title}
                 />
-              </div>
+              )}
 
-              <div>
-                <label className="block font-medium mb-1 text-[var(--text-muted)]">
-                  Impacto Dramático y Consecuencias
-                </label>
-                <textarea
-                  rows={3}
-                  value={formData.consequences || ""}
-                  onChange={(e) => setFormData({ ...formData, consequences: e.target.value })}
-                  placeholder="¿Cómo altera este hecho a los personajes o al conflicto general?"
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--bg-app)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
+              {logic.activeTab === "links" && (
+                <TimelineEventLinksTab
+                  eventId={initialData.id || "temp-event"}
+                  isEvent={true}
+                  linkedManuscriptItems={logic.linkedManuscriptItems}
+                  onUpdateLinkedManuscriptItems={logic.setLinkedManuscriptItems}
+                  project={project}
+                  onSelectScene={onSelectScene}
+                  onOpenEntityDossier={onOpenEntityDossier}
                 />
-              </div>
+              )}
+
+              {logic.activeTab === "gallery" && (
+                <DossierGalleryTab
+                  gallery={logic.gallery}
+                  avatarUrl={logic.avatarUrl}
+                  avatarOriginalUrl={logic.avatarOriginalUrl}
+                  onAddImages={logic.handleAddGalleryImages}
+                  onRemoveImage={logic.handleRemoveGalleryImage}
+                  onUpdateCaption={logic.handleUpdateGalleryCaption}
+                  onSetAsAvatar={(url) => logic.handleOpenCrop(url)}
+                  onOpenCropForImage={(url) => logic.handleOpenCrop(url)}
+                  onOpenLightbox={(idx) => {
+                    setLightboxIndex(idx);
+                    setLightboxOpen(true);
+                  }}
+                />
+              )}
+
+              {logic.activeTab === "mentions" && (
+                <DossierMentionsTab
+                  name={logic.title}
+                  aliases={logic.aliases}
+                  onAddAlias={(a) => logic.setAliases([...logic.aliases, a])}
+                  onRemoveAlias={(a) => logic.setAliases(logic.aliases.filter((x) => x !== a))}
+                  mentionStats={logic.mentionStats}
+                  detailedMentions={logic.detailedMentions}
+                  onNavigateToScene={onSelectScene}
+                />
+              )}
             </div>
 
-            {/* Columna Derecha: Tarjetas Interactivas de Entidades */}
-            <div className="md:col-span-5 space-y-3">
-              <h4 className="font-semibold text-xs uppercase tracking-wider text-[var(--text-muted)]">
-                Vínculos & Entidades del Códice
-              </h4>
-              <EventDossierEntities
-                eventData={formData}
-                setEventData={setFormData}
-                project={project}
-                scenes={scenes}
-                allCodexEntities={allCodexEntities}
-                onOpenEntityDossier={onOpenEntityDossier}
-                onOpenEntityWhiteboard={onOpenEntityWhiteboard}
-                onSelectScene={onSelectScene}
-              />
-            </div>
-          </div>
+            {logic.activeTab !== "summary" && (
+              <div className="h-10 border-t border-[var(--border-subtle)] px-6 flex items-center gap-2 bg-[var(--bg-sidebar)] shrink-0 z-20 text-xs truncate">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: logic.color }} />
+                <span className="font-bold text-[var(--text-primary)] truncate font-novel-display">{logic.title || "Sin título"}</span>
+                {logic.subtitle && <span className="text-[var(--text-muted)] truncate font-novel-serif italic">— {logic.subtitle}</span>}
+              </div>
+            )}
+          </>
+        )}
 
-          {/* Botones de Pie de Ficha */}
-          <div className="flex items-center justify-end gap-2 pt-4 border-t border-[var(--border-subtle)]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-lg text-xs font-semibold bg-[var(--accent)] text-white hover:opacity-90 shadow-xs transition-opacity"
-            >
-              Guardar Ficha de Evento
-            </button>
-          </div>
-        </form>
+        {logic.cropModalOpen && (
+          <ImageCropModal
+            isOpen={logic.cropModalOpen}
+            imageUrl={logic.cropSourceUrl}
+            entityName={logic.title || "Evento"}
+            onConfirm={logic.handleConfirmCrop}
+            onClose={() => logic.setCropModalOpen(false)}
+          />
+        )}
+
+        {lightboxOpen && logic.gallery.length > 0 && (
+          <ImageLightboxModal
+            isOpen={lightboxOpen}
+            images={logic.gallery}
+            currentIndex={lightboxIndex}
+            entityName={logic.title || "Evento"}
+            onClose={() => setLightboxOpen(false)}
+            onNavigate={(idx) => setLightboxIndex(idx)}
+          />
+        )}
       </div>
     </div>
   );

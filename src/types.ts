@@ -4,7 +4,6 @@ export type BaseEntityCategory =
   | "faction"
   | "item"
   | "concept"
-  | "event"
   | "other";
 
 export type EntityCategory = BaseEntityCategory | (string & {});
@@ -132,6 +131,14 @@ export interface AvatarCropData {
   zoom: number;
 }
 
+export interface NoteCardLayout {
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  isLocked?: boolean;
+}
+
 export interface WorldEntity {
   id: string;
   category: EntityCategory;
@@ -141,7 +148,9 @@ export interface WorldEntity {
   tags: string[];
   aliases?: string[]; // Apodos o variantes de nombre para contabilizar menciones en el manuscrito
   attributes: Record<string, string>; // Dynamic key-value pairs (e.g. "Edad", "Rol", "Motivación", "Miedo")
+  attributeLayouts?: Record<string, NoteCardLayout>; // Posición (x, y), dimensiones y bloqueo en el canvas 2D
   pinnedAttributes?: string[]; // Claves de atributos/notas seleccionadas para mostrar en las tarjetas del Códex
+  wideAttributes?: string[]; // Claves de atributos/notas que abarcan ancho completo (2 columnas) en mosaico
   notes: string;
   avatarIcon?: string;
   avatarUrl?: string; // Imagen de perfil de la entrada (recortada a 3:4)
@@ -180,33 +189,57 @@ export interface TimelineTrack {
   name: string;
   color: string;
   description: string;
+  planeId?: string; // ID del plano temporal al que pertenece
   isMainPlot?: boolean;
   order?: number;
+  planeOrder?: number; // Orden específico dentro de su plano temporal
 }
 
 export type TemporalPlane = "past" | "present" | "future" | string;
+
+export interface TimelineLinkedManuscriptItem {
+  type: "act" | "chapter" | "scene";
+  id: string;
+  title?: string;
+}
 
 export interface TimelineEvent {
   id: string;
   trackId: string;
   title: string;
+  subtitle?: string;
   summary: string;
-  sceneId?: string; // Associated manuscript scene if any
+  sceneId?: string; // Associated manuscript scene if any (legacy/direct)
   position?: number; // 0 to 100 or relative step in the chronological timeline
   importance?: "minor" | "key" | "turning_point" | "climax";
   characterIds?: string[];
   locationId?: string;
   dateOrEpoch?: string;
   date?: string; // Fecha o marcador temporal legible
-  entityId?: string; // ID de la entrada en el Codice, especialmente categoria 'event'
-  codexEntityId?: string; // Alias semantico para sincronizacion directa con el Codice
-  temporalPlane?: TemporalPlane; // 'past' (lore previo), 'present' (trama activa), 'future' (prolepsis / consecuencias)
-  isHistorical?: boolean; // True si es un acontecimiento historico previo (Lore / Pasado)
+  dateType?: "calendar" | "free"; // Modo del selector hibrido
+  relativeOffset?: number; // Desplazamiento relativo para espaciado libre en la vista general
+  timeGapLabel?: string; // Etiqueta del intervalo temporal respecto al evento previo
+  linkedManuscriptItems?: TimelineLinkedManuscriptItem[]; // Actos, Capitulos o Escenas vinculados
+  pinnedAttributes?: string[]; // Atributos destacados para mostrar en la tarjeta de primer plano
+  wideAttributes?: string[]; // Claves de atributos/notas que abarcan ancho completo (2 columnas) en mosaico
+  gallery?: EntityImage[]; // Fotos locales en proporcion 3:4
+  avatarUrl?: string;
+  avatarOriginalUrl?: string;
+  whiteboard?: WorldEntity["whiteboard"]; // Pizarra individual del evento
+  color?: string; // Color de acento propio del evento
+  notes?: string; // Lore profundo / biblia privada del evento
+  attributes?: Record<string, string>; // Notas y detalles tematicos
+  attributeLayouts?: Record<string, NoteCardLayout>; // Posición (x, y), dimensiones y bloqueo en el canvas 2D
+  entityId?: string; // ID de entrada previa en el Codice
+  codexEntityId?: string; // Alias semantico para sincronizacion
+  temporalPlane?: TemporalPlane; // 'past' | 'present' | 'future' | id personalizado
+  isHistorical?: boolean; // True si es un acontecimiento historico previo
   era?: string; // e.g. "Primera Era", "Hace 50 anos", "Preludio"
   factionIds?: string[]; // Facciones participantes
   itemIds?: string[]; // Reliquias u objetos involucrados
   consequences?: string; // Consecuencias o impacto en el presente
   tags?: string[];
+  aliases?: string[]; // Nombres alternativos o alias
   order?: number; // Orden secuencial dentro de la pista
 }
 
@@ -355,6 +388,7 @@ export interface NovelProject {
   relationshipPositions?: Record<string, { x: number; y: number }>;
   relationshipCategories?: RelationshipCategory[];
   customEntityCategories?: CustomEntityCategory[];
+  categoryOrders?: Record<string, string[]>; // Orden manual por categoría en Códex
   whiteboard?: MoodboardCanvas; // Pizarra interactiva de imágenes, notas, formas y flechas
   /**
    * Versión del esquema de persistencia cloud (Fase 2.2 y 2.2.1):

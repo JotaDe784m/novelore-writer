@@ -70,7 +70,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
         description="Lienzo de redacción tipográfica pura estilo Ulysses e iA Writer con columna centrada de ~720px (65-75 caracteres), scroll de máquina de escribir y modo foco por párrafo."
         shortcuts={[
           { keys: ["Ctrl", "\\"], description: "Mostrar/Ocultar árbol de capítulos" },
-          { keys: ["Ctrl", "I"], description: "Mostrar/Ocultar inspector de escena" },
+          { keys: ["Ctrl", "I"], description: "Mostrar/Ocultar inspector de escena (Ctrl+I)" },
           { keys: ["Alt", "Z"], description: "Modo Zen libre de distracciones" },
           { keys: ["Alt", "-"], description: "Insertar raya de diálogo (—)" },
           { keys: ["Alt", "T"], description: "Scroll de máquina de escribir" },

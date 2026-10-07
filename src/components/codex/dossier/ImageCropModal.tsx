@@ -12,8 +12,7 @@ export interface ImageCropModalProps {
   onConfirm: (croppedDataUrl: string, cropData: AvatarCropData) => void;
 }
 
-const CROP_BOX_W = 240;
-const CROP_BOX_H = 320; // Proporción fija 3:4
+const CROP_BOX_W = 240; const CROP_BOX_H = 320; // Proporción fija 3:4
 
 export const ImageCropModal: React.FC<ImageCropModalProps> = ({
   isOpen, imageUrl, entityName = "Elemento", initialCrop, onClose, onConfirm,
@@ -56,11 +55,17 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 0.1 : -0.1;
-    setZoom((prev) => Math.min(5, Math.max(1, +(prev + factor).toFixed(2))));
-  };
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onNativeWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 0.1 : -0.1;
+      setZoom((prev) => Math.min(5, Math.max(1, +(prev + factor).toFixed(2))));
+    };
+    el.addEventListener("wheel", onNativeWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onNativeWheel);
+  }, []);
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const el = e.currentTarget;
@@ -78,8 +83,7 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
   const baseH = Math.round(naturalDim.h * fitScale);
 
   const handleReset = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    setZoom(1); setPan({ x: 0, y: 0 });
   };
 
   const handleFillFrame = () => {
@@ -147,7 +151,6 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
 
         <div
           ref={containerRef}
-          onWheel={handleWheel}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -242,5 +245,3 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
     </div>
   );
 };
-
-export default ImageCropModal;

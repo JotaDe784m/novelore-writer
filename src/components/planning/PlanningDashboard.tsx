@@ -29,9 +29,8 @@ export const PlanningDashboard: React.FC<PlanningDashboardProps> = ({
   const [subView, setSubView] = useState<PlanningSubView>("timeline");
 
   const planningTabs = [
-    { id: "timeline", label: "Línea de Tiempo", icon: Calendar },
-    { id: "corkboard", label: "Tablero de Corcho", icon: Layers },
-    { id: "matrix", label: "Matriz de Esquema", icon: Table },
+    { id: "timeline", label: "Línea de tiempo", icon: Calendar },
+    { id: "corkboard", label: "Esquema de escenas", icon: Layers },
   ];
 
   return (
@@ -43,26 +42,25 @@ export const PlanningDashboard: React.FC<PlanningDashboardProps> = ({
         color: "var(--text-main)",
       }}
     >
-      {/* Cabecera Unificada con Botón ? (GIF placeholder), Botón Zen y Selector de Vistas UnderlineTabs */}
+      {/* Cabecera Unificada Nivel 1 y Nivel 2 (UnderlineTabs) sin acciones en la fila superior */}
       <UnifiedSectionHeader
         icon={Calendar}
         title="Planeación"
         helpTitle="Planeación y Cronología"
-        helpDescription="Estructura panorámica y temporal de tu novela. Alterna entre la Línea de Tiempo interactiva por planos temporales, el Tablero de Corcho visual y la Matriz de Esquema analítica para orquestar la trama con total libertad."
+        helpDescription="Estructura panorámica y temporal de tu novela. Alterna entre la Línea de Tiempo interactiva por planos temporales y el Esquema de Escenas para orquestar la trama con total libertad."
         helpShortcuts={[
           { keys: ["Ctrl", "F"], description: "Filtrar acontecimientos de la trama" },
           { keys: ["Alt", "E"], description: "Crear nuevo acontecimiento" },
         ]}
-        actions={
-          <UnderlineTabs
-            tabs={planningTabs}
-            activeTab={subView}
-            onChange={(tabId) => setSubView(tabId as PlanningSubView)}
-            layoutId="planning-subviews-tab"
-            size="sm"
-          />
-        }
-      />
+      >
+        <UnderlineTabs
+          tabs={planningTabs}
+          activeTab={subView === "timeline" ? "timeline" : "corkboard"}
+          onChange={(tabId) => setSubView(tabId as PlanningSubView)}
+          layoutId="planning-subviews-tab"
+          size="sm"
+        />
+      </UnifiedSectionHeader>
 
       {/* Renderizado de la sub-vista activa */}
       <div className="flex-1 overflow-hidden flex flex-col">

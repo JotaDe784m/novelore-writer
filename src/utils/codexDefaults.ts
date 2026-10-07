@@ -16,7 +16,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   faction: "Facciones",
   item: "Objetos & Reliquias",
   concept: "Magia & Leyes",
-  event: "Eventos Históricos",
   other: "Libre / General",
 };
 
@@ -50,8 +49,6 @@ export function getDefaultEntityName(
       return "Nuevo Objeto";
     case "concept":
       return "Nuevo Concepto";
-    case "event":
-      return "Nuevo Evento";
     case "other":
     default:
       return "Nueva Entrada Libre";
@@ -75,7 +72,8 @@ export function filterAndSortEntities(
   searchQuery: string,
   selectedTag: string,
   sortBy: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc",
-  mentionsMap: Record<string, { totalCount: number }> = {}
+  mentionsMap: Record<string, { totalCount: number }> = {},
+  categoryOrders?: Record<string, string[]>
 ): import("../types").WorldEntity[] {
   const query = searchQuery.trim().toLowerCase();
 
@@ -103,7 +101,17 @@ export function filterAndSortEntities(
     );
   });
 
-  if (sortBy === "name_asc") {
+  if (sortBy === "default" && selectedCategory !== "all" && categoryOrders?.[selectedCategory]) {
+    const order = categoryOrders[selectedCategory];
+    result = [...result].sort((a, b) => {
+      const idxA = order.indexOf(a.id);
+      const idxB = order.indexOf(b.id);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return 0;
+    });
+  } else if (sortBy === "name_asc") {
     result = [...result].sort((a, b) => a.name.localeCompare(b.name));
   } else if (sortBy === "most_mentions") {
     result = [...result].sort((a, b) => {
@@ -162,12 +170,6 @@ export function getDefaultAttributes(category: EntityCategory): Record<string, s
         Reglas: "Límites y condiciones",
         Peligro: "Consecuencias de abuso",
       };
-    case "event":
-      return {
-        Época: "Año o era",
-        Bandos: "Quiénes participaron",
-        Consecuencias: "Impacto en el presente",
-      };
     case "other":
     default:
       return {
@@ -223,12 +225,12 @@ export const CATEGORY_ATTRIBUTE_SUGGESTIONS: Record<EntityCategory, string[]> = 
     "Practicantes Conocidos",
   ],
   event: [
-    "Época",
-    "Bandos",
+    "Fecha o Época",
+    "Ubicación",
     "Consecuencias",
-    "Tratado / Pacto",
-    "Reliquia Perdida",
-    "Mártir / Héroe",
+    "Participantes",
+    "Causa",
+    "Resultado",
   ],
   other: [
     "Tipo",

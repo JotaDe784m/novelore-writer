@@ -112,6 +112,7 @@ export interface ElectronAPI {
     relationshipPositions?: Record<string, { x: number; y: number }>;
     customRelationshipCategories?: any[];
     customEntityCategories?: any[];
+    categoryOrders?: Record<string, string[]>;
   }) => Promise<{
     success: boolean;
     error?: string;
@@ -123,6 +124,7 @@ export interface ElectronAPI {
     relationshipPositions?: Record<string, { x: number; y: number }>;
     customRelationshipCategories?: any[];
     customEntityCategories?: any[];
+    categoryOrders?: Record<string, string[]>;
     error?: string;
   }>;
   savePlanning: (data: {
@@ -157,6 +159,13 @@ export interface ElectronAPI {
     projectPath?: string
   ) => Promise<{
     success: boolean;
+    error?: string;
+  }>;
+  cleanupOrphanAssets: (
+    projectPath?: string
+  ) => Promise<{
+    success: boolean;
+    deletedCount?: number;
     error?: string;
   }>;
   closeProject: () => Promise<{
@@ -195,6 +204,8 @@ const api: ElectronAPI = {
   saveAssetImage: (options) => ipcRenderer.invoke("assets:saveImage", options),
   deleteAssetImage: (relativePath, projectPath) =>
     ipcRenderer.invoke("assets:deleteImage", { relativePath, projectPath }),
+  cleanupOrphanAssets: (projectPath?: string) =>
+    ipcRenderer.invoke("assets:cleanupOrphans", { projectPath }),
 };
 
 contextBridge.exposeInMainWorld("electronAPI", api);

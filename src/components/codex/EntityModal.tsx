@@ -8,8 +8,8 @@ import { DossierIdentityTab } from "./dossier/DossierIdentityTab";
 import { DossierAttributesTab } from "./dossier/DossierAttributesTab";
 import { DossierMentionsTab } from "./dossier/DossierMentionsTab";
 import { DossierGalleryTab } from "./dossier/DossierGalleryTab";
-import { DossierEventLoreTab } from "./dossier/DossierEventLoreTab";
 import { DossierNotesTab } from "./dossier/DossierNotesTab";
+import { TimelineEventLinksTab } from "../planning/timeline/TimelineEventLinksTab";
 import { ImageCropModal } from "./dossier/ImageCropModal";
 import { ImageLightboxModal } from "./ImageLightboxModal";
 import { useCodexStore } from "../../stores/useCodexStore";
@@ -52,7 +52,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
             ? "fixed inset-0 w-full h-full max-w-none max-h-none rounded-none z-50 flex flex-col overflow-hidden bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
             : logic.activeTab === "whiteboard"
             ? "w-full max-w-[96vw] 2xl:max-w-7xl rounded-3xl shadow-2xl flex flex-col h-[90vh] max-h-[94vh] overflow-hidden transition-all duration-200 bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
-            : "w-full max-w-4xl lg:max-w-5xl rounded-3xl shadow-2xl flex flex-col max-h-[88vh] overflow-hidden transition-all duration-200 bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
+            : "w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transition-all duration-200 bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
         }
         style={{
           borderColor: logic.color || "var(--border-subtle)",
@@ -77,7 +77,53 @@ export const EntityModal: React.FC<EntityModalProps> = ({
           onChange={(e) => { if (e.target.files) { logic.processImageFiles(e.target.files); e.target.value = ""; } }}
         />
 
-        {logic.activeTab !== "whiteboard" ? (
+        {logic.activeTab === "whiteboard" ? (
+          <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden relative">
+            <VisualBoardView
+              entity={currentEntityForBoard} isEmbedded={true}
+              onUpdateEntity={handleUpdateEntityWhiteboard}
+              onSetAvatar={(url) => logic.handleOpenCrop(url)}
+              currentAvatarUrl={logic.avatarUrl}
+            />
+            <div className="h-12 border-t border-[var(--border-subtle)] px-6 flex items-center justify-between bg-[var(--bg-sidebar)] shrink-0 z-20">
+              <div className="text-xs text-[var(--text-muted)] flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="truncate">Pizarra visual de {logic.name || "este elemento"}.</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-3.5 py-1.5 rounded-xl hover:bg-[var(--bg-surface-hover)] text-xs font-semibold text-[var(--text-secondary)] transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => logic.handleSubmit()}
+                  className="px-4 py-1.5 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 font-semibold text-xs shadow-xs transition-opacity cursor-pointer"
+                >
+                  Guardar Ficha
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : logic.activeTab === "attributes" ? (
+          <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden relative">
+            <DossierAttributesTab
+              category={logic.category}
+              attributes={logic.attributes}
+              attributeLayouts={logic.attributeLayouts}
+              onAttributeChange={logic.handleAttributeChange}
+              onRemoveAttribute={logic.handleRemoveAttribute}
+              onAddAttribute={logic.handleAddAttribute}
+              onRenameAttribute={logic.handleRenameAttribute}
+              onResetGridLayout={logic.handleResetGridLayout}
+              onUpdateLayout={logic.handleUpdateLayout}
+              onToggleLockAttribute={logic.handleToggleLockAttribute}
+            />
+          </div>
+        ) : (
           <>
             <div className="flex-auto min-h-0 overflow-y-auto p-4 sm:p-6 space-y-6 text-sm custom-scroll">
               {logic.activeTab === "identity" && (
@@ -97,15 +143,6 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                   galleryCount={logic.gallery.length}
                 />
               )}
-
-            {logic.activeTab === "attributes" && (
-              <DossierAttributesTab
-                category={logic.category} attributes={logic.attributes}
-                pinnedAttributes={logic.pinnedAttributes} onAttributeChange={logic.handleAttributeChange}
-                onRemoveAttribute={logic.handleRemoveAttribute} onAddAttribute={logic.handleAddAttribute}
-                onTogglePinAttribute={logic.handleTogglePinAttribute}
-              />
-            )}
 
             {logic.activeTab === "mentions" && (
               <DossierMentionsTab
@@ -136,18 +173,14 @@ export const EntityModal: React.FC<EntityModalProps> = ({
               />
             )}
 
-            {logic.activeTab === "chronology" && (
-              <DossierEventLoreTab
-                isHistorical={logic.isHistorical} onToggleHistorical={logic.setIsHistorical}
-                dateOrEpoch={logic.dateOrEpoch} onDateOrEpochChange={logic.setDateOrEpoch}
-                involvedEntityIds={logic.involvedEntityIds} onToggleInvolvedEntity={logic.handleToggleInvolvedEntity}
-                projectEntities={project.entities} syncWithTimeline={logic.syncWithTimeline}
-                onToggleSyncWithTimeline={logic.setSyncWithTimeline}
-                timelineTrackId={logic.timelineTrackId} onTimelineTrackIdChange={logic.setTimelineTrackId}
-                timelineImportance={logic.timelineImportance} onTimelineImportanceChange={logic.setTimelineImportance}
-                timelineTracks={project.timelineTracks} scenesWithThisEvent={logic.scenesWithThisEvent}
-                existingTimelineEventId={logic.existingTimelineEvent?.id}
-                onNavigateToTimeline={onNavigateToTimeline} onNavigateToScene={onNavigateToScene}
+
+
+            {logic.activeTab === "links" && (
+              <TimelineEventLinksTab
+                eventId={entity ? entity.id : "temp-new-entity"}
+                isEvent={false}
+                project={project}
+                onSelectScene={onNavigateToScene}
               />
             )}
 
@@ -188,37 +221,6 @@ export const EntityModal: React.FC<EntityModalProps> = ({
             </div>
           )}
         </>
-        ) : (
-          <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden relative">
-            <VisualBoardView
-              entity={currentEntityForBoard} isEmbedded={true}
-              onUpdateEntity={handleUpdateEntityWhiteboard}
-              onSetAvatar={(url) => logic.handleOpenCrop(url)}
-              currentAvatarUrl={logic.avatarUrl}
-            />
-            <div className="h-12 border-t border-[var(--border-subtle)] px-6 flex items-center justify-between bg-[var(--bg-sidebar)] shrink-0 z-20">
-              <div className="text-xs text-[var(--text-muted)] flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="truncate">Pizarra visual de {logic.name || "este elemento"}.</span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-3.5 py-1.5 rounded-xl hover:bg-[var(--bg-surface-hover)] text-xs font-semibold text-[var(--text-secondary)] transition-colors cursor-pointer"
-                >
-                  Cerrar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => logic.handleSubmit()}
-                  className="px-4 py-1.5 rounded-xl bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-bold hover:opacity-95 transition-opacity shadow-xs cursor-pointer"
-                >
-                  Guardar Todo
-                </button>
-              </div>
-            </div>
-          </div>
         )}
       </div>
 

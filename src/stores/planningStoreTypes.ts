@@ -5,7 +5,7 @@ export type TemporalPlane = "past" | "present" | "future" | string;
 export interface TemporalPlaneDefinition {
   id: string;
   name: string;
-  shortLabel: string;
+  shortLabel?: string;
   description?: string;
   color: string;
   badgeBg?: string;
@@ -58,11 +58,12 @@ export interface PlanningStoreState {
   addTrack: (track: Omit<TimelineTrack, "id">) => string;
   updateTrack: (id: string, updates: Partial<TimelineTrack>) => void;
   deleteTrack: (id: string) => void;
-  reorderTracks: (trackIds: string[]) => void;
+  reorderTracks: (trackIds: string[], planeId?: string) => void;
 
   addEvent: (event: Omit<TimelineEvent, "id">) => string;
   updateEvent: (id: string, updates: Partial<TimelineEvent>) => void;
   deleteEvent: (id: string) => void;
+  duplicateEvent: (id: string) => string | null;
   moveEventToTrack: (
     eventId: string,
     targetTrackId: string,

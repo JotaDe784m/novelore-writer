@@ -61,7 +61,7 @@ export const RelationshipLinksLayer: React.FC<RelationshipLinksLayerProps> = ({
 
           const isConnectedToSelected =
             selectedEntityId === rel.sourceEntityId || selectedEntityId === rel.targetEntityId;
-          const color = rel.color || getRelationshipColor(rel.type, customCategories, rel.sentiment);
+          const color = rel.color || getRelationshipColor(rel.type, customCategories, rel.sentiment, rel.label);
           const lineStyle = rel.lineStyle || getRelationshipLineStyle(rel.type, customCategories);
           const strokeDasharray = getStrokeDashArray(lineStyle);
 

@@ -1,11 +1,10 @@
 import React, { useRef, useEffect } from "react";
 import {
   ArrowUpDown, Search, Plus, X, Tag, User, MapPin, Shield,
-  Gem, Zap, Sparkles, Compass, LayoutGrid, Columns2, Grid3X3,
+  Gem, Zap, Sparkles, Compass,
 } from "lucide-react";
 import { CustomEntityCategory, EntityCategory } from "../../../types";
 import { useCodexStore } from "../../../stores/useCodexStore";
-import { CodexViewMode } from "../../../stores/codexStoreTypes";
 import { UnderlineTabs, TabItem } from "../../ui/UnderlineTabs";
 
 export interface CodexFilterBarProps {
@@ -16,8 +15,6 @@ export interface CodexFilterBarProps {
   onSearchChange: (query: string) => void;
   sortBy: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc";
   onSortByChange: (sort: "default" | "most_mentions" | "least_mentions" | "unmentioned" | "name_asc") => void;
-  viewMode?: CodexViewMode;
-  onViewModeChange?: (mode: CodexViewMode) => void;
   customCategories?: CustomEntityCategory[];
   onOpenManageCategories?: () => void;
   onCreateEntity?: () => void;
@@ -41,8 +38,6 @@ export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
   onSearchChange,
   sortBy,
   onSortByChange,
-  viewMode = "classic",
-  onViewModeChange,
   customCategories,
   onOpenManageCategories,
   onCreateEntity,
@@ -158,48 +153,6 @@ export const CodexFilterBar: React.FC<CodexFilterBarProps> = ({
             <option value="name_asc">Nombre (A-Z)</option>
           </select>
         </div>
-
-        {/* Conmutador de Vista (Clásico vs Libre vs Compacta) */}
-        {onViewModeChange && (
-          <div className="flex items-center p-0.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] shrink-0">
-            <button
-              type="button"
-              onClick={() => onViewModeChange("classic")}
-              className={`p-1.5 rounded-full transition-colors cursor-pointer ${
-                viewMode === "classic"
-                  ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-hover)]"
-              }`}
-              title="Modo Clásico (Fichas verticales uniformes con 4 notas)"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onViewModeChange("free")}
-              className={`p-1.5 rounded-full transition-colors cursor-pointer ${
-                viewMode === "free"
-                  ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-hover)]"
-              }`}
-              title="Modo Libre (Mosaico dinámico de notas extendidas)"
-            >
-              <Columns2 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onViewModeChange("compact")}
-              className={`p-1.5 rounded-full transition-colors cursor-pointer ${
-                viewMode === "compact"
-                  ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-hover)]"
-              }`}
-              title="Modo Compacto (Mosaico panorámico 3:4)"
-            >
-              <Grid3X3 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
 
         {onCreateEntity && (
           <button

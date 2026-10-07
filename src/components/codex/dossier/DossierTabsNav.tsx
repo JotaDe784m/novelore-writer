@@ -1,5 +1,5 @@
 import React from "react";
-import { User, Sparkles, BookOpen, Calendar, ScrollText, Layers, Image as ImageIcon } from "lucide-react";
+import { User, Sparkles, BookOpen, ScrollText, Layers, Image as ImageIcon, Link2 } from "lucide-react";
 import { EntityCategory } from "../../../types";
 import { DossierTab } from "./dossierTypes";
 
@@ -33,15 +33,10 @@ export const DossierTabsNav: React.FC<DossierTabsNavProps> = ({
     { id: "identity", label: "Identidad", title: "Identidad y Perfil", icon: User },
     { id: "attributes", label: "Detalles", title: "Detalles & Notas de la Ficha", icon: Sparkles, count: attributesCount },
     { id: "notes", label: "Lore Profundo", title: "Lore Profundo & Biblia Privada", icon: ScrollText },
+    { id: "links", label: "Vínculos", title: "Vínculos del Códex", icon: Link2 },
     { id: "gallery", label: "Galería", title: "Galería Multimedia", icon: ImageIcon, count: galleryCount > 0 ? galleryCount : undefined },
     { id: "mentions", label: "Menciones", title: "Menciones en el Manuscrito", icon: BookOpen, count: mentionsCount },
-    {
-      id: "chronology",
-      label: "Cronología",
-      title: "Cronología & Lore",
-      icon: Calendar,
-      show: category === "event",
-    },
+
     {
       id: "whiteboard",
       label: "Pizarra",
