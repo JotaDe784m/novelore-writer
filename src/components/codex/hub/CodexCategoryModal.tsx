@@ -1,41 +1,44 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { TemporalPlaneDefinition } from "../../../stores/planningStoreTypes";
-import { usePlanningStore } from "../../../stores/usePlanningStore";
 import { X, Check, Pipette } from "lucide-react";
+import { CustomEntityCategory } from "../../../types";
+import { detectCategoryIcon, getUniqueCategoryLabel } from "../../../utils/categoryDetection";
+import { useCodexStore } from "../../../stores/useCodexStore";
 
-interface TimelinePlaneModalProps {
+interface CodexCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  editingPlane?: TemporalPlaneDefinition | null;
+  editingCategory?: CustomEntityCategory | null;
+  onSave?: (data: { id?: string; label: string; color: string }) => void;
 }
 
 const PRESET_COLORS = [
-  "#6366F1", "#3B82F6", "#10B981", "#8B5CF6", "#F59E0B",
-  "#EC4899", "#06B6D4", "#F97316", "#14B8A6", "#EF4444",
+  "#3B82F6", "#10B981", "#8B5CF6", "#F59E0B", "#EC4899",
+  "#06B6D4", "#F97316", "#6366F1", "#14B8A6", "#EF4444",
 ];
 
-export const TimelinePlaneModal: React.FC<TimelinePlaneModalProps> = ({
+export const CodexCategoryModal: React.FC<CodexCategoryModalProps> = ({
   isOpen,
   onClose,
-  editingPlane,
+  editingCategory,
+  onSave,
 }) => {
-  const temporalPlanes = usePlanningStore((s) => s.temporalPlanes);
-  const addTemporalPlane = usePlanningStore((s) => s.addTemporalPlane);
-  const updateTemporalPlane = usePlanningStore((s) => s.updateTemporalPlane);
+  const customCategories = useCodexStore((s) => s.customEntityCategories);
+  const addCategory = useCodexStore((s) => s.addCustomEntityCategory);
+  const updateCategory = useCodexStore((s) => s.updateCustomEntityCategory);
 
-  const [name, setName] = useState("");
-  const [color, setColor] = useState("#6366F1");
+  const [label, setLabel] = useState("");
+  const [color, setColor] = useState("#3B82F6");
 
   useEffect(() => {
-    if (editingPlane) {
-      setName(editingPlane.name);
-      setColor(editingPlane.color || "#6366F1");
+    if (editingCategory) {
+      setLabel(editingCategory.label);
+      setColor(editingCategory.color || "#3B82F6");
     } else {
-      setName("");
-      setColor("#6366F1");
+      setLabel("");
+      setColor("#3B82F6");
     }
-  }, [editingPlane, isOpen]);
+  }, [editingCategory, isOpen]);
 
   // Tecla Escape para cerrar
   useEffect(() => {
@@ -49,39 +52,26 @@ export const TimelinePlaneModal: React.FC<TimelinePlaneModalProps> = ({
 
   if (!isOpen || typeof document === "undefined" || !document.body) return null;
 
-  const normalizedColor = color.startsWith("#") ? color : "#6366F1";
+  const IconComponent = detectCategoryIcon(label || "Nueva");
+  const normalizedColor = color.startsWith("#") ? color : "#3B82F6";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const rawName = name.trim();
-    if (!rawName) return;
+    const rawLabel = label.trim();
+    if (!rawLabel) return;
 
-    // Prevención de nombres duplicados
-    const otherNames = temporalPlanes
-      .filter((p) => p.id !== editingPlane?.id)
-      .map((p) => p.name.trim().toLowerCase());
+    const uniqueLabel = getUniqueCategoryLabel(
+      rawLabel,
+      customCategories,
+      editingCategory?.id
+    );
 
-    let uniqueName = rawName;
-    if (otherNames.includes(rawName.toLowerCase())) {
-      let idx = 1;
-      while (otherNames.includes(`${rawName.toLowerCase()} (${idx})`)) {
-        idx++;
-      }
-      uniqueName = `${rawName} (${idx})`;
-    }
-
-    if (editingPlane) {
-      updateTemporalPlane(editingPlane.id, {
-        name: uniqueName,
-        shortLabel: uniqueName,
-        color: normalizedColor,
-      });
+    if (onSave) {
+      onSave({ id: editingCategory?.id, label: uniqueLabel, color: normalizedColor });
+    } else if (editingCategory) {
+      updateCategory(editingCategory.id, { label: uniqueLabel, color: normalizedColor });
     } else {
-      addTemporalPlane({
-        name: uniqueName,
-        shortLabel: uniqueName,
-        color: normalizedColor,
-      });
+      addCategory({ label: uniqueLabel, color: normalizedColor });
     }
     onClose();
   };
@@ -100,11 +90,16 @@ export const TimelinePlaneModal: React.FC<TimelinePlaneModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]/60">
           <div className="flex items-center gap-2.5">
             <div
-              className="w-4 h-4 rounded-full shrink-0 shadow-2xs"
-              style={{ backgroundColor: normalizedColor }}
-            />
+              className="p-2 rounded-xl transition-colors"
+              style={{
+                backgroundColor: `${normalizedColor}18`,
+                color: normalizedColor,
+              }}
+            >
+              <IconComponent className="w-4 h-4" />
+            </div>
             <h3 className="font-bold text-base font-novel-display text-[var(--text-main)]">
-              {editingPlane ? "Editar Plano Temporal" : "Nuevo Plano Temporal"}
+              {editingCategory ? "Editar Categoría" : "Nueva Categoría"}
             </h3>
           </div>
           <button
@@ -119,17 +114,21 @@ export const TimelinePlaneModal: React.FC<TimelinePlaneModalProps> = ({
 
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="space-y-4 text-xs font-sans">
-          {/* Previsualización en Vivo de Color y Nombre */}
+          {/* Previsualización en Vivo de Icono y Color */}
           <div className="p-3 rounded-2xl bg-[var(--bg-input)] border border-[var(--border-color)]/50 flex items-center gap-3">
             <div
-              className="w-9 h-9 rounded-full shrink-0 shadow-xs flex items-center justify-center transition-colors"
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition-colors"
               style={{
-                backgroundColor: normalizedColor,
+                backgroundColor: `${normalizedColor}22`,
+                color: normalizedColor,
+                border: `1.5px solid ${normalizedColor}`,
               }}
-            />
+            >
+              <IconComponent className="w-5 h-5" />
+            </div>
             <div className="min-w-0 flex-1">
               <p className="font-bold text-sm text-[var(--text-main)] truncate font-sans">
-                {name.trim() || "Nuevo Plano Temporal"}
+                {label.trim() || "Nueva Categoría"}
               </p>
             </div>
           </div>
@@ -137,23 +136,23 @@ export const TimelinePlaneModal: React.FC<TimelinePlaneModalProps> = ({
           {/* Campo de Nombre */}
           <div>
             <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
-              Nombre del plano temporal *
+              Nombre de la categoría *
             </label>
             <input
               type="text"
               required
               autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ej. Pasado / Mito, Presente, Futuro lejano..."
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Ej. Personajes, Objetos, Reliquias, Magia..."
               className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-xs sm:text-sm font-serif text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50 focus:outline-hidden focus:border-[var(--accent)] transition-all"
             />
           </div>
 
-          {/* Selector de Color */}
+          {/* Selector de Color Libre y Paleta */}
           <div className="space-y-1.5">
             <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-              Color identificador
+              Color identificativo
             </label>
             <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-2xl bg-[var(--bg-main)] border border-[var(--border-color)]/60">
               {/* Presets */}
@@ -179,7 +178,7 @@ export const TimelinePlaneModal: React.FC<TimelinePlaneModalProps> = ({
                 })}
               </div>
 
-              {/* Selector Libre */}
+              {/* Selector Libre / Pipeta */}
               <div className="flex items-center gap-2 shrink-0">
                 <label
                   className="relative w-7 h-7 rounded-full border border-[var(--border-color)] flex items-center justify-center cursor-pointer hover:scale-105 transition-transform overflow-hidden shadow-2xs"
@@ -201,11 +200,12 @@ export const TimelinePlaneModal: React.FC<TimelinePlaneModalProps> = ({
                   </div>
                 </label>
 
+                {/* Muestra y código Hex */}
                 <input
                   type="text"
                   value={color}
                   onChange={(e) => setColor(e.target.value)}
-                  placeholder="#6366F1"
+                  placeholder="#3B82F6"
                   className="w-20 px-2 py-1 text-center font-mono text-[11px] rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)]/60 text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)]"
                 />
               </div>
@@ -229,7 +229,7 @@ export const TimelinePlaneModal: React.FC<TimelinePlaneModalProps> = ({
                 color: "var(--accent-contrast)",
               }}
             >
-              {editingPlane ? "Guardar Cambios" : "Crear Plano"}
+              {editingCategory ? "Guardar Cambios" : "Crear Categoría"}
             </button>
           </div>
         </form>

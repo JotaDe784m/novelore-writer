@@ -4,7 +4,6 @@ import { usePlanningStore } from "../../../stores/usePlanningStore";
 import { useCodexStore } from "../../../stores/useCodexStore";
 import { filterTimelineEvents, sortTimelineEvents } from "../../../utils/planningDefaults";
 import { EventModalData, FlattenedScene, TrackModalData } from "./timelineTypes";
-import { TemporalPlaneDefinition } from "../../../stores/planningStoreTypes";
 
 export const useTimelineLogic = (project: NovelProject) => {
   const tracks = usePlanningStore((s) => s.tracks);
@@ -38,9 +37,6 @@ export const useTimelineLogic = (project: NovelProject) => {
 
   const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
   const [trackModalData, setTrackModalData] = useState<TrackModalData | null>(null);
-
-  const [isPlaneModalOpen, setIsPlaneModalOpen] = useState(false);
-  const [editingPlane, setEditingPlane] = useState<TemporalPlaneDefinition | null>(null);
 
   const flattenedScenes = useMemo<FlattenedScene[]>(() => {
     const list: FlattenedScene[] = [];
@@ -173,16 +169,6 @@ export const useTimelineLogic = (project: NovelProject) => {
     setIsTrackModalOpen(false);
   };
 
-  const openCreatePlane = () => {
-    setEditingPlane(null);
-    setIsPlaneModalOpen(true);
-  };
-
-  const openEditPlane = (plane: TemporalPlaneDefinition) => {
-    setEditingPlane(plane);
-    setIsPlaneModalOpen(true);
-  };
-
   return {
     tracks,
     events,
@@ -218,10 +204,5 @@ export const useTimelineLogic = (project: NovelProject) => {
     handleSaveTrack,
     setIsTrackModalOpen,
     deleteTrack,
-    isPlaneModalOpen,
-    editingPlane,
-    openCreatePlane,
-    openEditPlane,
-    setIsPlaneModalOpen,
   };
 };

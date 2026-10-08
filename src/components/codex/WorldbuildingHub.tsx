@@ -7,7 +7,6 @@ import { CodexEntityGrid } from "./hub/CodexEntityGrid";
 import { CodexFilterBar } from "./hub/CodexFilterBar";
 import { CodexHeader } from "./hub/CodexHeader";
 import { CodexCardContextMenu } from "./hub/CodexCardContextMenu";
-import { CustomCategoryModal } from "./hub/CustomCategoryModal";
 import { EntityModal } from "./EntityModal";
 import { cleanupProjectOrphanAssets } from "../../utils/imageUtils";
 
@@ -26,7 +25,6 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
 }) => {
   const [editingEntity, setEditingEntity] = useState<WorldEntity | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
     position: { x: number; y: number };
@@ -149,7 +147,6 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
         onSearchChange={setSearchQuery}
         sortBy={sortBy}
         onSortByChange={setSortBy}
-        onOpenManageCategories={() => setIsManageCategoriesOpen(true)}
         onCreateEntity={() => setIsCreating(true)}
       />
 
@@ -206,12 +203,6 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
           onDelete={(ent) => { handleDeleteEntity(ent.id); setContextMenu((p) => ({ ...p, isOpen: false })); }}
         />
       )}
-
-      {/* 6. Modal de categorías personalizadas */}
-      <CustomCategoryModal
-        isOpen={isManageCategoriesOpen}
-        onClose={() => setIsManageCategoriesOpen(false)}
-      />
     </div>
   );
 };

@@ -38,7 +38,7 @@ export interface CodexStoreState {
     id: string,
     updates: Partial<CustomEntityCategory>
   ) => void;
-  deleteCustomEntityCategory: (id: string) => void;
+  deleteCustomEntityCategory: (id: string, deleteEntities?: boolean) => void;
 
   // Acciones de relaciones y grafo
   addRelationship: (

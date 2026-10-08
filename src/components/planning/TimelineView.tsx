@@ -6,7 +6,6 @@ import { TimelineGeneralView } from "./timeline/TimelineGeneralView";
 import { TimelineFocusedView } from "./timeline/TimelineFocusedView";
 import { TimelineEventModal } from "./timeline/TimelineEventModal";
 import { TimelineTrackModal } from "./timeline/TimelineTrackModal";
-import { TimelinePlaneModal } from "./timeline/TimelinePlaneModal";
 import { EventContextMenu } from "./timeline/general/EventContextMenu";
 import { TimelineEvent } from "../../types";
 
@@ -70,8 +69,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
             onSelectPlane={logic.setTemporalPlaneFilter}
             onSearchChange={logic.setSearchQuery}
             onOpenCreateTrack={logic.openCreateTrack}
-            onOpenCreatePlane={logic.openCreatePlane}
-            onEditPlane={logic.openEditPlane}
           />
 
           <TimelineGeneralView
@@ -133,15 +130,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
           initialData={logic.trackModalData}
           onSave={logic.handleSaveTrack}
           onClose={() => logic.setIsTrackModalOpen(false)}
-        />
-      )}
-
-      {/* Modal de Planos Temporales */}
-      {logic.isPlaneModalOpen && (
-        <TimelinePlaneModal
-          isOpen={logic.isPlaneModalOpen}
-          onClose={() => logic.setIsPlaneModalOpen(false)}
-          editingPlane={logic.editingPlane}
         />
       )}
     </div>

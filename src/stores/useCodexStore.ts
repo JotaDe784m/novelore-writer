@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { CustomEntityCategory, EntityCategory, Relationship, RelationshipCategory, WorldEntity } from "../types";
 import { filterAndSortEntities, getDefaultCategoryColor, getDefaultEntityName } from "../utils/codexDefaults";
-import { cleanupProjectOrphanAssets, deleteLocalImage } from "../utils/imageUtils";
+import { deleteLocalImage, cleanupProjectOrphanAssets } from "../utils/imageUtils";
+import { CANONICAL_DEFAULT_CATEGORIES } from "../utils/categoryDetection";
 import { CodexStoreState } from "./codexStoreTypes";
 import { useProjectStore } from "./useProjectStore";
 
@@ -64,16 +65,21 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
   };
 
   return {
-    entities: [], relationships: [], relationshipPositions: {}, customRelationshipCategories: [], customEntityCategories: [], categoryOrders: {},
+    entities: [], relationships: [], relationshipPositions: {}, customRelationshipCategories: [], customEntityCategories: CANONICAL_DEFAULT_CATEGORIES, categoryOrders: {},
     selectedEntityId: null, selectedCategory: "all", searchQuery: "", selectedTag: "all", sortBy: "default", isSaving: false, lastSavedAt: null, errorMessage: null,
 
     loadCodex: (entities, relationships = [], relationshipPositions = {}, customRelationshipCategories = [], customEntityCategories = [], categoryOrders = {}) => {
+      const initialCats = Array.isArray(customEntityCategories) && customEntityCategories.length > 0
+        ? customEntityCategories
+        : CANONICAL_DEFAULT_CATEGORIES;
       set({
-        entities: Array.isArray(entities) ? entities : [], relationships: Array.isArray(relationships) ? relationships : [],
+        entities: Array.isArray(entities) ? entities : [],
+        relationships: Array.isArray(relationships) ? relationships : [],
         relationshipPositions: relationshipPositions && typeof relationshipPositions === "object" ? relationshipPositions : {},
         customRelationshipCategories: Array.isArray(customRelationshipCategories) ? customRelationshipCategories : [],
-        customEntityCategories: Array.isArray(customEntityCategories) ? customEntityCategories : [],
-        categoryOrders: categoryOrders && typeof categoryOrders === "object" ? categoryOrders : {}, errorMessage: null,
+        customEntityCategories: initialCats,
+        categoryOrders: categoryOrders && typeof categoryOrders === "object" ? categoryOrders : {},
+        errorMessage: null,
       });
     },
 
@@ -162,11 +168,15 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
       const next = customEntityCategories.map((c) => (c.id === id ? { ...c, ...updates } : c));
       set({ customEntityCategories: next }); triggerDebouncedSave(entities, relationships, relationshipPositions, customRelationshipCategories, next);
     },
-    deleteCustomEntityCategory: (id) => {
-      const { entities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories } = get();
+    deleteCustomEntityCategory: (id, deleteEntities = false) => {
+      const { entities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories, selectedCategory } = get();
       const nextCats = customEntityCategories.filter((c) => c.id !== id);
-      const nextEnts = entities.map((e) => (e.category === id ? { ...e, category: "other" as const } : e));
-      set({ customEntityCategories: nextCats, entities: nextEnts }); triggerDebouncedSave(nextEnts, relationships, relationshipPositions, customRelationshipCategories, nextCats);
+      const nextEnts = deleteEntities
+        ? entities.filter((e) => e.category !== id)
+        : entities.map((e) => (e.category === id ? { ...e, category: "other" as const } : e));
+      const nextSelected = selectedCategory === id ? "all" : selectedCategory;
+      set({ customEntityCategories: nextCats, entities: nextEnts, selectedCategory: nextSelected });
+      triggerDebouncedSave(nextEnts, relationships, relationshipPositions, customRelationshipCategories, nextCats);
     },
     addRelationship: (sourceEntityId, targetEntityId, type, label, sentiment, description) => {
       const { entities, relationships, relationshipPositions } = get();
@@ -230,11 +240,7 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
       const { entities, customEntityCategories } = get();
       const counts: Record<string, number> = { all: entities.length };
       for (const e of entities) counts[e.category] = (counts[e.category] || 0) + 1;
-      const summary: Record<string, number> = {
-        all: counts.all, character: counts.character || 0, location: counts.location || 0,
-        faction: counts.faction || 0, item: counts.item || 0, concept: counts.concept || 0,
-        event: counts.event || 0, other: counts.other || 0,
-      };
+      const summary: Record<string, number> = { all: counts.all };
       for (const custom of customEntityCategories) summary[custom.id] = counts[custom.id] || 0;
       return summary;
     },
