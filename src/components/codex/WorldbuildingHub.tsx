@@ -34,7 +34,7 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
   // Store modular desacoplado del Códice
   const {
     entities: storeEntities, relationships: storeRelationships,
-    selectedCategory, searchQuery, selectedTag, sortBy,
+    selectedCategory, searchQuery, selectedTag, sortBy, categoryOrders,
     setSelectedCategory, setSearchQuery, setSelectedTag, setSortBy,
     updateEntity, deleteEntity, duplicateEntity, getCategoriesSummary, getFilteredEntities,
   } = useCodexStore();
@@ -57,7 +57,7 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
   // Lista filtrada y ordenada de entidades
   const filteredEntities = useMemo(() => {
     return getFilteredEntities(entityMentionsMap);
-  }, [getFilteredEntities, entityMentionsMap, entities, selectedCategory, searchQuery, selectedTag, sortBy]);
+  }, [getFilteredEntities, entityMentionsMap, entities, selectedCategory, searchQuery, selectedTag, sortBy, categoryOrders]);
 
   const handleSaveEntity = (saved: WorldEntity) => {
     const exists = entities.some((e) => e.id === saved.id);
@@ -66,12 +66,18 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
     } else {
       const codexStore = useCodexStore.getState();
       const next = [...entities, saved];
-      codexStore.loadCodex(
-        next,
-        relationships,
-        codexStore.relationshipPositions,
-        codexStore.customRelationshipCategories
-      );
+      const nextOrders = {
+        ...codexStore.categoryOrders,
+        all: codexStore.categoryOrders.all ? [...codexStore.categoryOrders.all, saved.id] : next.map((e) => e.id),
+        [saved.category]: codexStore.categoryOrders[saved.category]
+          ? [...codexStore.categoryOrders[saved.category], saved.id]
+          : [saved.id],
+      };
+      useCodexStore.setState({
+        entities: next,
+        categoryOrders: nextOrders,
+        selectedEntityId: saved.id,
+      });
     }
     useCodexStore.getState().saveCodexImmediately();
     cleanupProjectOrphanAssets().catch(() => {});
@@ -86,6 +92,8 @@ export const WorldbuildingHub: React.FC<WorldbuildingHubProps> = ({
           entities: found
             ? pEntities.map((e) => (e.id === saved.id ? saved : e))
             : [...pEntities, saved],
+          customEntityCategories: useCodexStore.getState().customEntityCategories,
+          categoryOrders: useCodexStore.getState().categoryOrders,
         };
       });
     }

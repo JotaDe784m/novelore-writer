@@ -2,6 +2,8 @@ import React, { useRef } from "react";
 import { WorldEntity } from "../../../types";
 import { resolveAssetUrl } from "../../../utils/imageUtils";
 import { Point2D } from "../../../utils/graphGeometry";
+import { useCodexStore } from "../../../stores/useCodexStore";
+import { getCategoryLabel } from "../../../utils/codexDefaults";
 
 export interface RelationshipNodesLayerProps {
   entities: WorldEntity[];
@@ -20,6 +22,7 @@ export const RelationshipNodesLayer: React.FC<RelationshipNodesLayerProps> = ({
   onNodeMouseDown,
   onOpenEntityDossier,
 }) => {
+  const customCategories = useCodexStore((s) => s.customEntityCategories);
   const nodeDragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   return (
@@ -54,7 +57,7 @@ export const RelationshipNodesLayer: React.FC<RelationshipNodesLayerProps> = ({
               transform: "translate(-50%, -36px)",
             }}
             className="node-element absolute pointer-events-auto cursor-grab active:cursor-grabbing select-none group flex flex-col items-center"
-            title={`${entity.name} (${entity.category}) — Arrastra para mover o doble clic para ver dossier`}
+            title={`${entity.name} (${getCategoryLabel(entity.category, customCategories)}) — Arrastra para mover o doble clic para ver dossier`}
           >
             {/* Nodo Circular */}
             <div

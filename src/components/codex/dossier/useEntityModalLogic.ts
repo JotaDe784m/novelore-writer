@@ -7,6 +7,7 @@ import { saveLocalImage, deleteLocalImage } from "../../../utils/imageUtils";
 import { calculateEntityDetailedMentions } from "../../../utils/mentionHierarchy";
 import { getDefaultAttributes, getDefaultCategoryColor } from "../../../utils/codexDefaults";
 import { DossierTab, MentionStats } from "./dossierTypes";
+import { useCodexStore } from "../../../stores/useCodexStore";
 
 interface UseEntityModalLogicProps {
   entity: WorldEntity | null;
@@ -19,6 +20,7 @@ interface UseEntityModalLogicProps {
 export function useEntityModalLogic({
   entity, project, onSave, initialTab = "identity", initialCategory,
 }: UseEntityModalLogicProps) {
+  const customEntityCategories = useCodexStore((state) => state.customEntityCategories);
   const normalizedTab: DossierTab = initialTab === "details" ? "identity" : (initialTab as DossierTab);
   const [activeTab, setActiveTab] = useState<DossierTab>(normalizedTab);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -28,7 +30,7 @@ export function useEntityModalLogic({
   const [subtitle, setSubtitle] = useState(entity?.subtitle || "");
   const [summary, setSummary] = useState(entity?.summary || "");
   const [notes, setNotes] = useState(entity?.notes || "");
-  const [color, setColor] = useState(entity?.color || getDefaultCategoryColor(entity?.category || initialCategory || "character"));
+  const [color, setColor] = useState(entity?.color || getDefaultCategoryColor(entity?.category || initialCategory || "character", customEntityCategories));
   const handleColorChange = (c: string) => setColor(c);
   const [tags, setTags] = useState<string[]>(entity?.tags || []);
   const [aliases, setAliases] = useState<string[]>(entity?.aliases || []);
@@ -174,9 +176,8 @@ export function useEntityModalLogic({
 
   const handleCategoryChange = (newCat: EntityCategory) => {
     setCategory(newCat);
-    if (!entity) {
-      setColor(getDefaultCategoryColor(newCat));
-    }
+    const customCats = useCodexStore.getState().customEntityCategories;
+    setColor(getDefaultCategoryColor(newCat, customCats));
   };
 
   const handleAddTag = (t: string) => { const c = t.trim(); if (c && !tags.includes(c)) setTags([...tags, c]); };

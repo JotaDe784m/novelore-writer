@@ -101,16 +101,18 @@ export function filterAndSortEntities(
     );
   });
 
-  if (sortBy === "default" && selectedCategory !== "all" && categoryOrders?.[selectedCategory]) {
-    const order = categoryOrders[selectedCategory];
-    result = [...result].sort((a, b) => {
-      const idxA = order.indexOf(a.id);
-      const idxB = order.indexOf(b.id);
-      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return 0;
-    });
+  if (sortBy === "default") {
+    const order = selectedCategory === "all" ? categoryOrders?.all : categoryOrders?.[selectedCategory];
+    if (order && order.length > 0) {
+      result = [...result].sort((a, b) => {
+        const idxA = order.indexOf(a.id);
+        const idxB = order.indexOf(b.id);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return 0;
+      });
+    }
   } else if (sortBy === "name_asc") {
     result = [...result].sort((a, b) => a.name.localeCompare(b.name));
   } else if (sortBy === "most_mentions") {

@@ -33,6 +33,7 @@ export const CodexEntityGrid: React.FC<CodexEntityGridProps> = ({
 
   const handleDragOver = (e: React.DragEvent, id: string) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
     if (draggedId && draggedId !== id) {
       setDragOverId(id);
     }

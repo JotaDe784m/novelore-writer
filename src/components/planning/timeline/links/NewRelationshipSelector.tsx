@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { WorldEntity } from "../../../../types";
+import { useCodexStore } from "../../../../stores/useCodexStore";
+import { getCategoryLabel } from "../../../../utils/codexDefaults";
 
 interface NewRelationshipSelectorProps {
   allEntities: WorldEntity[];
@@ -18,6 +20,7 @@ export const NewRelationshipSelector: React.FC<NewRelationshipSelectorProps> = (
   onCancel,
   onOpenCreateCategory,
 }) => {
+  const customCategories = useCodexStore((s) => s.customEntityCategories);
   const [selectedTargetId, setSelectedTargetId] = useState("");
   const [selectedCatId, setSelectedCatId] = useState(availableCategories[0]?.id || "friendly");
 
@@ -41,7 +44,7 @@ export const NewRelationshipSelector: React.FC<NewRelationshipSelectorProps> = (
             <option value="">Selecciona un elemento...</option>
             {allEntities.filter((e) => e.id !== eventId).map((e) => (
               <option key={e.id} value={e.id}>
-                {e.name} ({e.category})
+                {e.name} ({getCategoryLabel(e.category, customCategories)})
               </option>
             ))}
           </select>

@@ -3,6 +3,7 @@ import { X, Trash2, Edit2, Plus } from "lucide-react";
 import { Relationship, RelationshipType, WorldEntity } from "../../../types";
 import { ExtendedRelationshipType } from "./relationTypes";
 import { useCodexStore } from "../../../stores/useCodexStore";
+import { getCategoryLabel } from "../../../utils/codexDefaults";
 import { RelationshipCategorySelector } from "./RelationshipCategorySelector";
 
 export interface RelationshipModalProps {
@@ -94,7 +95,7 @@ export const RelationshipModal: React.FC<RelationshipModalProps> = ({
               >
                 {entities.map((e) => (
                   <option key={e.id} value={e.id} disabled={e.id === targetId}>
-                    {e.name} ({e.category})
+                    {e.name} ({getCategoryLabel(e.category, store.customEntityCategories)})
                   </option>
                 ))}
               </select>
@@ -111,7 +112,7 @@ export const RelationshipModal: React.FC<RelationshipModalProps> = ({
               >
                 {entities.map((e) => (
                   <option key={e.id} value={e.id} disabled={e.id === sourceId}>
-                    {e.name} ({e.category})
+                    {e.name} ({getCategoryLabel(e.category, store.customEntityCategories)})
                   </option>
                 ))}
               </select>

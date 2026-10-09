@@ -25,6 +25,15 @@ export const EntityModal: React.FC<EntityModalProps> = ({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
+  const dynamicModalWidth = useMemo(() => {
+    if (logic.isFullscreen || logic.activeTab !== "identity") return undefined;
+    const len = (logic.name || "").trim().length;
+    if (len <= 12) return "720px";
+    const clamped = Math.min(38, len);
+    const progress = (clamped - 12) / (38 - 12);
+    return `${Math.round(720 + progress * (1040 - 720))}px`;
+  }, [logic.isFullscreen, logic.activeTab, logic.name]);
+
   const currentEntityForBoard: WorldEntity = useMemo(() => ({
     id: entity ? entity.id : "temp-new-entity",
     category: logic.category, name: logic.name || "Nuevo Elemento",
@@ -52,9 +61,12 @@ export const EntityModal: React.FC<EntityModalProps> = ({
             ? "fixed inset-0 w-full h-full max-w-none max-h-none rounded-none z-50 flex flex-col overflow-hidden bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
             : logic.activeTab === "whiteboard"
             ? "w-full max-w-[96vw] 2xl:max-w-7xl rounded-3xl shadow-2xl flex flex-col h-[90vh] max-h-[94vh] overflow-hidden transition-all duration-200 bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
-            : "w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transition-all duration-200 bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
+            : logic.activeTab === "identity"
+            ? "w-full rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transition-all duration-300 ease-out bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
+            : "w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transition-all duration-300 ease-out bg-[var(--bg-card)] text-[var(--text-primary)] border-2"
         }
         style={{
+          ...(dynamicModalWidth ? { width: dynamicModalWidth, maxWidth: "min(96vw, 1040px)" } : {}),
           borderColor: logic.color || "var(--border-subtle)",
           ...(logic.color ? {
             "--accent": logic.color,
@@ -227,21 +239,14 @@ export const EntityModal: React.FC<EntityModalProps> = ({
       <ImageLightboxModal
         isOpen={lightboxOpen} images={logic.gallery} currentIndex={lightboxIndex}
         entityName={logic.name || "Elemento"} onClose={() => setLightboxOpen(false)}
-        onNavigate={(idx) => setLightboxIndex(idx)}
-        onSetAsAvatar={(url) => {
-          setLightboxOpen(false);
-          logic.handleOpenCrop(url);
-        }}
-        currentAvatarUrl={logic.avatarUrl}
+        onNavigate={(idx) => setLightboxIndex(idx)} currentAvatarUrl={logic.avatarUrl}
+        onSetAsAvatar={(url) => { setLightboxOpen(false); logic.handleOpenCrop(url); }}
       />
 
       <ImageCropModal
-        isOpen={logic.cropModalOpen}
-        imageUrl={logic.cropSourceUrl}
-        entityName={logic.name}
+        isOpen={logic.cropModalOpen} imageUrl={logic.cropSourceUrl} entityName={logic.name}
         initialCrop={logic.cropSourceUrl === logic.avatarOriginalUrl ? logic.avatarCrop : undefined}
-        onClose={() => logic.setCropModalOpen(false)}
-        onConfirm={logic.handleConfirmCrop}
+        onClose={() => logic.setCropModalOpen(false)} onConfirm={logic.handleConfirmCrop}
       />
     </div>
   );

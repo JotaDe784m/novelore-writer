@@ -188,10 +188,18 @@ const CATEGORY_NAMES: Record<string, string> = {
   culture: "Cultura",
 };
 
-export function getCategoryLabel(category?: string): string {
+export function getCategoryLabel(category?: string, customCategories?: { id: string; label: string }[]): string {
   if (!category) return "Elemento";
+  if (customCategories) {
+    const found = customCategories.find((c) => c.id === category);
+    if (found?.label) return found.label;
+  }
   const lower = category.toLowerCase().trim();
-  return CATEGORY_NAMES[lower] || category.charAt(0).toUpperCase() + category.slice(1);
+  if (CATEGORY_NAMES[lower]) return CATEGORY_NAMES[lower];
+  if (category.startsWith("cat-") || category.startsWith("rcat-")) {
+    return "Elemento";
+  }
+  return category.charAt(0).toUpperCase() + category.slice(1);
 }
 
 export function getEntityInitials(name?: string): string {

@@ -85,7 +85,8 @@ export const CodexEntityCardDetailed: React.FC<CodexEntityCardDetailedProps> = (
           <img
             src={imageSrc}
             alt={entity.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            draggable={false}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 pointer-events-none"
           />
         ) : (
           <div

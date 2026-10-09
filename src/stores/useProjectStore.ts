@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { NovelProject, RecentProjectMeta } from "../types";
+import { useCodexStore } from "./useCodexStore";
+import { usePlanningStore } from "./usePlanningStore";
 
 export interface CreateProjectDialogOptions {
   title: string;
@@ -539,17 +541,37 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
         })),
       };
 
+      const codexStore = useCodexStore.getState();
+      const planningStore = usePlanningStore.getState();
+
+      const customEntityCategories =
+        codexStore.customEntityCategories && codexStore.customEntityCategories.length > 0
+          ? codexStore.customEntityCategories
+          : (targetProject.customEntityCategories || []);
+
+      const categoryOrders =
+        codexStore.categoryOrders && Object.keys(codexStore.categoryOrders).length > 0
+          ? codexStore.categoryOrders
+          : (targetProject.categoryOrders || {});
+
       const codexData = {
-        entities: targetProject.entities || [],
-        relationships: targetProject.relationships || [],
-        relationshipPositions: targetProject.relationshipPositions || {},
-        relationshipCategories: targetProject.relationshipCategories || [],
+        entities: codexStore.entities.length > 0 ? codexStore.entities : (targetProject.entities || []),
+        relationships: codexStore.relationships.length > 0 ? codexStore.relationships : (targetProject.relationships || []),
+        relationshipPositions: codexStore.relationshipPositions || targetProject.relationshipPositions || {},
+        relationshipCategories: codexStore.customRelationshipCategories || targetProject.relationshipCategories || [],
+        customEntityCategories,
+        categoryOrders,
       };
 
       const planningData = {
-        timelineTracks: targetProject.timelineTracks || [],
-        timelineEvents: targetProject.timelineEvents || [],
-        storyBeats: targetProject.storyBeats || [],
+        timeline: {
+          tracks: planningStore.tracks.length > 0 ? planningStore.tracks : (targetProject.timelineTracks || []),
+          events: planningStore.events.length > 0 ? planningStore.events : (targetProject.timelineEvents || []),
+          temporalPlanes: planningStore.temporalPlanes.length > 0 ? planningStore.temporalPlanes : [],
+        },
+        corkboard: planningStore.corkboard || targetProject.planning?.corkboard || { columns: [], cards: [] },
+        matrix: planningStore.matrix || targetProject.planning?.outlineGrid || { rows: [] },
+        beats: planningStore.storyBeats.length > 0 ? planningStore.storyBeats : (targetProject.storyBeats || []),
       };
 
       const result = await electronAPI.saveProjectData({

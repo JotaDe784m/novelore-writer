@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 import { CodexEntity } from "../../types";
 import { resolveAssetUrl } from "../../utils/imageUtils";
+import { useCodexStore } from "../../stores/useCodexStore";
+import { getCategoryLabel, getDefaultCategoryColor } from "../../utils/codexDefaults";
+import { detectCategoryIcon } from "../../utils/categoryDetection";
 import {
-  getCategoryLabel,
   getEntityInitials,
   getDeterministicColor,
 } from "./homeUtils";
@@ -49,6 +51,7 @@ export const HomeCodexSpotlight: React.FC<HomeCodexSpotlightProps> = ({
 }) => {
   const safeEntities = entities || [];
   const spotlightEntities = safeEntities.slice(0, 6);
+  const customCategories = useCodexStore((state) => state.customEntityCategories);
 
   return (
     <div className="space-y-3.5">
@@ -105,13 +108,13 @@ export const HomeCodexSpotlight: React.FC<HomeCodexSpotlightProps> = ({
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
           {spotlightEntities.map((entity) => {
-            const label = getCategoryLabel(entity.category);
-            const Icon =
-              CATEGORY_ICONS[entity.category?.toLowerCase() || ""] || Compass;
+            const label = getCategoryLabel(entity.category, customCategories);
+            const Icon = detectCategoryIcon(label);
+            const categoryColor = getDefaultCategoryColor(entity.category, customCategories);
             const imgUrl = entity.avatarUrl || entity.avatarOriginalUrl;
             const resolvedImg = imgUrl ? resolveAssetUrl(imgUrl, projectPath) : "";
             const cardBgColor =
-              entity.color || getDeterministicColor(entity.name);
+              entity.color || categoryColor || getDeterministicColor(entity.name);
             const initials = getEntityInitials(entity.name);
 
             return (
@@ -165,8 +168,8 @@ export const HomeCodexSpotlight: React.FC<HomeCodexSpotlightProps> = ({
 
                   {/* Category Pill Tag in Spanish */}
                   <div className="absolute top-2.5 left-2.5 z-10">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/55 text-white backdrop-blur-md shadow-xs">
-                      <Icon className="w-2.5 h-2.5 text-[var(--accent)]" />
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/60 text-white backdrop-blur-md shadow-xs">
+                      <Icon className="w-2.5 h-2.5 shrink-0" style={{ color: categoryColor }} />
                       <span>{label}</span>
                     </span>
                   </div>

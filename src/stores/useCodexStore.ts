@@ -69,16 +69,21 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
     selectedEntityId: null, selectedCategory: "all", searchQuery: "", selectedTag: "all", sortBy: "default", isSaving: false, lastSavedAt: null, errorMessage: null,
 
     loadCodex: (entities, relationships = [], relationshipPositions = {}, customRelationshipCategories = [], customEntityCategories = [], categoryOrders = {}) => {
+      const existingCats = get().customEntityCategories;
       const initialCats = Array.isArray(customEntityCategories) && customEntityCategories.length > 0
         ? customEntityCategories
-        : CANONICAL_DEFAULT_CATEGORIES;
+        : (existingCats && existingCats.length > 0 ? existingCats : CANONICAL_DEFAULT_CATEGORIES);
+      const existingOrders = get().categoryOrders;
+      const initialOrders = categoryOrders && Object.keys(categoryOrders).length > 0
+        ? categoryOrders
+        : existingOrders;
       set({
         entities: Array.isArray(entities) ? entities : [],
         relationships: Array.isArray(relationships) ? relationships : [],
         relationshipPositions: relationshipPositions && typeof relationshipPositions === "object" ? relationshipPositions : {},
         customRelationshipCategories: Array.isArray(customRelationshipCategories) ? customRelationshipCategories : [],
         customEntityCategories: initialCats,
-        categoryOrders: categoryOrders && typeof categoryOrders === "object" ? categoryOrders : {},
+        categoryOrders: initialOrders && typeof initialOrders === "object" ? initialOrders : {},
         errorMessage: null,
       });
     },
@@ -91,22 +96,31 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
     reorderEntities: (category: EntityCategory | "all", orderedIds: string[]) => {
       const { entities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories, categoryOrders } = get();
       const nextOrders = { ...categoryOrders, [category]: orderedIds };
-      let nextEntities = entities;
+      const idMap = new Map(entities.map((e) => [e.id, e]));
+      let nextEntities: WorldEntity[];
       if (category === "all") {
-        const idMap = new Map(entities.map((e) => [e.id, e]));
         const reordered = orderedIds.map((id) => { const e = idMap.get(id); idMap.delete(id); return e!; }).filter(Boolean);
         nextEntities = [...reordered, ...Array.from(idMap.values())];
+      } else {
+        const orderedCategoryEntities = orderedIds.map((id) => idMap.get(id)).filter(Boolean) as WorldEntity[];
+        let catIdx = 0;
+        nextEntities = entities.map((e) => {
+          if (e.category === category && catIdx < orderedCategoryEntities.length) {
+            return orderedCategoryEntities[catIdx++];
+          }
+          return e;
+        });
       }
-      set({ categoryOrders: nextOrders, entities: nextEntities });
+      set({ categoryOrders: nextOrders, entities: nextEntities, sortBy: "default" });
       triggerDebouncedSave(nextEntities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories, nextOrders);
     },
 
     addEntity: (category, name) => {
-      const { entities, relationships, relationshipPositions, categoryOrders } = get();
+      const { entities, relationships, relationshipPositions, categoryOrders, customEntityCategories } = get();
       const id = `ent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const newEntity: WorldEntity = {
-        id, category, name: name?.trim() || getDefaultEntityName(category),
-        summary: "", tags: [], aliases: [], attributes: {}, notes: "", color: getDefaultCategoryColor(category), relationships: [],
+        id, category, name: name?.trim() || getDefaultEntityName(category, customEntityCategories),
+        summary: "", tags: [], aliases: [], attributes: {}, notes: "", color: getDefaultCategoryColor(category, customEntityCategories), relationships: [],
       };
       const next = [...entities, newEntity];
       const nextOrders = {
@@ -157,26 +171,28 @@ export const useCodexStore = create<CodexStoreState>((set, get) => {
     },
 
     addCustomEntityCategory: (cat) => {
-      const { entities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories } = get();
+      const { entities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories, categoryOrders } = get();
       const nCat: CustomEntityCategory = { ...cat, id: `cat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` };
       const next = [...customEntityCategories, nCat]; set({ customEntityCategories: next });
-      triggerDebouncedSave(entities, relationships, relationshipPositions, customRelationshipCategories, next);
+      executeSave(entities, relationships, relationshipPositions, customRelationshipCategories, next, categoryOrders);
       return nCat;
     },
     updateCustomEntityCategory: (id, updates) => {
-      const { entities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories } = get();
+      const { entities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories, categoryOrders } = get();
       const next = customEntityCategories.map((c) => (c.id === id ? { ...c, ...updates } : c));
-      set({ customEntityCategories: next }); triggerDebouncedSave(entities, relationships, relationshipPositions, customRelationshipCategories, next);
+      set({ customEntityCategories: next });
+      executeSave(entities, relationships, relationshipPositions, customRelationshipCategories, next, categoryOrders);
     },
     deleteCustomEntityCategory: (id, deleteEntities = false) => {
-      const { entities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories, selectedCategory } = get();
+      const { entities, relationships, relationshipPositions, customRelationshipCategories, customEntityCategories, selectedCategory, categoryOrders } = get();
       const nextCats = customEntityCategories.filter((c) => c.id !== id);
       const nextEnts = deleteEntities
         ? entities.filter((e) => e.category !== id)
         : entities.map((e) => (e.category === id ? { ...e, category: "other" as const } : e));
       const nextSelected = selectedCategory === id ? "all" : selectedCategory;
-      set({ customEntityCategories: nextCats, entities: nextEnts, selectedCategory: nextSelected });
-      triggerDebouncedSave(nextEnts, relationships, relationshipPositions, customRelationshipCategories, nextCats);
+      const nextOrders = { ...categoryOrders }; delete nextOrders[id];
+      set({ customEntityCategories: nextCats, entities: nextEnts, selectedCategory: nextSelected, categoryOrders: nextOrders });
+      executeSave(nextEnts, relationships, relationshipPositions, customRelationshipCategories, nextCats, nextOrders);
     },
     addRelationship: (sourceEntityId, targetEntityId, type, label, sentiment, description) => {
       const { entities, relationships, relationshipPositions } = get();

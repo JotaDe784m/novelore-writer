@@ -158,6 +158,7 @@ async function initOrLoadProject(
         relationshipPositions: codexMeta.relationshipPositions || projectMeta.relationshipPositions || {},
         relationshipCategories: codexMeta.relationshipCategories || projectMeta.relationshipCategories || [],
         customEntityCategories: codexMeta.customEntityCategories || projectMeta.customEntityCategories || [],
+        categoryOrders: codexMeta.categoryOrders || projectMeta.categoryOrders || {},
         timelineTracks: planningMeta.timeline?.tracks || planningMeta.timelineTracks || [],
         timelineEvents: planningMeta.timeline?.events || planningMeta.timelineEvents || [],
         storyBeats: planningMeta.beats || planningMeta.storyBeats || [],
@@ -840,6 +841,7 @@ ipcMain.handle("fs:saveCodex", async (_event, data: {
   relationshipPositions?: any;
   customRelationshipCategories?: any[];
   customEntityCategories?: any[];
+  categoryOrders?: Record<string, string[]>;
 }) => {
   if (!currentProjectPath) return { success: false, error: "No hay proyecto abierto." };
   try {
@@ -857,6 +859,10 @@ ipcMain.handle("fs:saveCodex", async (_event, data: {
       customEntityCategories: Array.isArray(data?.customEntityCategories)
         ? data.customEntityCategories
         : [],
+      categoryOrders:
+        data?.categoryOrders && typeof data.categoryOrders === "object"
+          ? data.categoryOrders
+          : {},
     };
     await writeAtomic(codexJsonPath, JSON.stringify(codexPayload, null, 2));
 
@@ -889,6 +895,7 @@ ipcMain.handle("fs:readCodex", async () => {
         relationshipPositions: parsed.relationshipPositions || {},
         customRelationshipCategories: parsed.customRelationshipCategories || [],
         customEntityCategories: parsed.customEntityCategories || [],
+        categoryOrders: parsed.categoryOrders || {},
       };
     }
     return {
@@ -898,6 +905,7 @@ ipcMain.handle("fs:readCodex", async () => {
       relationshipPositions: {},
       customRelationshipCategories: [],
       customEntityCategories: [],
+      categoryOrders: {},
     };
   } catch (err: any) {
     return { success: false, error: err.message };
