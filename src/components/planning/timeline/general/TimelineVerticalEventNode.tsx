@@ -74,7 +74,7 @@ export const TimelineVerticalEventNode: React.FC<TimelineVerticalEventNodeProps>
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`relative pl-6 ${isLast ? "pb-2" : "pb-5"} transition-opacity ${
+      className={`relative pl-6 ${isLast ? "pb-3" : "pb-8"} transition-opacity ${
         isDraggingSelf ? "opacity-40" : "opacity-100"
       }`}
     >
