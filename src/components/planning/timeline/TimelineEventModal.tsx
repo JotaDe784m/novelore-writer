@@ -153,7 +153,7 @@ export const TimelineEventModal: React.FC<TimelineEventModalProps> = ({
                   subtitle={logic.subtitle} onSubtitleChange={logic.setSubtitle}
                   summary={logic.summary} onSummaryChange={logic.setSummary}
                   date={logic.date} dateType={logic.dateType} onDateChange={(d, dt) => { logic.setDate(d); logic.setDateType(dt); }}
-                  color={logic.color} onColorChange={logic.setColor}
+                  color={logic.color}
                   tags={logic.tags} onAddTag={(t) => logic.setTags([...logic.tags, t])} onRemoveTag={(t) => logic.setTags(logic.tags.filter((x) => x !== t))}
                   avatarUrl={logic.avatarUrl} onUploadAvatarClick={() => logic.fileInputRef.current?.click()}
                   onRemoveAvatar={logic.handleRemoveAvatar} onOpenCropModal={() => logic.handleOpenCrop()}

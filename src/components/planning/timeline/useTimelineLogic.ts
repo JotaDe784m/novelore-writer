@@ -56,8 +56,8 @@ export const useTimelineLogic = (project: NovelProject) => {
   }, [project.acts]);
 
   const filteredEvents = useMemo(() => {
-    return filterTimelineEvents(events, activePlane, activeTrackId, searchQuery);
-  }, [events, activePlane, activeTrackId, searchQuery]);
+    return filterTimelineEvents(events, activePlane, activeTrackId, searchQuery, tracks);
+  }, [events, activePlane, activeTrackId, searchQuery, tracks]);
 
   const eventsByTrack = useMemo(() => {
     const map = new Map<string, TimelineEvent[]>();
@@ -97,6 +97,7 @@ export const useTimelineLogic = (project: NovelProject) => {
   };
 
   const openEditEvent = (event: TimelineEvent) => {
+    const parentTrack = tracks.find((t) => t.id === event.trackId);
     setEventModalData({
       ...event,
       title: event.title,
@@ -106,7 +107,7 @@ export const useTimelineLogic = (project: NovelProject) => {
       temporalPlane: event.temporalPlane,
       date: event.date || "",
       dateType: event.dateType || "free",
-      color: event.color || "#6366f1",
+      color: parentTrack?.color || event.color || "#6366f1",
       tags: event.tags || [],
       aliases: event.aliases || [],
       attributes: event.attributes || {},
@@ -126,12 +127,21 @@ export const useTimelineLogic = (project: NovelProject) => {
   };
 
   const handleSaveEvent = (data: EventModalData) => {
-    if (data.id) {
-      updateEvent(data.id, data);
+    const parentTrack = tracks.find((t) => t.id === data.trackId);
+    const resolvedData = {
+      ...data,
+      color: parentTrack?.color || data.color || "#6366f1",
+    };
+    if (resolvedData.id) {
+      updateEvent(resolvedData.id, resolvedData);
     } else {
-      addEvent(data as Omit<TimelineEvent, "id">);
+      addEvent(resolvedData as Omit<TimelineEvent, "id">);
     }
     setIsEventModalOpen(false);
+  };
+
+  const moveTrackToPlane = (trackId: string, planeId?: string) => {
+    updateTrack(trackId, { planeId: planeId || undefined });
   };
 
   const updateEventGap = (eventId: string, gapLabel: string) => {
@@ -202,6 +212,7 @@ export const useTimelineLogic = (project: NovelProject) => {
     openCreateTrack,
     openEditTrack,
     handleSaveTrack,
+    moveTrackToPlane,
     setIsTrackModalOpen,
     deleteTrack,
   };

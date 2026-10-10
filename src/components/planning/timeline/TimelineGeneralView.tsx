@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { Layers, Plus } from "lucide-react";
 import { TimelineTrack, TimelineEvent } from "../../../types";
-import { TimelineGeneralTrackRow } from "./general/TimelineGeneralTrackRow";
+import { usePlanningStore } from "../../../stores/usePlanningStore";
+import { TimelineColumn } from "./general/TimelineColumn";
 
 interface TimelineGeneralViewProps {
   tracks: TimelineTrack[];
@@ -12,9 +13,14 @@ interface TimelineGeneralViewProps {
   onDeleteTrack: (trackId: string) => void;
   onAddEventToTrack: (trackId: string) => void;
   onEditEvent: (event: TimelineEvent) => void;
-  onUpdateEventGap: (eventId: string, gapLabel: string) => void;
-  onUpdateEventOffset: (eventId: string, offset: number) => void;
-  onMoveEvent?: (eventId: string, targetTrackId: string) => void;
+  onUpdateEventGap?: (eventId: string, gapLabel: string) => void;
+  onUpdateEventOffset?: (eventId: string, offset: number) => void;
+  onMoveEvent?: (
+    eventId: string,
+    targetTrackId: string,
+    targetOrIndex?: string | number,
+    position?: "before" | "after"
+  ) => void;
   onOpenCreateTrack: () => void;
   onReorderTracks?: (trackIds: string[], planeId?: string) => void;
   onReorderTrackEvents?: (trackId: string, sortedEventIds: string[]) => void;
@@ -30,8 +36,6 @@ export const TimelineGeneralView: React.FC<TimelineGeneralViewProps> = ({
   onDeleteTrack,
   onAddEventToTrack,
   onEditEvent,
-  onUpdateEventGap,
-  onUpdateEventOffset,
   onMoveEvent,
   onOpenCreateTrack,
   onReorderTracks,
@@ -40,7 +44,10 @@ export const TimelineGeneralView: React.FC<TimelineGeneralViewProps> = ({
 }) => {
   const [draggedTrackId, setDraggedTrackId] = useState<string | null>(null);
 
-  // Filtrar pistas por plano activo
+  const temporalPlanes = usePlanningStore((s) => s.temporalPlanes);
+  const updateTrack = usePlanningStore((s) => s.updateTrack);
+
+  // Filtrar líneas de tiempo por plano temporal activo
   const visibleTracks = useMemo(() => {
     return tracks.filter((track) => {
       if (activePlane === "all") return true;
@@ -61,7 +68,7 @@ export const TimelineGeneralView: React.FC<TimelineGeneralViewProps> = ({
   }, [visibleTracks, activePlane]);
 
   const handleTrackDragStart = (e: React.DragEvent, trackId: string) => {
-    e.dataTransfer.setData("text/novelore-track-id", trackId);
+    e.dataTransfer.setData("application/novelore-column-id", trackId);
     e.dataTransfer.effectAllowed = "move";
     setDraggedTrackId(trackId);
   };
@@ -73,7 +80,8 @@ export const TimelineGeneralView: React.FC<TimelineGeneralViewProps> = ({
 
   const handleTrackDrop = (e: React.DragEvent, targetTrackId: string) => {
     e.preventDefault();
-    const sourceTrackId = e.dataTransfer.getData("text/novelore-track-id") || draggedTrackId;
+    const sourceTrackId =
+      e.dataTransfer.getData("application/novelore-column-id") || draggedTrackId;
     if (!sourceTrackId || sourceTrackId === targetTrackId) {
       setDraggedTrackId(null);
       return;
@@ -95,6 +103,10 @@ export const TimelineGeneralView: React.FC<TimelineGeneralViewProps> = ({
     setDraggedTrackId(null);
   };
 
+  const handleMoveTrackToPlane = (trackId: string, planeId?: string) => {
+    updateTrack(trackId, { planeId: planeId || undefined });
+  };
+
   if (tracks.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none">
@@ -102,7 +114,7 @@ export const TimelineGeneralView: React.FC<TimelineGeneralViewProps> = ({
           <Layers className="w-8 h-8" />
         </div>
         <h3 className="font-bold text-base font-novel-display text-[var(--text-main)] mb-1">
-          No hay pistas cronológicas creadas
+          No hay líneas de tiempo creadas
         </h3>
         <p className="text-xs text-[var(--text-muted)] max-w-sm mb-5 leading-relaxed font-novel-serif">
           Crea tu primera línea de tiempo para comenzar a ubicar acontecimientos y organizar la cronología de tu obra.
@@ -113,35 +125,36 @@ export const TimelineGeneralView: React.FC<TimelineGeneralViewProps> = ({
           className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 shadow-xs transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>Crear Primera Pista</span>
+          <span>Crear Primera Línea</span>
         </button>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 custom-scroll">
-      {sortedTracks.map((track) => (
-        <TimelineGeneralTrackRow
-          key={track.id}
-          track={track}
-          events={eventsByTrack.get(track.id) || []}
-          onFocusTrack={onFocusTrack}
-          onEditTrack={onEditTrack}
-          onDeleteTrack={onDeleteTrack}
-          onAddEventToTrack={onAddEventToTrack}
-          onEditEvent={onEditEvent}
-          onUpdateEventGap={onUpdateEventGap}
-          onUpdateEventOffset={onUpdateEventOffset}
-          onMoveEvent={onMoveEvent}
-          onReorderTrackEvents={onReorderTrackEvents}
-          onEventContextMenu={onEventContextMenu}
-          isDraggable={true}
-          onTrackDragStart={handleTrackDragStart}
-          onTrackDragOver={handleTrackDragOver}
-          onTrackDrop={handleTrackDrop}
-        />
-      ))}
+    <div className="flex-1 overflow-x-auto overflow-y-auto p-4 sm:p-6 custom-scroll select-none">
+      <div className="flex items-start gap-6 min-w-max pb-16">
+        {sortedTracks.map((track) => (
+          <TimelineColumn
+            key={track.id}
+            track={track}
+            events={eventsByTrack.get(track.id) || []}
+            temporalPlanes={temporalPlanes}
+            onFocusTrack={onFocusTrack}
+            onEditTrack={onEditTrack}
+            onMoveTrackToPlane={handleMoveTrackToPlane}
+            onDeleteTrack={onDeleteTrack}
+            onAddEventToTrack={onAddEventToTrack}
+            onEditEvent={onEditEvent}
+            onReorderTrackEvents={onReorderTrackEvents}
+            onMoveEvent={onMoveEvent}
+            onEventContextMenu={onEventContextMenu}
+            onColumnDragStart={handleTrackDragStart}
+            onColumnDragOver={handleTrackDragOver}
+            onColumnDrop={handleTrackDrop}
+          />
+        ))}
+      </div>
     </div>
   );
 };

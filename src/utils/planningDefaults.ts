@@ -91,13 +91,16 @@ export const filterTimelineEvents = (
   events: TimelineEvent[],
   planeFilter: "all" | string,
   trackFilter: string | null,
-  searchQuery: string
+  searchQuery: string,
+  tracks?: TimelineTrack[]
 ): TimelineEvent[] => {
   const query = searchQuery.trim().toLowerCase();
+  const trackMap = tracks ? new Map(tracks.map((t) => [t.id, t])) : null;
 
   return events.filter((ev) => {
     if (planeFilter !== "all") {
-      const plane = ev.temporalPlane || "present";
+      const track = trackMap?.get(ev.trackId);
+      const plane = track?.planeId || ev.temporalPlane || "present";
       if (plane !== planeFilter) return false;
     }
 
@@ -118,12 +121,12 @@ export const filterTimelineEvents = (
 
 export const sortTimelineEvents = (events: TimelineEvent[]): TimelineEvent[] => {
   return [...events].sort((a, b) => {
-    if (a.relativeOffset !== undefined && b.relativeOffset !== undefined && a.relativeOffset !== b.relativeOffset) {
-      return a.relativeOffset - b.relativeOffset;
-    }
     const orderA = a.order ?? a.position ?? 0;
     const orderB = b.order ?? b.position ?? 0;
     if (orderA !== orderB) return orderA - orderB;
+    if (a.relativeOffset !== undefined && b.relativeOffset !== undefined && a.relativeOffset !== b.relativeOffset) {
+      return a.relativeOffset - b.relativeOffset;
+    }
     return a.title.localeCompare(b.title);
   });
 };

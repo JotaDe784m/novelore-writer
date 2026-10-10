@@ -47,7 +47,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden select-none bg-[var(--bg-main)]">
-      {/* Vista en Primer Plano (si una pista está enfocada) */}
+      {/* Vista en Primer Plano (si una línea está enfocada) */}
       {focusedTrack ? (
         <TimelineFocusedView
           track={focusedTrack}
@@ -124,7 +124,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
         />
       )}
 
-      {/* Modal de Líneas de Tiempo (Pistas) */}
+      {/* Modal de Líneas de Tiempo */}
       {logic.isTrackModalOpen && logic.trackModalData && (
         <TimelineTrackModal
           initialData={logic.trackModalData}

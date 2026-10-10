@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { X, Layers } from "lucide-react";
 import { TrackModalData } from "./timelineTypes";
 import { TimelineColorPicker } from "./common/TimelineColorPicker";
+import { usePlanningStore } from "../../../stores/usePlanningStore";
 
 interface TimelineTrackModalProps {
   initialData: TrackModalData;
@@ -16,6 +17,7 @@ export const TimelineTrackModal: React.FC<TimelineTrackModalProps> = ({
   onClose,
 }) => {
   const [formData, setFormData] = useState<TrackModalData>(initialData);
+  const temporalPlanes = usePlanningStore((s) => s.temporalPlanes);
 
   useEffect(() => {
     setFormData(initialData);
@@ -102,6 +104,25 @@ export const TimelineTrackModal: React.FC<TimelineTrackModalProps> = ({
               placeholder="Ej. Trama Principal, Subtrama de Marcus..."
               className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-xs sm:text-sm font-serif text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50 focus:outline-hidden focus:border-[var(--accent)] transition-all"
             />
+          </div>
+
+          {/* Selector de Plano Temporal */}
+          <div>
+            <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
+              Plano temporal asignado
+            </label>
+            <select
+              value={formData.planeId || ""}
+              onChange={(e) => setFormData({ ...formData, planeId: e.target.value || undefined })}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-xs sm:text-sm font-sans text-[var(--text-main)] focus:outline-hidden focus:border-[var(--accent)] transition-all cursor-pointer"
+            >
+              <option value="">Sin plano asignado (General)</option>
+              {temporalPlanes.map((plane) => (
+                <option key={plane.id} value={plane.id}>
+                  {plane.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Selector de Color Homologado */}

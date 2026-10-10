@@ -49,7 +49,12 @@ export const usePlanningStore = create<PlanningStoreState>((set, get) => ({
   },
 
   updateTrack: (id: string, updates: Partial<TimelineTrack>) => {
-    set((state) => ({ tracks: state.tracks.map((t) => (t.id === id ? { ...t, ...updates } : t)) }));
+    set((state) => ({
+      tracks: state.tracks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+      events: "planeId" in updates
+        ? state.events.map((e) => (e.trackId === id ? { ...e, temporalPlane: updates.planeId } : e))
+        : state.events,
+    }));
     get().debouncedSavePlanning();
   },
 
@@ -119,7 +124,8 @@ export const usePlanningStore = create<PlanningStoreState>((set, get) => ({
   },
 
   moveEventToTrack: (eventId: string, newTrackId: string, targetOrIndex?: string | number, position: "before" | "after" = "before") => {
-    set({ events: reorderEventInTracks(get().events, eventId, newTrackId, targetOrIndex, position) });
+    const targetTrack = get().tracks.find((t) => t.id === newTrackId);
+    set({ events: reorderEventInTracks(get().events, eventId, newTrackId, targetOrIndex, position, targetTrack?.planeId) });
     get().debouncedSavePlanning();
   },
 

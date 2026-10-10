@@ -145,7 +145,7 @@ export const reorderEventInTracks = (
   const updatedDraggedEvent: TimelineEvent = {
     ...draggedEvent,
     trackId: targetTrackId,
-    temporalPlane: targetPlaneId || draggedEvent.temporalPlane,
+    temporalPlane: targetPlaneId,
     relativeOffset: calculatedOffset,
   };
 

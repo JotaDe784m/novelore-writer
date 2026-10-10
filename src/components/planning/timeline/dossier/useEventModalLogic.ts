@@ -10,6 +10,7 @@ import {
 import { EventModalData } from "../timelineTypes";
 import { saveLocalImage, deleteLocalImage } from "../../../../utils/imageUtils";
 import { calculateEntityDetailedMentions } from "../../../../utils/mentionHierarchy";
+import { usePlanningStore } from "../../../../stores/usePlanningStore";
 import { EventDossierTab } from "./EventDossierHeader";
 
 interface UseEventModalLogicProps {
@@ -33,7 +34,9 @@ export function useEventModalLogic({
   const [temporalPlane, setTemporalPlane] = useState(initialData.temporalPlane);
   const [date, setDate] = useState(initialData.date || "");
   const [dateType, setDateType] = useState<"calendar" | "free">(initialData.dateType || "free");
-  const [color, setColor] = useState(initialData.color || "#6366f1");
+  const tracks = usePlanningStore((s) => s.tracks);
+  const activeTrack = tracks.find((t) => t.id === trackId);
+  const color = activeTrack?.color || initialData.color || "#6366f1";
   const [tags, setTags] = useState<string[]>(initialData.tags || []);
   const [aliases, setAliases] = useState<string[]>(initialData.aliases || []);
   const [avatarUrl, setAvatarUrl] = useState(initialData.avatarUrl || "");
@@ -237,7 +240,7 @@ export function useEventModalLogic({
 
   return {
     activeTab, setActiveTab, isFullscreen, setIsFullscreen, title, setTitle, subtitle, setSubtitle, summary, setSummary,
-    trackId, setTrackId, temporalPlane, setTemporalPlane, date, setDate, dateType, setDateType, color, setColor, tags, setTags, aliases, setAliases,
+    trackId, setTrackId, temporalPlane, setTemporalPlane, date, setDate, dateType, setDateType, color, tags, setTags, aliases, setAliases,
     avatarUrl, setAvatarUrl, avatarOriginalUrl, gallery, setGallery, attributes, setAttributes,
     attributeLayouts, setAttributeLayouts, handleUpdateLayout, handleToggleLockAttribute,
     pinnedAttributes, setPinnedAttributes, handleTogglePinAttribute, wideAttributes, setWideAttributes,

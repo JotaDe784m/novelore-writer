@@ -29,7 +29,7 @@ export const PlanningDashboard: React.FC<PlanningDashboardProps> = ({
   const [subView, setSubView] = useState<PlanningSubView>("timeline");
 
   const planningTabs = [
-    { id: "timeline", label: "Línea de tiempo", icon: Calendar },
+    { id: "timeline", label: "Líneas de tiempo", icon: Calendar },
     { id: "corkboard", label: "Esquema de escenas", icon: Layers },
   ];
 

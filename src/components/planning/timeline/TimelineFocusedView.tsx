@@ -45,7 +45,7 @@ export const TimelineFocusedView: React.FC<TimelineFocusedViewProps> = ({
             type="button"
             onClick={onBack}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[var(--bg-card)] text-[var(--text-main)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] border border-[var(--border-color)]/70 shadow-2xs transition-all cursor-pointer"
-            title="Volver a la vista panorámica de pistas (Esc)"
+            title="Volver a la vista de líneas de tiempo (Esc)"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Volver a Líneas de Tiempo</span>
@@ -64,7 +64,7 @@ export const TimelineFocusedView: React.FC<TimelineFocusedViewProps> = ({
               type="button"
               onClick={() => onEditTrack(track)}
               className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-              title="Editar pista"
+              title="Editar línea de tiempo"
             >
               <Edit2 className="w-3 h-3" />
             </button>
@@ -89,7 +89,7 @@ export const TimelineFocusedView: React.FC<TimelineFocusedViewProps> = ({
         {events.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
             <h4 className="font-bold text-sm font-novel-display text-[var(--text-main)] mb-1">
-              Esta pista aún no contiene acontecimientos
+              Esta línea de tiempo aún no contiene acontecimientos
             </h4>
             <p className="text-xs text-[var(--text-muted)] max-w-sm mb-4 font-novel-serif">
               Añade el primer evento para comenzar a detallar la cronología de esta trama.

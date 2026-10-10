@@ -49,7 +49,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
           type="button"
           onClick={onOpenCreateTrack}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[var(--accent)] bg-[var(--accent-subtle)] hover:opacity-90 transition-all cursor-pointer shrink-0 font-sans"
-          title="Crear nueva línea de tiempo / pista cronológica"
+          title="Crear nueva línea de tiempo"
         >
           <Plus className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Nueva Línea</span>

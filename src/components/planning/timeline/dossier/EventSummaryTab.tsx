@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Palette, Feather } from "lucide-react";
+import React from "react";
+import { Feather } from "lucide-react";
 import { TimelineDatePicker } from "../TimelineDatePicker";
-import { DossierColorPicker } from "../../../codex/dossier/DossierColorPicker";
 import { DossierTagsSection } from "../../../codex/dossier/DossierTagsSection";
 import { EventAvatarCard } from "./EventAvatarCard";
 
@@ -16,7 +15,7 @@ interface EventSummaryTabProps {
   dateType: "calendar" | "free";
   onDateChange: (d: string, dt: "calendar" | "free") => void;
   color: string;
-  onColorChange: (color: string) => void;
+  onColorChange?: (color: string) => void;
   tags?: string[];
   onAddTag: (tag: string) => void;
   onRemoveTag: (tag: string) => void;
@@ -37,7 +36,6 @@ export const EventSummaryTab: React.FC<EventSummaryTabProps> = ({
   dateType,
   onDateChange,
   color,
-  onColorChange,
   tags = [],
   onAddTag,
   onRemoveTag,
@@ -46,21 +44,6 @@ export const EventSummaryTab: React.FC<EventSummaryTabProps> = ({
   onRemoveAvatar,
   onOpenCropModal,
 }) => {
-  const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const colorPickerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
-        setColorPickerOpen(false);
-      }
-    };
-    if (colorPickerOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [colorPickerOpen]);
-
   return (
     <div className="space-y-5 animate-in fade-in duration-150">
       {/* 1. Hero Card del acontecimiento */}
@@ -76,9 +59,9 @@ export const EventSummaryTab: React.FC<EventSummaryTabProps> = ({
             onOpenCropModal={onOpenCropModal}
           />
 
-          {/* Bloque derecho unificado: Título + Subtítulo + Pista + Ubicación + Tags */}
+          {/* Bloque derecho unificado: Título + Subtítulo + Línea + Ubicación + Tags */}
           <div className="flex-1 min-w-0 flex flex-col justify-between space-y-3.5 w-full">
-            {/* Fila superior: Título y Selector de color circular */}
+            {/* Fila superior: Título y Punto cromático de la línea */}
             <div className="space-y-1 sm:space-y-1.5">
               <div className="flex items-center justify-between gap-3">
                 <input
@@ -90,29 +73,12 @@ export const EventSummaryTab: React.FC<EventSummaryTabProps> = ({
                   className="flex-1 min-w-0 text-2xl sm:text-3xl lg:text-4xl font-bold font-novel-display text-[var(--text-primary)] placeholder:text-[var(--text-muted)]/50 bg-transparent border-b border-transparent hover:border-[var(--border-subtle)] focus:border-[var(--accent)] focus:outline-none transition-colors pb-1 leading-tight"
                 />
 
-                {/* Botón de color (círculo) con popover flotante */}
-                <div className="relative shrink-0" ref={colorPickerRef}>
-                  <button
-                    type="button"
-                    onClick={() => setColorPickerOpen((prev) => !prev)}
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full shadow-xs cursor-pointer ring-2 ring-white/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: color }}
-                    title="Cambiar color de identidad"
-                  >
-                    <Palette className="w-4 h-4 text-white drop-shadow-md opacity-0 hover:opacity-100 transition-opacity" />
-                  </button>
-
-                  {colorPickerOpen && (
-                    <div className="absolute right-0 top-11 z-30 p-3 rounded-2xl bg-[var(--bg-card)] shadow-2xl border border-[var(--border-subtle)] w-64 animate-in fade-in zoom-in-95 duration-150">
-                      <DossierColorPicker
-                        color={color}
-                        onColorChange={(c) => {
-                          onColorChange(c);
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
+                {/* Indicador de color heredado de la línea de tiempo */}
+                <div
+                  className="w-4 h-4 rounded-full shadow-2xs shrink-0 ring-2 ring-white/10"
+                  style={{ backgroundColor: color }}
+                  title="Color heredado de la línea de tiempo"
+                />
               </div>
 
               {/* Subtítulo editable */}
